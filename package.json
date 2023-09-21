@@ -1,0 +1,25 @@
+{
+  "name": "@hyperjump/json-schema-language-server",
+  "version": "1.0.0",
+  "description": "JSON Schema Language Server",
+  "type": "module",
+  "main": "./src/server.js",
+  "scripts": {
+    "clean": "xargs -a .gitignore rm -rf",
+    "lint": "eslint src"
+  },
+  "author": "Jason Desrosiers <jdesrosi@gmail.com>",
+  "license": "MIT",
+  "repository": "github:hyperjump-io/json-schema-language-server",
+  "keywords": [],
+  "devDependencies": {
+    "eslint": "*",
+    "eslint-import-resolver-node": "*",
+    "eslint-plugin-import": "*"
+  },
+  "dependencies": {
+    "@hyperjump/json-schema": "^1.6.0",
+    "vscode-languageserver": "^9.0.0",
+    "vscode-languageserver-textdocument": "^1.0.8"
+  }
+}
