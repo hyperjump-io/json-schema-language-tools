@@ -4,18 +4,14 @@ import {
   DiagnosticSeverity,
   DiagnosticTag,
   ProposedFeatures,
-  TextDocuments
+  TextDocuments,
+  TextDocumentSyncKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-// Tree-sitter
-import Parser from "tree-sitter";
-import Json from "tree-sitter-json";
-
 // Hyperjump
-import * as Browser from "@hyperjump/browser";
 import { registerSchema, unregisterSchema, InvalidSchemaError, setMetaSchemaOutputFormat } from "@hyperjump/json-schema";
-import { getSchema, compile, DETAILED } from "@hyperjump/json-schema/experimental";
+import { getSchema, buildSchemaDocument, compile, DETAILED } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
@@ -27,8 +23,15 @@ import { annotate } from "@hyperjump/json-schema/annotations/experimental";
 
 // Features
 import { deprecatedNodes } from "./deprecated.js";
-import { getNode } from "./util.js";
+import { parser } from "./parser.js";
 import { invalidNodes } from "./validation.js";
+
+// Other
+import { readdir, readFile } from "node:fs/promises";
+import { watch } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { getNode } from "./util.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -36,47 +39,88 @@ setMetaSchemaOutputFormat(DETAILED);
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
-connection.onInitialize(() => {
+connection.onInitialize(async ({ capabilities, workspaceFolders }) => {
   connection.console.log("Initializing JSON Schema service ...");
 
-  return {};
+  if (workspaceFolders) {
+    workspace = workspaceFolders;
+  }
+
+  watchWorkspace();
+  await registerWorkspaceSchemas();
+  await validateWorkspace();
+
+  const serverCapabilities = {
+    textDocumentSync: TextDocumentSyncKind.Incremental
+  };
+
+  if (capabilities.workspace?.workspaceFolders) {
+    serverCapabilities.workspace = {
+      workspaceFolders: {
+        supported: true
+      }
+    };
+  }
+
+  return { capabilities: serverCapabilities };
 });
 
 connection.listen();
 
 const documents = new TextDocuments(TextDocument);
-const parser = new Parser();
-parser.setLanguage(Json);
 
 documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
 
-  if (!document.uri.endsWith(".schema.json")) {
-    return;
-  }
+  await validateSchema(document.uri, document.getText());
+});
 
-  const diagnostics = [];
-  const tree = parser.parse(document.getText());
-  if (!tree.rootNode.hasError()) {
+let schemaRegistry = {};
+
+const registerWorkspaceSchemas = async () => {
+  schemaRegistry = {};
+
+  for await (const [, schemaJson] of allSchemas()) {
     try {
-      const uri = document.uri.replace(/^file:/, "schema:");
-      const schemaJson = JSON.parse(document.getText());
-      unregisterSchema(uri);
-      registerSchema(schemaJson, uri);
+      const schema = JSON.parse(schemaJson);
+      const schemaDocument = buildSchemaDocument(schema);
+      schemaRegistry[schemaDocument.baseUri] = schemaDocument;
+    } catch (error) {
+      // Ignore errors
+    }
+  }
+};
 
-      const schema = await getSchema(uri);
+const validateWorkspace = async () => {
+  for await (const [uri, schemaJson] of allSchemas()) {
+    await validateSchema(uri, schemaJson);
+  }
+};
+
+const validateSchema = async (uri, schemaJson) => {
+  const diagnostics = [];
+
+  const tree = parser.parse(schemaJson);
+  const schemUri = uri.replace(/^file:/, "schema:");
+
+  if (tree.rootNode.firstChild !== null && !tree.rootNode.hasError()) {
+    try {
+      const schema = JSON.parse(schemaJson);
+      registerSchema(schema, schemUri);
+
+      const browser = await getSchema(schemUri, { _cache: schemaRegistry });
+      const dialectId = browser.document.dialectId;
 
       try {
-        await compile(schema); // Validate the schema
-
-        const instance = await annotate(schema.document.dialectId, Browser.value(schema));
+        await compile(browser); // Validate the schema
+        const instance = await annotate(dialectId, schema);
 
         for (const node of deprecatedNodes(instance, tree)) {
           diagnostics.push(buildDiagnostic(node, "deprecated", DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
         }
       } catch (error) {
         if (error instanceof InvalidSchemaError) {
-          for await (const [node, message] of invalidNodes(error.output, schema.document.dialectId, tree)) {
+          for await (const [node, message] of invalidNodes(error.output, dialectId, tree)) {
             diagnostics.push(buildDiagnostic(node, message));
           }
         } else {
@@ -91,11 +135,13 @@ documents.onDidChangeContent(async ({ document }) => {
       } else {
         diagnostics.push(buildDiagnostic(getNode(tree), error.message));
       }
+    } finally {
+      unregisterSchema(schemUri);
     }
   }
 
-  connection.sendDiagnostics({ uri: document.uri, diagnostics });
-});
+  connection.sendDiagnostics({ uri, diagnostics });
+};
 
 const buildDiagnostic = (node, message, severity = DiagnosticSeverity.Error, tags = []) => {
   return {
@@ -108,6 +154,45 @@ const buildDiagnostic = (node, message, severity = DiagnosticSeverity.Error, tag
     message: message,
     source: "json-schema"
   };
+};
+
+let workspace = [];
+
+const allSchemas = async function* () {
+  for (const { uri } of workspace) {
+    const path = fileURLToPath(uri);
+
+    for (const filename of await readdir(path, { recursive: true })) {
+      if (!filename.endsWith(".schema.json")) {
+        continue;
+      }
+
+      const schemaPath = resolve(path, filename);
+      const schemaText = await readFile(schemaPath, "utf8");
+
+      if (schemaText.trim() === "") {
+        continue;
+      }
+
+      yield [pathToFileURL(schemaPath).toString(), schemaText];
+    }
+  }
+};
+
+let watcher;
+
+const watchWorkspace = () => {
+  if (watcher) {
+    watcher.close();
+  }
+
+  for (const { uri } of workspace) {
+    const path = fileURLToPath(uri);
+    watcher = watch(path, { recursive: true }, async () => {
+      await registerWorkspaceSchemas();
+      await validateWorkspace();
+    });
+  }
 };
 
 documents.listen(connection);
