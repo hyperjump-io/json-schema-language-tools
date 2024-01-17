@@ -3,6 +3,7 @@ import {
   createConnection,
   DiagnosticSeverity,
   DiagnosticTag,
+  DidChangeWatchedFilesNotification,
   ProposedFeatures,
   TextDocuments,
   TextDocumentSyncKind
@@ -27,11 +28,8 @@ import { parser } from "./parser.js";
 import { invalidNodes } from "./validation.js";
 
 // Other
-import { readdir, readFile } from "node:fs/promises";
-import { watch } from "node:fs";
-import { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { getNode } from "./util.js";
+import { buildDiagnostic, getNode, waitUntil } from "./util.js";
+import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -39,16 +37,18 @@ setMetaSchemaOutputFormat(DETAILED);
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
-connection.onInitialize(async ({ capabilities, workspaceFolders }) => {
+let hasWorkspaceFolderCapability = false;
+let hasWorkspaceWatchCapability = false;
+
+connection.onInitialize(({ capabilities, workspaceFolders }) => {
   connection.console.log("Initializing JSON Schema service ...");
 
   if (workspaceFolders) {
-    workspace = workspaceFolders;
+    addWorkspaceFolders(workspaceFolders);
   }
 
-  watchWorkspace();
-  await registerWorkspaceSchemas();
-  await validateWorkspace();
+  hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
+  hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
 
   const serverCapabilities = {
     textDocumentSync: TextDocumentSyncKind.Incremental
@@ -65,22 +65,42 @@ connection.onInitialize(async ({ capabilities, workspaceFolders }) => {
   return { capabilities: serverCapabilities };
 });
 
-connection.listen();
+connection.onInitialized(async () => {
+  if (hasWorkspaceWatchCapability) {
+    connection.client.register(DidChangeWatchedFilesNotification.type, {
+      watchers: [{ globPattern: "**/*.schema.json" }]
+    });
+  } else {
+    watchWorkspace(validateWorkspace);
+  }
 
-const documents = new TextDocuments(TextDocument);
+  if (hasWorkspaceFolderCapability) {
+    connection.workspace.onDidChangeWorkspaceFolders(async ({ added, removed }) => {
+      addWorkspaceFolders(added);
+      removeWorkspaceFolders(removed);
 
-documents.onDidChangeContent(async ({ document }) => {
-  connection.console.log(`Schema changed: ${document.uri}`);
+      if (!hasWorkspaceWatchCapability) {
+        watchWorkspace(validateWorkspace);
+      }
 
-  await validateSchema(document.uri, document.getText());
+      await validateWorkspace();
+    });
+  }
+
+  await validateWorkspace();
 });
 
 let schemaRegistry = {};
 
-const registerWorkspaceSchemas = async () => {
-  schemaRegistry = {};
+let isWorkspaceLoaded = false;
+const validateWorkspace = async () => {
+  connection.console.log("Validating workspace");
 
-  for await (const [, schemaJson] of allSchemas()) {
+  isWorkspaceLoaded = false;
+
+  // Register schemas
+  schemaRegistry = {};
+  for await (const [, schemaJson] of workspaceSchemas()) {
     try {
       const schema = JSON.parse(schemaJson);
       const schemaDocument = buildSchemaDocument(schema);
@@ -89,26 +109,42 @@ const registerWorkspaceSchemas = async () => {
       // Ignore errors
     }
   }
-};
 
-const validateWorkspace = async () => {
-  for await (const [uri, schemaJson] of allSchemas()) {
+  // Re/validate all schemas
+  for await (const [uri, schemaJson] of workspaceSchemas()) {
     await validateSchema(uri, schemaJson);
   }
+
+  isWorkspaceLoaded = true;
 };
+
+connection.onDidChangeWatchedFiles(validateWorkspace);
+
+connection.listen();
+
+const documents = new TextDocuments(TextDocument);
+
+documents.onDidChangeContent(async ({ document }) => {
+  connection.console.log(`Schema changed: ${document.uri}`);
+
+  if (document.uri.endsWith(".schema.json")) {
+    await waitUntil(() => isWorkspaceLoaded);
+    await validateSchema(document.uri, document.getText());
+  }
+});
 
 const validateSchema = async (uri, schemaJson) => {
   const diagnostics = [];
 
   const tree = parser.parse(schemaJson);
-  const schemUri = uri.replace(/^file:/, "schema:");
+  const schemaUri = uri.replace(/^file:/, "schema:");
 
   if (tree.rootNode.firstChild !== null && !tree.rootNode.hasError()) {
     try {
       const schema = JSON.parse(schemaJson);
-      registerSchema(schema, schemUri);
+      registerSchema(schema, schemaUri);
 
-      const browser = await getSchema(schemUri, { _cache: schemaRegistry });
+      const browser = await getSchema(schemaUri, { _cache: schemaRegistry });
       const dialectId = browser.document.dialectId;
 
       try {
@@ -136,63 +172,11 @@ const validateSchema = async (uri, schemaJson) => {
         diagnostics.push(buildDiagnostic(getNode(tree), error.message));
       }
     } finally {
-      unregisterSchema(schemUri);
+      unregisterSchema(schemaUri);
     }
   }
 
   connection.sendDiagnostics({ uri, diagnostics });
-};
-
-const buildDiagnostic = (node, message, severity = DiagnosticSeverity.Error, tags = []) => {
-  return {
-    severity: severity,
-    tags: tags,
-    range: {
-      start: { line: node.startPosition.row, character: node.startPosition.column },
-      end: { line: node.endPosition.row, character: node.endPosition.column }
-    },
-    message: message,
-    source: "json-schema"
-  };
-};
-
-let workspace = [];
-
-const allSchemas = async function* () {
-  for (const { uri } of workspace) {
-    const path = fileURLToPath(uri);
-
-    for (const filename of await readdir(path, { recursive: true })) {
-      if (!filename.endsWith(".schema.json")) {
-        continue;
-      }
-
-      const schemaPath = resolve(path, filename);
-      const schemaText = await readFile(schemaPath, "utf8");
-
-      if (schemaText.trim() === "") {
-        continue;
-      }
-
-      yield [pathToFileURL(schemaPath).toString(), schemaText];
-    }
-  }
-};
-
-let watcher;
-
-const watchWorkspace = () => {
-  if (watcher) {
-    watcher.close();
-  }
-
-  for (const { uri } of workspace) {
-    const path = fileURLToPath(uri);
-    watcher = watch(path, { recursive: true }, async () => {
-      await registerWorkspaceSchemas();
-      await validateWorkspace();
-    });
-  }
 };
 
 documents.listen(connection);

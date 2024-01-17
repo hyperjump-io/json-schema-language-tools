@@ -1,3 +1,6 @@
+import { DiagnosticSeverity } from "vscode-languageserver";
+
+
 export const getNode = (tree, pointer = "") => {
   let node = tree.rootNode.firstChild;
 
@@ -45,4 +48,32 @@ export const pointerFromUri = (uri) => {
   const fragmentPosition = uri.indexOf("#");
   const fragment = uri.slice(fragmentPosition + 1);
   return decodeURI(fragment);
+};
+
+export const waitUntil = (condition, checkInterval = 1000) => {
+  return new Promise((resolve) => {
+    if (condition()) {
+      resolve();
+    } else {
+      const interval = setInterval(() => {
+        if (condition()) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, checkInterval);
+    }
+  });
+};
+
+export const buildDiagnostic = (node, message, severity = DiagnosticSeverity.Error, tags = []) => {
+  return {
+    severity: severity,
+    tags: tags,
+    range: {
+      start: { line: node.startPosition.row, character: node.startPosition.column },
+      end: { line: node.endPosition.row, character: node.endPosition.column }
+    },
+    message: message,
+    source: "json-schema"
+  };
 };
