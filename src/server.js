@@ -34,6 +34,8 @@ import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWor
 
 setMetaSchemaOutputFormat(DETAILED);
 
+const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
+
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
@@ -68,10 +70,17 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
 connection.onInitialized(async () => {
   if (hasWorkspaceWatchCapability) {
     connection.client.register(DidChangeWatchedFilesNotification.type, {
-      watchers: [{ globPattern: "**/*.schema.json" }]
+      watchers: [
+        { globPattern: "**/*.schema.json" },
+        { globPattern: "**/schema.json" }
+      ]
     });
   } else {
-    watchWorkspace(validateWorkspace);
+    watchWorkspace((eventType, filename) => {
+      if (isSchema(filename)) {
+        validateWorkspace();
+      }
+    });
   }
 
   if (hasWorkspaceFolderCapability) {
@@ -80,7 +89,11 @@ connection.onInitialized(async () => {
       removeWorkspaceFolders(removed);
 
       if (!hasWorkspaceWatchCapability) {
-        watchWorkspace(validateWorkspace);
+        watchWorkspace((eventType, filename) => {
+          if (isSchema(filename)) {
+            validateWorkspace();
+          }
+        });
       }
 
       await validateWorkspace();
@@ -96,6 +109,8 @@ let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
 
+  const reporter = await connection.window.createWorkDoneProgress();
+  reporter.begin("JSON Schema: Indexing workspace");
   isWorkspaceLoaded = false;
 
   // Register schemas
@@ -116,6 +131,7 @@ const validateWorkspace = async () => {
   }
 
   isWorkspaceLoaded = true;
+  reporter.done();
 };
 
 connection.onDidChangeWatchedFiles(validateWorkspace);
@@ -127,7 +143,7 @@ const documents = new TextDocuments(TextDocument);
 documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
 
-  if (document.uri.endsWith(".schema.json")) {
+  if (isSchema(document.uri)) {
     await waitUntil(() => isWorkspaceLoaded);
     await validateSchema(document.uri, document.getText());
   }

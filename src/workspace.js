@@ -32,7 +32,9 @@ export const watchWorkspace = (handler) => {
       watchers[path].close();
     }
 
-    watchers[path] = watch(path, { recursive: true }, handler);
+    watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
+      handler(eventType, filename);
+    });
   }
 };
 
