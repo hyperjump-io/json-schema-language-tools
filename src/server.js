@@ -167,8 +167,8 @@ const validateSchema = async (uri, schemaJson) => {
         await compile(browser); // Validate the schema
         const instance = await annotate(dialectId, schema);
 
-        for (const node of deprecatedNodes(instance, tree)) {
-          diagnostics.push(buildDiagnostic(node, "deprecated", DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+        for (const [node, message] of deprecatedNodes(instance, tree)) {
+          diagnostics.push(buildDiagnostic(node, message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
         }
       } catch (error) {
         if (error instanceof InvalidSchemaError) {
