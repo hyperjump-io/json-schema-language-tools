@@ -172,7 +172,7 @@ const validateSchema = async (uri, schemaJson) => {
         }
       } catch (error) {
         if (error instanceof InvalidSchemaError) {
-          for await (const [node, message] of invalidNodes(error.output, dialectId, tree)) {
+          for await (const [node, message] of invalidNodes(error.output, schema, dialectId, tree)) {
             diagnostics.push(buildDiagnostic(node, message));
           }
         } else {

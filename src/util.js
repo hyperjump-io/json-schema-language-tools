@@ -17,7 +17,7 @@ export const getNode = (tree, pointer = "") => {
         }
       }
     } else if (node.type === "array") {
-      node = node.child(parseInt(segment, 10) + 1);
+      node = node.child(parseInt(segment, 10) * 2 + 1);
     } else {
       return;
     }
