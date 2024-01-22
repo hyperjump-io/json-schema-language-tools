@@ -5,6 +5,7 @@ import {
   DiagnosticTag,
   DidChangeWatchedFilesNotification,
   ProposedFeatures,
+  SemanticTokensBuilder,
   TextDocuments,
   TextDocumentSyncKind
 } from "vscode-languageserver/node.js";
@@ -30,6 +31,7 @@ import { invalidNodes } from "./validation.js";
 // Other
 import { buildDiagnostic, getNode, waitUntil } from "./util.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
+import { getSemanticTokens } from "./semantic-tokens.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -53,7 +55,14 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
   hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
 
   const serverCapabilities = {
-    textDocumentSync: TextDocumentSyncKind.Incremental
+    textDocumentSync: TextDocumentSyncKind.Incremental,
+    semanticTokensProvider: {
+      legend: buildSemanticTokensLegend(capabilities.textDocument?.semanticTokens),
+      range: false,
+      full: {
+        delta: true
+      }
+    }
   };
 
   if (capabilities.workspace?.workspaceFolders) {
@@ -76,7 +85,7 @@ connection.onInitialized(async () => {
       ]
     });
   } else {
-    watchWorkspace((eventType, filename) => {
+    watchWorkspace((_eventType, filename) => {
       if (isSchema(filename)) {
         validateWorkspace();
       }
@@ -89,7 +98,7 @@ connection.onInitialized(async () => {
       removeWorkspaceFolders(removed);
 
       if (!hasWorkspaceWatchCapability) {
-        watchWorkspace((eventType, filename) => {
+        watchWorkspace((_eventType, filename) => {
           if (isSchema(filename)) {
             validateWorkspace();
           }
@@ -139,6 +148,8 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 connection.listen();
 
 const documents = new TextDocuments(TextDocument);
+
+// INLINE ERRORS
 
 documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
@@ -194,5 +205,104 @@ const validateSchema = async (uri, schemaJson) => {
 
   connection.sendDiagnostics({ uri, diagnostics });
 };
+
+// SEMANTIC TOKENS
+
+const semanticTokensLegend = {
+  tokenTypes: {},
+  tokenModifiers: {}
+};
+
+const buildSemanticTokensLegend = (capability) => {
+  const clientTokenTypes = new Set(capability.tokenTypes);
+  const serverTokenTypes = [
+    "property",
+    "keyword",
+    "comment",
+    "string",
+    "regexp"
+  ];
+
+  const tokenTypes = [];
+  for (const tokenType of serverTokenTypes) {
+    if (clientTokenTypes.has(tokenType)) {
+      semanticTokensLegend.tokenTypes[tokenType] = tokenTypes.length;
+      tokenTypes.push(tokenType);
+    }
+  }
+
+  const clientTokenModifiers = new Set(capability.tokenModifiers);
+  const serverTokenModifiers = [
+  ];
+
+  const tokenModifiers = [];
+  for (const tokenModifier of serverTokenModifiers) {
+    if (clientTokenModifiers.has(tokenModifier)) {
+      semanticTokensLegend.tokenModifiers[tokenModifier] = tokenModifiers.length;
+      tokenModifiers.push(tokenModifier);
+    }
+  }
+
+  return { tokenTypes, tokenModifiers };
+};
+
+const tokenBuilders = new Map();
+documents.onDidClose((event) => {
+  tokenBuilders.delete(event.document.uri);
+});
+
+const getTokenBuilder = (uri) => {
+  let result = tokenBuilders.get(uri);
+  if (result !== undefined) {
+    return result;
+  }
+
+  result = new SemanticTokensBuilder();
+  tokenBuilders.set(uri, result);
+
+  return result;
+};
+
+const buildTokens = (builder, document) => {
+  const schemaJson = document.getText();
+  for (const { keywordNode, tokenType, tokenModifier } of getSemanticTokens(parser.parse(schemaJson))) {
+    builder.push(
+      keywordNode.startPosition.row,
+      keywordNode.startPosition.column,
+      keywordNode.text.length,
+      semanticTokensLegend.tokenTypes[tokenType] ?? 0,
+      semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0
+    );
+  }
+};
+
+connection.languages.semanticTokens.on(({ textDocument }) => {
+  connection.console.log(`semanticTokens.on: ${textDocument.uri}`);
+
+  if (isSchema(textDocument.uri)) {
+    const builder = getTokenBuilder(textDocument.uri);
+    const document = documents.get(textDocument.uri);
+    buildTokens(builder, document);
+
+    return builder.build();
+  } else {
+    return { data: [] };
+  }
+});
+
+connection.languages.semanticTokens.onDelta(({ textDocument, previousResultId }) => {
+  connection.console.log(`semanticTokens.onDelta: ${textDocument.uri}`);
+
+  const document = documents.get(textDocument.uri);
+  if (document === undefined) {
+    return { edits: [] };
+  }
+
+  const builder = getTokenBuilder(document);
+  builder.previousResult(previousResultId);
+  buildTokens(builder, document);
+
+  return builder.buildEdits();
+});
 
 documents.listen(connection);

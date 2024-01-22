@@ -6,15 +6,21 @@ export const getNode = (tree, pointer = "") => {
 
   for (const segment of pointerSegments(pointer)) {
     if (node.type === "object") {
-      for (const pairNode of node.children) {
+      const pairNode = node.children.find((pairNode) => {
         if (pairNode.type !== "pair") {
-          continue;
+          return false;
         }
 
         const propertyName = pairNode.firstChild.child(1).text;
         if (propertyName === segment) {
-          node = pairNode.child(2);
+          return true;
         }
+      });
+
+      if (pairNode) {
+        node = pairNode.child(2);
+      } else {
+        return;
       }
     } else if (node.type === "array") {
       node = node.child(parseInt(segment, 10) * 2 + 1);
@@ -64,6 +70,8 @@ export const waitUntil = (condition, checkInterval = 1000) => {
     }
   });
 };
+
+export const toAbsoluteUri = (uri) => uri.replace(/#.*$/, "");
 
 export const buildDiagnostic = (node, message, severity = DiagnosticSeverity.Error, tags = []) => {
   return {
