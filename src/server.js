@@ -12,8 +12,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 // Hyperjump
-import { registerSchema, unregisterSchema, InvalidSchemaError, setMetaSchemaOutputFormat } from "@hyperjump/json-schema";
-import { getSchema, buildSchemaDocument, compile, DETAILED } from "@hyperjump/json-schema/experimental";
+import { setMetaSchemaOutputFormat } from "@hyperjump/json-schema";
+import { buildSchemaDocument, hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
@@ -21,17 +21,15 @@ import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 import "@hyperjump/json-schema/openapi-3-0";
 import "@hyperjump/json-schema/openapi-3-1";
-import { annotate } from "@hyperjump/json-schema/annotations/experimental";
 
 // Features
-import { deprecatedNodes } from "./deprecated.js";
-import { parser } from "./parser.js";
+import { validate } from "./json-schema.js";
 import { invalidNodes } from "./validation.js";
 
 // Other
-import { buildDiagnostic, getNode, waitUntil } from "./util.js";
-import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
+import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
+import { TreeSitterInstance } from "./tree-sitter.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -163,47 +161,53 @@ documents.onDidChangeContent(async ({ document }) => {
 const validateSchema = async (uri, schemaJson) => {
   const diagnostics = [];
 
-  const tree = parser.parse(schemaJson);
-  const schemaUri = uri.replace(/^file:/, "schema:");
+  const instance = TreeSitterInstance.fromJson(schemaJson);
+  const $schema = instance.get("#/$schema");
 
-  if (tree.rootNode.firstChild !== null && !tree.rootNode.hasError()) {
-    try {
-      const schema = JSON.parse(schemaJson);
-      registerSchema(schema, schemaUri);
-
-      const browser = await getSchema(schemaUri, { _cache: schemaRegistry });
-      const dialectId = browser.document.dialectId;
-
-      try {
-        await compile(browser); // Validate the schema
-        const instance = await annotate(dialectId, schema);
-
-        for (const [node, message] of deprecatedNodes(instance, tree)) {
-          diagnostics.push(buildDiagnostic(node, message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
-        }
-      } catch (error) {
-        if (error instanceof InvalidSchemaError) {
-          for await (const [node, message] of invalidNodes(error.output, schema, dialectId, tree)) {
-            diagnostics.push(buildDiagnostic(node, message));
-          }
-        } else {
-          throw error;
-        }
-      }
-    } catch (e) {
-      const error = e.cause ?? e;
-
-      if (error.message.startsWith("Encountered unknown dialect")) {
-        diagnostics.push(buildDiagnostic(getNode(tree, "/$schema"), error.message));
-      } else {
-        diagnostics.push(buildDiagnostic(getNode(tree), error.message));
-      }
-    } finally {
-      unregisterSchema(schemaUri);
+  try {
+    if (!$schema) {
+      throw Error("No dialect found");
     }
+
+    const dialectUri = $schema.value();
+    if (!hasDialect(dialectUri)) {
+      diagnostics.push(buildDiagnostic($schema, "Encountered unknown dialect"));
+    } else {
+      const [output, annotations] = await validate(dialectUri, instance);
+
+      if (!output.valid) {
+        for await (const [instance, message] of invalidNodes(output)) {
+          diagnostics.push(buildDiagnostic(instance, message));
+        }
+      }
+
+      const deprecations = annotations.annotatedWith("deprecated");
+      for (const deprecated of deprecations) {
+        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
+          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
+          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+        }
+      }
+    }
+  } catch (e) {
+    const error = e.cause ?? e;
+    diagnostics.push(buildDiagnostic(instance, error.message));
   }
 
   connection.sendDiagnostics({ uri, diagnostics });
+};
+
+const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
+  return {
+    severity: severity,
+    tags: tags,
+    range: {
+      start: instance.startPosition(),
+      end: instance.endPosition()
+    },
+    message: message,
+    source: "json-schema"
+  };
 };
 
 // SEMANTIC TOKENS
@@ -265,11 +269,14 @@ const getTokenBuilder = (uri) => {
 
 const buildTokens = (builder, document) => {
   const schemaJson = document.getText();
-  for (const { keywordNode, tokenType, tokenModifier } of getSemanticTokens(parser.parse(schemaJson))) {
+  const instance = TreeSitterInstance.fromJson(schemaJson);
+  const dialectId = instance.get("#/$schema").value();
+  for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(instance, dialectId, connection.console)) {
+    const startPosition = keywordInstance.startPosition();
     builder.push(
-      keywordNode.startPosition.row,
-      keywordNode.startPosition.column,
-      keywordNode.text.length,
+      startPosition.line,
+      startPosition.character,
+      keywordInstance.textLength(),
       semanticTokensLegend.tokenTypes[tokenType] ?? 0,
       semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0
     );

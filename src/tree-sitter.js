@@ -1,72 +1,204 @@
 import Parser from "tree-sitter";
 import Json from "tree-sitter-json";
-import { find, pipe } from "@hyperjump/pact";
+import * as JsonPointer from "@hyperjump/json-pointer";
+import { getKeywordId } from "@hyperjump/json-schema/experimental";
+import { count, drop, find, head, some } from "@hyperjump/pact";
+import { toAbsoluteUri } from "./util.js";
 
 
 export const parser = new Parser();
 parser.setLanguage(Json);
 
-export const entries = function* (node) {
-  if (node.type !== "object") {
-    return;
+export class TreeSitterInstance {
+  constructor(tree, node = undefined, pointer = undefined, annotations = undefined) {
+    this.tree = tree;
+    this.node = node ?? tree.rootNode.firstChild;
+    this.pointer = pointer ?? "";
+    this.annotations = annotations ?? {};
   }
 
-  for (const child of node.children) {
-    const pairNode = child.type === "ERROR" ? child.firstChild : child;
+  static fromJson(json) {
+    const tree = parser.parse(json);
+    return new TreeSitterInstance(tree);
+  }
 
-    if (pairNode.type === "pair") {
-      yield [
-        pairNode.child(0),
-        pairNode.child(2)
-      ];
+  uri() {
+    return this;
+  }
+
+  value() {
+    return JSON.parse(this.node.text);
+  }
+
+  has(key) {
+    return some((propertyName) => propertyName.value() === key, this.keys());
+  }
+
+  typeOf() {
+    switch (this.node.type) {
+      case "true":
+      case "false":
+        return "boolean";
+      default:
+        return this.node.type;
     }
   }
-};
 
-export const iter = function* (node) {
-  if (node.type !== "array") {
-    return;
-  }
-
-  for (const child of node.children) {
-    yield child.type === "ERROR" ? child.firstChild : child;
-  }
-};
-
-export const values = function* (node) {
-  if (node.type !== "object") {
-    return;
-  }
-
-  for (const child of node.children) {
-    const pairNode = child.type === "ERROR" ? child.firstChild : child;
-
-    if (pairNode.type === "pair") {
-      yield pairNode.child(2);
-    }
-  }
-};
-
-export const getNode = (tree, pointer = "") => {
-  let node = tree.rootNode.firstChild;
-
-  for (const segment of pointerSegments(pointer)) {
-    if (node.type === "object") {
-      const pair = pipe(
-        entries(node),
-        find(([propertyName]) => propertyName === segment)
-      );
-
-      return pair?.[1];
-    } else if (node.type === "array") {
-      node = node.child(parseInt(segment, 10) * 2 + 1);
-    } else {
+  * entries() {
+    if (this.node.type !== "object") {
       return;
     }
+
+    for (const child of this.node.children) {
+      const pairNode = child.type === "ERROR" ? child.firstChild : child;
+
+      if (pairNode.type === "pair") {
+        const propertyName = JSON.parse(pairNode.firstChild.text);
+        const pointer = JsonPointer.append(propertyName, this.pointer);
+        yield [
+          new TreeSitterInstance(this.tree, pairNode.child(0), pointer, this.annotations),
+          new TreeSitterInstance(this.tree, pairNode.child(2), pointer, this.annotations)
+        ];
+      }
+    }
   }
 
-  return node;
-};
+  * iter() {
+    if (this.node.type !== "array") {
+      return;
+    }
+
+    let index = 0;
+    for (let childIndex = 1; this.node.child(childIndex); childIndex++) {
+      const child = this.node.child(childIndex);
+      if (child.type === "," || child.type === "]") {
+        continue;
+      }
+      const pointer = JsonPointer.append(`${index++}`, this.pointer);
+      yield new TreeSitterInstance(this.tree, child.type === "ERROR" ? child.firstChild : child, pointer, this.annotations);
+    }
+  }
+
+  * keys() {
+    if (this.node.type !== "object") {
+      return;
+    }
+
+    for (const child of this.node.children) {
+      const pairNode = child.type === "ERROR" ? child.firstChild : child;
+
+      if (pairNode.type === "pair") {
+        const propertyName = JSON.parse(pairNode.firstChild.text);
+        const pointer = JsonPointer.append(propertyName, this.pointer);
+        yield new TreeSitterInstance(this.tree, pairNode.firstChild, pointer, this.annotations);
+      }
+    }
+  }
+
+  * values() {
+    if (this.node.type !== "object") {
+      return;
+    }
+
+    for (const child of this.node.children) {
+      const pairNode = child.type === "ERROR" ? child.firstChild : child;
+
+      if (pairNode.type === "pair") {
+        const propertyName = JSON.parse(pairNode.firstChild.text);
+        const pointer = JsonPointer.append(propertyName, this.pointer);
+        yield new TreeSitterInstance(this.tree, pairNode.child(2), pointer, this.annotations);
+      }
+    }
+  }
+
+  length() {
+    return count(this.iter());
+  }
+
+  get(uri = "") {
+    if (uri[0] !== "#") {
+      throw Error(`No JSON document found at '${toAbsoluteUri(uri)}'`);
+    }
+    let result = new TreeSitterInstance(this.tree, this.tree.rootNode.firstChild, "", this.annotations);
+
+    const pointer = decodeURI(uri.substring(1));
+    for (const segment of pointerSegments(pointer)) {
+      if (!result) {
+        break;
+      }
+
+      if (result.typeOf() === "object") {
+        const pair = find(([propertyName]) => propertyName.value() === segment, result.entries());
+        result = pair?.[1];
+      } else if (result.typeOf() === "array") {
+        result = head(drop(parseInt(segment, 10), result.iter()));
+      } else {
+        result = undefined;
+      }
+    }
+
+    return result;
+  }
+
+  annotation(keyword, dialectId = "https://json-schema.org/validation") {
+    const keywordId = getKeywordId(keyword, dialectId);
+    return this.annotations[this.pointer]?.[keywordId] || [];
+  }
+
+  annotate(keyword, value) {
+    const instance = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+    instance.annotations = {
+      ...this.annotations,
+      [this.pointer]: {
+        ...this.annotations[this.pointer],
+        [keyword]: [
+          value,
+          ...this.annotations[this.pointer]?.[keyword] || []
+        ]
+      }
+    };
+
+    return instance;
+  }
+
+  annotatedWith(keyword, dialectId = "https://json-schema.org/validation") {
+    const instances = [];
+
+    const keywordId = getKeywordId(keyword, dialectId);
+    for (const instancePointer in this.annotations) {
+      if (keywordId in this.annotations[instancePointer]) {
+        instances.push(this.get(`#${instancePointer}`));
+      }
+    }
+
+    return instances;
+  }
+
+  parent() {
+    const instance = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+    instance.node = instance.node.parent;
+
+    return instance;
+  }
+
+  startPosition() {
+    return {
+      line: this.node.startPosition.row,
+      character: this.node.startPosition.column
+    };
+  }
+
+  endPosition() {
+    return {
+      line: this.node.endPosition.row,
+      character: this.node.endPosition.column
+    };
+  }
+
+  textLength() {
+    return this.node.text.length;
+  }
+}
 
 const pointerSegments = function* (pointer) {
   if (pointer.length > 0 && pointer[0] !== "/") {

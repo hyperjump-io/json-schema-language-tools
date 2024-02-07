@@ -1,21 +1,19 @@
 import * as Browser from "@hyperjump/browser";
-import { getSchema, getKeywordName } from "@hyperjump/json-schema/experimental";
-import * as JsonPointer from "@hyperjump/json-pointer";
-import { getNode, pointerFromUri } from "./util.js";
+import { getSchema } from "@hyperjump/json-schema/experimental";
 
 
-export const invalidNodes = async function* (outputUnit, instance, dialect, tree) {
-  const pointer = pointerFromUri(outputUnit.instanceLocation);
-  for await (const message of toErrorMessage(outputUnit, instance, dialect)) {
-    yield [getNode(tree, pointer), message];
+export const invalidNodes = async function* (outputUnit) {
+  const instance = outputUnit.instanceLocation;
+  for await (const message of toErrorMessage(outputUnit)) {
+    yield [instance, message];
   }
 
   for (const error of outputUnit.errors) {
-    yield* invalidNodes(error, instance, dialect, tree);
+    yield* invalidNodes(error);
   }
 };
 
-const toErrorMessage = async function* (outputUnit, instance, dialect) {
+const toErrorMessage = async function* (outputUnit) {
   if (outputUnit.keyword === "https://json-schema.org/keyword/additionalProperties") {
     // Skip
   } else if (outputUnit.keyword === "https://json-schema.org/keyword/allOf") {
@@ -32,8 +30,7 @@ const toErrorMessage = async function* (outputUnit, instance, dialect) {
     const schema = await getSchema(outputUnit.absoluteKeywordLocation);
     const dependentRequired = Browser.value(schema);
 
-    const pointer = pointerFromUri(outputUnit.instanceLocation);
-    const object = JsonPointer.get(pointer, instance);
+    const object = JSON.parse(outputUnit.instanceLocation.text);
 
     for (const propertyName in dependentRequired) {
       if (propertyName in object) {
@@ -44,6 +41,10 @@ const toErrorMessage = async function* (outputUnit, instance, dialect) {
         }
       }
     }
+  } else if (outputUnit.keyword === "https://json-schema.org/keyword/dynamicRef") {
+    // Skip
+  } else if (outputUnit.keyword === "https://json-schema.org/keyword/draft-2020-12/dynamicRef") {
+    // Skip
   } else if (outputUnit.keyword === "https://json-schema.org/keyword/enum") {
     const schema = await getSchema(outputUnit.absoluteKeywordLocation);
     const enumValue = Browser.value(schema);
@@ -110,8 +111,7 @@ const toErrorMessage = async function* (outputUnit, instance, dialect) {
     const schema = await getSchema(outputUnit.absoluteKeywordLocation);
     const required = Browser.value(schema);
 
-    const pointer = pointerFromUri(outputUnit.instanceLocation);
-    const object = JsonPointer.get(pointer, instance);
+    const object = JSON.parse(outputUnit.instanceLocation.text);
 
     for (const propertyName of required) {
       if (!(propertyName in object)) {
@@ -133,7 +133,7 @@ const toErrorMessage = async function* (outputUnit, instance, dialect) {
       yield `No value allowed`;
     }
   } else {
-    const keyword = getKeywordName(dialect, outputUnit.keyword);
+    const keyword = outputUnit.absoluteKeywordLocation.split("/").pop();
     yield `Fails JSON Schema constraint '${keyword}'`;
   }
 };
