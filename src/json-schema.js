@@ -110,28 +110,3 @@ const loadKeywordSupport = () => {
     unknown.annotation = identity;
   }
 };
-
-// SCRATCH
-
-// import { registerSchema } from "@hyperjump/json-schema";
-// import "@hyperjump/json-schema/draft-2020-12";
-// import { TreeSitterInstance } from "./tree-sitter.js";
-//
-//
-// const schemaId = "https://example.com/schema";
-// const dialectId = "https://json-schema.org/draft/2020-12/schema";
-//
-// registerSchema({
-//   properties: {
-//     definitions: {
-//       deprecated: true
-//     }
-//   }
-// }, schemaId, dialectId);
-//
-// const instance = TreeSitterInstance.fromJson(`{
-//   "definitions": {}
-// }`);
-// const result = await annotate(schemaId, instance);
-// console.log("annotations", result.annotations);
-// console.log(result.annotatedWith("deprecated"));

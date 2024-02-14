@@ -5,9 +5,9 @@ import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
-// import { validate } from "../scratch/spike.js";
 import { validate } from "./json-schema.js";
-import { TreeSitterInstance } from "./tree-sitter.js";
+import { JsoncInstance } from "./jsonc-instance.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 
 const shouldSkip = (skip, path) => {
@@ -75,7 +75,8 @@ export const runTestSuite = (draft, dialectId, skip) => {
                 } else {
                   it(test.description, async () => {
                     const instanceJson = JSON.stringify(test.data, null, "  ");
-                    const instance = TreeSitterInstance.fromJson(instanceJson);
+                    const textDocument = TextDocument.create(url, "json", 1, instanceJson);
+                    const instance = JsoncInstance.fromTextDocument(textDocument);
                     const [output] = await validate(url, instance);
                     expect(output.valid).to.equal(test.valid);
                   });

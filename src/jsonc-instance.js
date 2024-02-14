@@ -1,25 +1,27 @@
-import Parser from "tree-sitter";
-import Json from "tree-sitter-json";
+import { parseTree } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
-import { count, drop, find, head, some } from "@hyperjump/pact";
+import { drop, find, head, some } from "@hyperjump/pact";
 import { toAbsoluteUri } from "./util.js";
 
 
-export const parser = new Parser();
-parser.setLanguage(Json);
-
-export class TreeSitterInstance {
-  constructor(tree, node = undefined, pointer = undefined, annotations = undefined) {
-    this.tree = tree;
-    this.node = node ?? tree.rootNode.firstChild;
-    this.pointer = pointer ?? "";
-    this.annotations = annotations ?? {};
+export class JsoncInstance {
+  constructor(textDocument, root, node, pointer, annotations) {
+    this.textDocument = textDocument;
+    this.root = root;
+    this.node = node;
+    this.pointer = pointer;
+    this.annotations = annotations;
   }
 
-  static fromJson(json) {
-    const tree = parser.parse(json);
-    return new TreeSitterInstance(tree);
+  static fromTextDocument(textDocument) {
+    const json = textDocument.getText();
+    const root = parseTree(json, [], {
+      disallowComments: false,
+      allowTrailingComma: true,
+      allowEmptyContent: true
+    });
+    return new JsoncInstance(textDocument, root, root, "", {});
   }
 
   uri() {
@@ -27,7 +29,12 @@ export class TreeSitterInstance {
   }
 
   value() {
-    return JSON.parse(this.node.text);
+    if (this.node.value === undefined) {
+      const json = this.textDocument.getText().slice(this.node.offset, this.node.offset + this.node.length);
+      return JSON.parse(json);
+    } else {
+      return this.node.value;
+    }
   }
 
   has(key) {
@@ -35,13 +42,7 @@ export class TreeSitterInstance {
   }
 
   typeOf() {
-    switch (this.node.type) {
-      case "true":
-      case "false":
-        return "boolean";
-      default:
-        return this.node.type;
-    }
+    return this.node.type;
   }
 
   * entries() {
@@ -49,17 +50,16 @@ export class TreeSitterInstance {
       return;
     }
 
-    for (const child of this.node.children) {
-      const pairNode = child.type === "ERROR" ? child.firstChild : child;
-
-      if (pairNode.type === "pair") {
-        const propertyName = JSON.parse(pairNode.firstChild.text);
-        const pointer = JsonPointer.append(propertyName, this.pointer);
-        yield [
-          new TreeSitterInstance(this.tree, pairNode.child(0), pointer, this.annotations),
-          new TreeSitterInstance(this.tree, pairNode.child(2), pointer, this.annotations)
-        ];
+    for (const propertyNode of this.node.children) {
+      if (!propertyNode.children[1]) {
+        continue;
       }
+      const propertyName = propertyNode.children[0].value;
+      const pointer = JsonPointer.append(propertyName, this.pointer);
+      yield [
+        new JsoncInstance(this.textDocument, this.root, propertyNode.children[0], pointer, this.annotations),
+        new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations)
+      ];
     }
   }
 
@@ -68,14 +68,10 @@ export class TreeSitterInstance {
       return;
     }
 
-    let index = 0;
-    for (let childIndex = 1; this.node.child(childIndex); childIndex++) {
-      const child = this.node.child(childIndex);
-      if (child.type === "," || child.type === "]") {
-        continue;
-      }
-      const pointer = JsonPointer.append(`${index++}`, this.pointer);
-      yield new TreeSitterInstance(this.tree, child.type === "ERROR" ? child.firstChild : child, pointer, this.annotations);
+    for (let itemIndex = 0; this.node.children[itemIndex]; itemIndex++) {
+      const itemNode = this.node.children[itemIndex];
+      const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
+      yield new JsoncInstance(this.textDocument, this.root, itemNode, pointer, this.annotations);
     }
   }
 
@@ -84,14 +80,10 @@ export class TreeSitterInstance {
       return;
     }
 
-    for (const child of this.node.children) {
-      const pairNode = child.type === "ERROR" ? child.firstChild : child;
-
-      if (pairNode.type === "pair") {
-        const propertyName = JSON.parse(pairNode.firstChild.text);
-        const pointer = JsonPointer.append(propertyName, this.pointer);
-        yield new TreeSitterInstance(this.tree, pairNode.firstChild, pointer, this.annotations);
-      }
+    for (const propertyNode of this.node.children) {
+      const propertyNameNode = propertyNode.children[0];
+      const pointer = JsonPointer.append(propertyNameNode.value, this.pointer);
+      yield new JsoncInstance(this.textDocument, this.root, propertyNameNode, pointer, this.annotations);
     }
   }
 
@@ -100,26 +92,26 @@ export class TreeSitterInstance {
       return;
     }
 
-    for (const child of this.node.children) {
-      const pairNode = child.type === "ERROR" ? child.firstChild : child;
-
-      if (pairNode.type === "pair") {
-        const propertyName = JSON.parse(pairNode.firstChild.text);
-        const pointer = JsonPointer.append(propertyName, this.pointer);
-        yield new TreeSitterInstance(this.tree, pairNode.child(2), pointer, this.annotations);
-      }
+    for (const propertyNode of this.node.children) {
+      const propertyName = propertyNode.children[0].value;
+      const pointer = JsonPointer.append(propertyName, this.pointer);
+      yield new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations);
     }
   }
 
   length() {
-    return count(this.iter());
+    if (this.node.type !== "array") {
+      return;
+    }
+
+    return this.node.children.length;
   }
 
   get(uri = "") {
     if (uri[0] !== "#") {
       throw Error(`No JSON document found at '${toAbsoluteUri(uri)}'`);
     }
-    let result = new TreeSitterInstance(this.tree, this.tree.rootNode.firstChild, "", this.annotations);
+    let result = new JsoncInstance(this.textDocument, this.root, this.root, "", this.annotations);
 
     const pointer = decodeURI(uri.substring(1));
     for (const segment of pointerSegments(pointer)) {
@@ -182,21 +174,15 @@ export class TreeSitterInstance {
   }
 
   startPosition() {
-    return {
-      line: this.node.startPosition.row,
-      character: this.node.startPosition.column
-    };
+    return this.textDocument.positionAt(this.node.offset);
   }
 
   endPosition() {
-    return {
-      line: this.node.endPosition.row,
-      character: this.node.endPosition.column
-    };
+    return this.textDocument.positionAt(this.node.offset + this.node.length);
   }
 
   textLength() {
-    return this.node.text.length;
+    return this.node.length;
   }
 }
 

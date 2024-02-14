@@ -1,5 +1,5 @@
 import { watch } from "node:fs";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -48,13 +48,8 @@ export const workspaceSchemas = async function* () {
       }
 
       const schemaPath = resolve(path, filename);
-      const schemaText = await readFile(schemaPath, "utf8");
 
-      if (schemaText.trim() === "") {
-        continue;
-      }
-
-      yield [pathToFileURL(schemaPath).toString(), schemaText];
+      yield pathToFileURL(schemaPath).toString();
     }
   }
 };

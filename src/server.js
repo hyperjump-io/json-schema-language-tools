@@ -13,14 +13,12 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 // Hyperjump
 import { setMetaSchemaOutputFormat } from "@hyperjump/json-schema";
-import { buildSchemaDocument, hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
+import { hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
-import "@hyperjump/json-schema/openapi-3-0";
-import "@hyperjump/json-schema/openapi-3-1";
 
 // Features
 import { validate } from "./json-schema.js";
@@ -29,7 +27,7 @@ import { invalidNodes } from "./validation.js";
 // Other
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { TreeSitterInstance } from "./tree-sitter.js";
+import { JsoncInstance } from "./jsonc-instance.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -110,8 +108,6 @@ connection.onInitialized(async () => {
   await validateWorkspace();
 });
 
-let schemaRegistry = {};
-
 let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
@@ -120,21 +116,12 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
   isWorkspaceLoaded = false;
 
-  // Register schemas
-  schemaRegistry = {};
-  for await (const [, schemaJson] of workspaceSchemas()) {
-    try {
-      const schema = JSON.parse(schemaJson);
-      const schemaDocument = buildSchemaDocument(schema);
-      schemaRegistry[schemaDocument.baseUri] = schemaDocument;
-    } catch (error) {
-      // Ignore errors
-    }
-  }
-
   // Re/validate all schemas
-  for await (const [uri, schemaJson] of workspaceSchemas()) {
-    await validateSchema(uri, schemaJson);
+  for await (const uri of workspaceSchemas()) {
+    const textDocument = documents.get(uri);
+    if (textDocument) {
+      await validateSchema(textDocument);
+    }
   }
 
   isWorkspaceLoaded = true;
@@ -154,47 +141,42 @@ documents.onDidChangeContent(async ({ document }) => {
 
   if (isSchema(document.uri)) {
     await waitUntil(() => isWorkspaceLoaded);
-    await validateSchema(document.uri, document.getText());
+    await validateSchema(document);
   }
 });
 
-const validateSchema = async (uri, schemaJson) => {
+const validateSchema = async (document) => {
   const diagnostics = [];
 
-  const instance = TreeSitterInstance.fromJson(schemaJson);
+  const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
 
-  try {
-    if (!$schema) {
-      throw Error("No dialect found");
-    }
-
-    const dialectUri = $schema.value();
-    if (!hasDialect(dialectUri)) {
-      diagnostics.push(buildDiagnostic($schema, "Encountered unknown dialect"));
-    } else {
-      const [output, annotations] = await validate(dialectUri, instance);
-
-      if (!output.valid) {
-        for await (const [instance, message] of invalidNodes(output)) {
-          diagnostics.push(buildDiagnostic(instance, message));
-        }
-      }
-
-      const deprecations = annotations.annotatedWith("deprecated");
-      for (const deprecated of deprecations) {
-        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
-          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
-          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
-        }
-      }
-    }
-  } catch (e) {
-    const error = e.cause ?? e;
-    diagnostics.push(buildDiagnostic(instance, error.message));
+  if (!$schema) {
+    throw Error("No dialect found");
   }
 
-  connection.sendDiagnostics({ uri, diagnostics });
+  const dialectUri = $schema.value();
+  if (!hasDialect(dialectUri)) {
+    diagnostics.push(buildDiagnostic($schema, "Encountered unknown dialect"));
+  } else {
+    const [output, annotations] = await validate(dialectUri, instance);
+
+    if (!output.valid) {
+      for await (const [instance, message] of invalidNodes(output)) {
+        diagnostics.push(buildDiagnostic(instance, message));
+      }
+    }
+
+    const deprecations = annotations.annotatedWith("deprecated");
+    for (const deprecated of deprecations) {
+      if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
+        const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
+        diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+      }
+    }
+  }
+
+  connection.sendDiagnostics({ uri: document.uri, diagnostics });
 };
 
 const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
@@ -268,8 +250,7 @@ const getTokenBuilder = (uri) => {
 };
 
 const buildTokens = (builder, document) => {
-  const schemaJson = document.getText();
-  const instance = TreeSitterInstance.fromJson(schemaJson);
+  const instance = JsoncInstance.fromTextDocument(document);
   const dialectId = instance.get("#/$schema").value();
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(instance, dialectId, connection.console)) {
     const startPosition = keywordInstance.startPosition();
