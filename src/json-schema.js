@@ -1,8 +1,16 @@
-import { compile, interpret, getSchema, getKeyword, subscribe, unsubscribe, DETAILED } from "@hyperjump/json-schema/experimental";
+import {
+  compile,
+  interpret,
+  getSchema,
+  getKeywordName,
+  subscribe,
+  unsubscribe,
+  DETAILED
+} from "@hyperjump/json-schema/experimental";
+import { toAbsoluteUri } from "./util.js";
 
 
 export const validate = async (uri, instance) => {
-  loadKeywordSupport();
   const schema = await getSchema(uri);
   const compiled = await compile(schema);
   return annotateInterpret(compiled, instance);
@@ -32,9 +40,8 @@ const outputHandler = (output) => {
       output[0] = output[0].get(`#${resultNode.instanceLocation.pointer}`);
 
       if (resultNode.valid) {
-        const keywordHandler = getKeyword(resultNode.keyword);
-        if (keywordHandler?.annotation) {
-          const annotation = keywordHandler.annotation(resultNode.ast);
+        if (resultNode.keyword in keywordHandlers) {
+          const annotation = keywordHandlers[resultNode.keyword](resultNode.ast);
           output[0] = output[0].annotate(resultNode.keyword, annotation);
         }
       } else {
@@ -49,64 +56,69 @@ const outputHandler = (output) => {
 
 const identity = (a) => a;
 
-const loadKeywordSupport = () => {
-  const title = getKeyword("https://json-schema.org/keyword/title");
-  if (title) {
-    title.annotation = identity;
+const keywordHandlers = {
+  "https://json-schema.org/keyword/deprecated": identity
+};
+
+export const decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {
+  if (typeof contextDialectUri === "string") {
+    contextDialectUri = toAbsoluteUri(contextDialectUri);
+  }
+  yield* _decomposeSchemaDocument(schemaInstance, contextDialectUri);
+  yield { dialectUri: contextDialectUri, schemaInstance };
+};
+
+const _decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {
+  if (schemaInstance.typeOf() === "object") {
+    const embeddedDialectUri = getEmbeddedDialectUri(schemaInstance, contextDialectUri);
+
+    if (embeddedDialectUri) {
+      const embeddedSchemaInstance = schemaInstance.asEmbedded();
+      delete schemaInstance.node.parent.children[1];
+      yield* decomposeSchemaDocument(embeddedSchemaInstance, embeddedDialectUri);
+    } else {
+      for (const value of schemaInstance.values()) {
+        yield* _decomposeSchemaDocument(value, contextDialectUri);
+      }
+    }
+  } else if (schemaInstance.typeOf() === "array") {
+    for (const item of schemaInstance.iter()) {
+      yield* _decomposeSchemaDocument(item, contextDialectUri);
+    }
+  }
+};
+
+const getEmbeddedDialectUri = (schemaInstance, contextDialectUri) => {
+  if (schemaInstance.pointer === "") {
+    return;
   }
 
-  const description = getKeyword("https://json-schema.org/keyword/description");
-  if (description) {
-    description.annotation = identity;
+  const $schema = schemaInstance.step("$schema");
+  if ($schema?.typeOf() === "string") {
+    return $schema.value();
   }
 
-  const _default = getKeyword("https://json-schema.org/keyword/default");
-  if (_default) {
-    _default.annotation = identity;
+  const idToken = keywordNameFor("https://json-schema.org/keyword/id", contextDialectUri);
+  if (idToken) {
+    const id = schemaInstance.step(idToken);
+    if (id?.typeOf() === "string") {
+      return contextDialectUri;
+    }
   }
 
-  const deprecated = getKeyword("https://json-schema.org/keyword/deprecated");
-  if (deprecated) {
-    deprecated.annotation = identity;
+  const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", contextDialectUri);
+  if (legacyIdToken) {
+    const legacyId = schemaInstance.step(legacyIdToken);
+    if (legacyId?.typeOf() === "string" && legacyIdToken.value()[0] !== "#") {
+      return contextDialectUri;
+    }
   }
+};
 
-  const readOnly = getKeyword("https://json-schema.org/keyword/readOnly");
-  if (readOnly) {
-    readOnly.annotation = identity;
-  }
-
-  const writeOnly = getKeyword("https://json-schema.org/keyword/writeOnly");
-  if (writeOnly) {
-    writeOnly.annotation = identity;
-  }
-
-  const examples = getKeyword("https://json-schema.org/keyword/examples");
-  if (examples) {
-    examples.annotation = identity;
-  }
-
-  const format = getKeyword("https://json-schema.org/keyword/format");
-  if (format) {
-    format.annotation = identity;
-  }
-
-  const contentMediaType = getKeyword("https://json-schema.org/keyword/contentMediaType");
-  if (contentMediaType) {
-    contentMediaType.annotation = identity;
-  }
-
-  const contentEncoding = getKeyword("https://json-schema.org/keyword/contentEncoding");
-  if (contentEncoding) {
-    contentEncoding.annotation = identity;
-  }
-
-  const contentSchema = getKeyword("https://json-schema.org/keyword/contentSchema");
-  if (contentSchema) {
-    contentSchema.annotation = identity;
-  }
-
-  const unknown = getKeyword("https://json-schema.org/keyword/unknown");
-  if (unknown) {
-    unknown.annotation = identity;
+const keywordNameFor = (keywordUri, dialectUri) => {
+  try {
+    return getKeywordName(dialectUri, keywordUri);
+  } catch (error) {
+    return undefined;
   }
 };

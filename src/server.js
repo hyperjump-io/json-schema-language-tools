@@ -21,7 +21,7 @@ import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
 // Features
-import { validate } from "./json-schema.js";
+import { decomposeSchemaDocument, validate } from "./json-schema.js";
 import { invalidNodes } from "./validation.js";
 
 // Other
@@ -150,16 +150,21 @@ const validateSchema = async (document) => {
 
   const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
+  const contextDialectUri = $schema?.value();
+  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (!hasDialect(dialectUri)) {
+      const $schema = schemaInstance.get("#/$schema");
+      if ($schema) {
+        diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
+      } else {
+        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
+      }
 
-  if (!$schema) {
-    throw Error("No dialect found");
-  }
+      continue;
+    }
 
-  const dialectUri = $schema.value();
-  if (!hasDialect(dialectUri)) {
-    diagnostics.push(buildDiagnostic($schema, "Encountered unknown dialect"));
-  } else {
-    const [output, annotations] = await validate(dialectUri, instance);
+    const [output, annotations] = await validate(dialectUri, schemaInstance);
 
     if (!output.valid) {
       for await (const [instance, message] of invalidNodes(output)) {
@@ -251,8 +256,9 @@ const getTokenBuilder = (uri) => {
 
 const buildTokens = (builder, document) => {
   const instance = JsoncInstance.fromTextDocument(document);
-  const dialectId = instance.get("#/$schema").value();
-  for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(instance, dialectId, connection.console)) {
+  const dialectUri = instance.get("#/$schema")?.value();
+  const schemaResources = decomposeSchemaDocument(instance, dialectUri);
+  for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
     builder.push(
       startPosition.line,

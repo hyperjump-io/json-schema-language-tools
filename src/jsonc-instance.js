@@ -42,11 +42,16 @@ export class JsoncInstance {
   }
 
   typeOf() {
-    return this.node.type;
+    return this.node?.type ?? "undefined";
+  }
+
+  step(propertyName) {
+    const pair = find(([key]) => key.value() === propertyName, this.entries());
+    return pair?.[1];
   }
 
   * entries() {
-    if (this.node.type !== "object") {
+    if (this.typeOf() !== "object") {
       return;
     }
 
@@ -64,7 +69,7 @@ export class JsoncInstance {
   }
 
   * iter() {
-    if (this.node.type !== "array") {
+    if (this.typeOf() !== "array") {
       return;
     }
 
@@ -76,7 +81,7 @@ export class JsoncInstance {
   }
 
   * keys() {
-    if (this.node.type !== "object") {
+    if (this.typeOf() !== "object") {
       return;
     }
 
@@ -88,7 +93,7 @@ export class JsoncInstance {
   }
 
   * values() {
-    if (this.node.type !== "object") {
+    if (this.typeOf() !== "object") {
       return;
     }
 
@@ -100,7 +105,7 @@ export class JsoncInstance {
   }
 
   length() {
-    if (this.node.type !== "array") {
+    if (this.typeOf() !== "array") {
       return;
     }
 
@@ -130,6 +135,10 @@ export class JsoncInstance {
     }
 
     return result;
+  }
+
+  asEmbedded() {
+    return new JsoncInstance(this.textDocument, this.node, this.node, "", {});
   }
 
   annotation(keyword, dialectId = "https://json-schema.org/validation") {
