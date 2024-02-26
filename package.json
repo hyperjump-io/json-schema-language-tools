@@ -7,13 +7,15 @@
   "scripts": {
     "clean": "xargs -a .gitignore rm -rf",
     "lint": "eslint src",
-    "test": "vitest --watch=false"
+    "test": "vitest --watch=false",
+    "coverage": "vitest run --coverage"
   },
   "author": "Jason Desrosiers <jdesrosi@gmail.com>",
   "license": "MIT",
   "repository": "github:hyperjump-io/json-schema-language-server",
   "keywords": [],
   "devDependencies": {
+    "@vitest/coverage-v8": "^1.3.1",
     "eslint": "*",
     "eslint-import-resolver-exports": "*",
     "eslint-import-resolver-node": "*",
