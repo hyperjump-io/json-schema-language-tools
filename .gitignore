@@ -1,4 +1,7 @@
 node_modules/
 coverage/
+out/
+dist/
+.vscode/
 scratch
 TODO

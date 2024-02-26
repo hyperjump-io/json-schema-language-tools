@@ -4,7 +4,7 @@
   "description": "JSON Schema Language Tools",
   "type": "module",
   "scripts": {
-    "lint": "eslint language-server/src",
+    "lint": "eslint language-server/src vscode/src",
     "test": "vitest --watch=false",
     "coverage": "vitest run --coverage"
   },

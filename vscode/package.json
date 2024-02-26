@@ -1,0 +1,36 @@
+{
+  "name": "hyperjump-json-schema",
+  "version": "0.1.0",
+  "description": "VSCode extension for JSON Schema",
+  "main": "./out/extension.js",
+  "scripts": {
+    "lint": "eslint src",
+    "vscode:prepublish": "npm run build-client -- --minify && npm run build-server -- --minify",
+    "build": "npm run build-client -- --sourcemap && npm run build-server -- --sourcemap",
+    "build-client": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "build-server": "esbuild ../language-server/src/server.js --bundle --outfile=out/server.js --external:vscode --format=cjs --platform=node",
+    "package": "vsce package --out=dist",
+    "publish": "vsce publish"
+  },
+  "author": "Jason Desrosiers <jdesrosi@gmail.com>",
+  "license": "MIT",
+  "repository": "github:hyperjump-io/json-schema-language-tools",
+  "devDependencies": {
+    "@vscode/vsce": "*",
+    "esbuild": "*",
+    "eslint": "*",
+    "eslint-import-resolver-node": "*",
+    "eslint-plugin-import": "*"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onLanguage:json"
+  ],
+  "contributes": {
+  }
+}

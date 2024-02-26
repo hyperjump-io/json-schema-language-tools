@@ -108,7 +108,6 @@
     "space-in-parens": "error",
     "space-infix-ops": "error",
     "space-unary-ops": "error",
-    "strict": "error",
     "switch-colon-spacing": "error",
     "template-curly-spacing": "error",
     "template-tag-spacing": "error",
