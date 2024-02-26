@@ -21,7 +21,7 @@ const shouldSkip = (skip, path) => {
   return false;
 };
 
-const testSuitePath = "./node_modules/json-schema-test-suite";
+const testSuitePath = `${import.meta.dirname}/../node_modules/json-schema-test-suite`;
 
 const addRemotes = (dialectId, filePath = `${testSuitePath}/remotes`, url = "") => {
   fs.readdirSync(filePath, { withFileTypes: true })

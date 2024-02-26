@@ -12,7 +12,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 // Hyperjump
-import { setMetaSchemaOutputFormat } from "@hyperjump/json-schema";
+import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema";
 import { hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
@@ -20,17 +20,16 @@ import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
-// Features
-import { decomposeSchemaDocument, validate } from "./json-schema.js";
-import { invalidNodes } from "./validation.js";
-
 // Other
+import { decomposeSchemaDocument, validate } from "./json-schema.js";
+import { JsoncInstance } from "./jsonc-instance.js";
+import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { JsoncInstance } from "./jsonc-instance.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
+setShouldValidateSchema(false);
 
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
