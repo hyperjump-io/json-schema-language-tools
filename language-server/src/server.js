@@ -28,6 +28,7 @@ import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWor
 import { getSemanticTokens } from "./semantic-tokens.js";
 
 
+// Unecessary change
 setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
