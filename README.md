@@ -28,3 +28,9 @@ some features in the versions it does support. In addition, there's so much more
 that could be done including linting schemas as well as validating them. There
 hasn't been any interest from them to improve this situation, so I'm taking on
 the challenge.
+
+## Contributing
+
+Contributions are welcome and encouraged! If you have a feature/bug/improvement
+you want to work on, it's usually best to open an issue to discuss the issue
+before starting work.

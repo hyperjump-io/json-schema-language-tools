@@ -2,7 +2,7 @@
 
 A VSCode extension for using the JSON Schema Language Server.
 
-## Disable JSON Language Features
+## Disabling JSON Language Features
 
 VSCode's built-in "JSON Language Features" extension includes JSON Schema
 functionality. That means you could end up getting the same messages twice (once
@@ -12,14 +12,18 @@ you against using 2020-12 because it doesn't support dynamic references, but
 this extension fully supports 2020-12 and you are encouraged to use it.
 
 If you wish, you can disable the built-in extension. In the "Extensions" tool,
-search for `@builtin json language features`. This is the built-in extension
-that's causing the conflict. Click "Disable" to disable this extension.
+search for `@builtin json language features` to find the extension. Click the
+"Disable" button to disable it.
 
 If you do choose to disable the built-in extension, keep in mind that this
 extension is not yet a complete replacement and you may end up losing some
 functionality you're used to.
 
 ## Contributing
+
+Contributions are welcome and encouraged! If you have a feature/bug/improvement
+you want to work on, it's usually best to open an issue to discuss the issue
+before starting work.
 
 ### Launch Extension
 
@@ -51,7 +55,7 @@ vary slightly depending on your environment.
 ```
 
 `.vscode/tasks.json`
-```json
+```jsonc
 {
   "version": "2.0.0",
   "tasks": [
