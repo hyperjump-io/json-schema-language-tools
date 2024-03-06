@@ -134,14 +134,14 @@ export class JsoncInstance {
       }
     }
 
-    return result;
+    return result ?? new JsoncInstance(this.textDocument, this.root, undefined, pointer, this.annotations);
   }
 
   asEmbedded() {
     return new JsoncInstance(this.textDocument, this.node, this.node, "", {});
   }
 
-  annotation(keyword, dialectId = "https://json-schema.org/validation") {
+  annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
     const keywordId = getKeywordId(keyword, dialectId);
     return this.annotations[this.pointer]?.[keywordId] || [];
   }

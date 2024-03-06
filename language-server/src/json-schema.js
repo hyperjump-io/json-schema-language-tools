@@ -57,7 +57,18 @@ const outputHandler = (output) => {
 const identity = (a) => a;
 
 const keywordHandlers = {
-  "https://json-schema.org/keyword/deprecated": identity
+  "https://json-schema.org/keyword/title": identity,
+  "https://json-schema.org/keyword/description": identity,
+  "https://json-schema.org/keyword/default": identity,
+  "https://json-schema.org/keyword/deprecated": identity,
+  "https://json-schema.org/keyword/readOnly": identity,
+  "https://json-schema.org/keyword/writeOnly": identity,
+  "https://json-schema.org/keyword/examples": identity,
+  "https://json-schema.org/keyword/format": identity,
+  "https://json-schema.org/keyword/contentMediaType": identity,
+  "https://json-schema.org/keyword/contentEncoding": identity,
+  "https://json-schema.org/keyword/contentSchema": identity,
+  "https://json-schema.org/keyword/unknown": identity
 };
 
 export const decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {
