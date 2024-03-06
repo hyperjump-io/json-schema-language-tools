@@ -13,14 +13,7 @@
   "license": "MIT",
   "repository": "github:hyperjump-io/json-schema-language-tools",
   "keywords": [],
-  "devDependencies": {
-    "json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite"
-  },
   "dependencies": {
-    "@hyperjump/browser": "^1.1.0",
-    "@hyperjump/json-pointer": "^1.0.1",
-    "@hyperjump/json-schema": "github:hyperjump-io/json-schema#lsp",
-    "@hyperjump/pact": "^1.3.0",
     "jsonc-parser": "^3.2.1",
     "vscode-languageserver": "^9.0.0",
     "vscode-languageserver-textdocument": "^1.0.8"
