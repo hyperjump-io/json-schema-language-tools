@@ -21,12 +21,6 @@ const activate = (context) => {
     }
   };
 
-  // Temporary Hack. Get the above code working.
-  // const serverOptions = {
-  //   command: "node",
-  //   args: [context.asAbsolutePath(path.join("..", "language-server", "src", "server.js")), "--stdio"]
-  // };
-
   const clientOptions = {
     documentSelector: [
       { language: "json", pattern: "**/*.schema.json" },
