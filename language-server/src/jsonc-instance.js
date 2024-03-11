@@ -1,4 +1,4 @@
-import { parseTree } from "jsonc-parser";
+import { parseTree } from "jsonc-parser/lib/esm/main.js";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { drop, find, head, some } from "@hyperjump/pact";
