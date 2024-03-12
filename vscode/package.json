@@ -32,5 +32,14 @@
     "onLanguage:json"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Configuration for JSON Schema Language Server",
+      "properties": {
+        "jsonSchemaLanguageServer.defaultDialect": {
+          "type": "string",
+          "description": "The default JSON Schema dialect to use if none is specified in the schema document"
+        }
+      }
+    }
   }
 }
