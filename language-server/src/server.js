@@ -5,6 +5,7 @@ import {
   DiagnosticTag,
   DidChangeWatchedFilesNotification,
   ProposedFeatures,
+  DidChangeConfigurationNotification,
   SemanticTokensBuilder,
   TextDocuments,
   TextDocumentSyncKind
@@ -38,9 +39,14 @@ connection.console.log("Starting JSON Schema service ...");
 
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
+let hasConfigurationCapability = false;
 
 connection.onInitialize(({ capabilities, workspaceFolders }) => {
   connection.console.log("Initializing JSON Schema service ...");
+  hasConfigurationCapability = !!(
+    capabilities.workspace && !!capabilities.workspace.configuration
+  );
+  connection.console.log(hasConfigurationCapability);
 
   if (workspaceFolders) {
     addWorkspaceFolders(workspaceFolders);
@@ -72,6 +78,9 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
 });
 
 connection.onInitialized(async () => {
+  if (hasConfigurationCapability) {
+    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+  }
   if (hasWorkspaceWatchCapability) {
     connection.client.register(DidChangeWatchedFilesNotification.type, {
       watchers: [
@@ -106,6 +115,30 @@ connection.onInitialized(async () => {
 
   await validateWorkspace();
 });
+
+const documentSettings = new Map(); // Consider a Map for cache
+let globalSettings = {
+  enableDetailedErrors: false,
+  schemaValidationSeverity: "error",
+  defaultDialect: "http://json-schema.org/draft-07/schema#"
+}; // Sensible defaults
+
+
+async function getDocumentSettings(resource) {
+  if (!hasConfigurationCapability) {
+    return globalSettings;
+  }
+
+  let result = documentSettings.get(resource);
+  if (!result) {
+    result = await connection.workspace.getConfiguration({
+      scopeUri: resource,
+      section: "jsonSchemaLanguageServer"
+    });
+    documentSettings.set(resource, result);
+  }
+  return result;
+}
 
 let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
@@ -148,46 +181,80 @@ documents.onDidChangeContent(async ({ document }) => {
 
 const validateSchema = async (document) => {
   const diagnostics = [];
+  const settings = await getDocumentSettings(document.uri);
+  connection.console.log(JSON.stringify(settings));
+  let contextDialectUri;
+  let dialectUri;
 
   const instance = JsoncInstance.fromTextDocument(document);
   if (instance.typeOf() === "undefined") {
     return;
   }
 
-  const $schema = instance.get("#/$schema");
-  const contextDialectUri = $schema.value();
-  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
-  for (const { dialectUri, schemaInstance } of schemaResources) {
-    if (!hasDialect(dialectUri)) {
-      const $schema = schemaInstance.get("#/$schema");
-      if ($schema.typeOf() === "string") {
-        diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
-      } else {
-        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
+  try {
+    const $schema = instance.get("#/$schema");
+   // Determine the context dialect URI from the document
+    contextDialectUri = $schema.value();
+    dialectUri = contextDialectUri;
+
+    const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+    for (const { dialectUri, schemaInstance } of schemaResources) {
+      if (!hasDialect(dialectUri)) {
+        const $schema = schemaInstance.get("#/$schema");
+        if ($schema.typeOf() === "string") {
+          diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
+        } else {
+          diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
+        }
+
+        continue;
       }
 
-      continue;
-    }
+      const [output, annotations] = await validate(dialectUri, schemaInstance);
 
-    const [output, annotations] = await validate(dialectUri, schemaInstance);
+      if (!output.valid) {
+        for await (const [instance, message] of invalidNodes(output)) {
+          diagnostics.push(buildDiagnostic(instance, message, settings.schemaValidationSeverity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error));
+        }
+      }
 
-    if (!output.valid) {
-      for await (const [instance, message] of invalidNodes(output)) {
-        diagnostics.push(buildDiagnostic(instance, message));
+      const deprecations = annotations.annotatedWith("deprecated");
+      for (const deprecated of deprecations) {
+        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
+          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
+          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+        }
       }
     }
 
-    const deprecations = annotations.annotatedWith("deprecated");
-    for (const deprecated of deprecations) {
-      if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
-        const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
-        diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
-      }
-    }
+    connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  } catch (error) {
+  // Retrieve the default dialect from settings
+    const defaultDialect = settings.defaultDialect;
+    dialectUri = defaultDialect;
   }
 
-  connection.sendDiagnostics({ uri: document.uri, diagnostics });
+   // Log the value of the schema used
+  connection.console.log(`Schema used: ${dialectUri}`);
+  // Use default dialect if none is specified
+  // if (!dialectUri) {
+  //   dialectUri = settings.defaultDialect;
+  // }
 };
+
+// Clear cached document settings when configuration changes
+connection.onDidChangeConfiguration((change) => {
+  if (hasConfigurationCapability) {
+    // Reset all cached document settings
+    documentSettings.clear();
+  } else {
+    // Update global settings with new values from configuration change
+    globalSettings = change.settings.jsonSchemaLanguageServer || globalSettings;
+  }
+
+  // Revalidate all open text documents
+  documents.all().forEach((document) => validateSchema(document));
+});
 
 const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
   return {
