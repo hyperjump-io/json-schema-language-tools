@@ -31,22 +31,10 @@
   "activationEvents": [
     "onLanguage:json"
   ],
-  "contributes": {
+  "contributes": {                       
     "configuration": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "Configuration for JSON Schema Language Server",
         "properties": {
-          "jsonSchemaLanguageServer.enableDetailedErrors": {
-            "type": "boolean",
-            "description": "Whether to provide additional detail in error messages",
-            "default": true
-          },
-          "jsonSchemaLanguageServer.schemaValidationSeverity": {
-            "type": "string",
-            "enum": ["error", "warning", "information", "hint"],
-            "description": "The severity level to use for schema validation issues",
-            "default": "warning"
-          },
           "jsonSchemaLanguageServer.defaultDialect": {
             "type": "string",
             "description": "The default JSON Schema dialect to use if none is specified in the schema document",

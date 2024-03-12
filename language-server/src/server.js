@@ -46,7 +46,6 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
   hasConfigurationCapability = !!(
     capabilities.workspace && !!capabilities.workspace.configuration
   );
-  connection.console.log(hasConfigurationCapability);
 
   if (workspaceFolders) {
     addWorkspaceFolders(workspaceFolders);
@@ -118,8 +117,6 @@ connection.onInitialized(async () => {
 
 const documentSettings = new Map(); // Consider a Map for cache
 let globalSettings = {
-  enableDetailedErrors: false,
-  schemaValidationSeverity: "error",
   defaultDialect: "http://json-schema.org/draft-07/schema#"
 }; // Sensible defaults
 
@@ -226,20 +223,14 @@ const validateSchema = async (document) => {
         }
       }
     }
-
-    connection.sendDiagnostics({ uri: document.uri, diagnostics });
   } catch (error) {
-  // Retrieve the default dialect from settings
     const defaultDialect = settings.defaultDialect;
     dialectUri = defaultDialect;
   }
 
-   // Log the value of the schema used
+
   connection.console.log(`Schema used: ${dialectUri}`);
-  // Use default dialect if none is specified
-  // if (!dialectUri) {
-  //   dialectUri = settings.defaultDialect;
-  // }
+  connection.sendDiagnostics({ uri: document.uri, diagnostics });
 };
 
 // Clear cached document settings when configuration changes
