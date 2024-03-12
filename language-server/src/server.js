@@ -117,9 +117,11 @@ const validateWorkspace = async () => {
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
-    const textDocument = documents.get(uri);
-    if (textDocument) {
-      await validateSchema(textDocument);
+    if (isSchema(uri)) {
+      const textDocument = documents.get(uri);
+      if (textDocument) {
+        await validateSchema(textDocument);
+      }
     }
   }
 
