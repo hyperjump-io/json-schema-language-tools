@@ -29,7 +29,9 @@ export class JsoncInstance {
   }
 
   value() {
-    if (this.node.value === undefined) {
+    if (this.node === undefined) {
+      return undefined;
+    } else if (this.node.value === undefined) {
       const json = this.textDocument.getText().slice(this.node.offset, this.node.offset + this.node.length);
       return JSON.parse(json);
     } else {
