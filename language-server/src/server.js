@@ -78,8 +78,9 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
 
 connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
-    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+    connection.client.register(DidChangeConfigurationNotification.type);
   }
+
   if (hasWorkspaceWatchCapability) {
     connection.client.register(DidChangeWatchedFilesNotification.type, {
       watchers: [
@@ -115,11 +116,8 @@ connection.onInitialized(async () => {
   await validateWorkspace();
 });
 
-const documentSettings = new Map(); // Consider a Map for cache
-let globalSettings = {
-  defaultDialect: "http://json-schema.org/draft-07/schema#"
-}; // Sensible defaults
-
+const documentSettings = new Map();
+let globalSettings = {};
 
 async function getDocumentSettings(resource) {
   if (!hasConfigurationCapability) {
@@ -134,6 +132,7 @@ async function getDocumentSettings(resource) {
     });
     documentSettings.set(resource, result);
   }
+
   return result;
 }
 
@@ -178,73 +177,56 @@ documents.onDidChangeContent(async ({ document }) => {
 
 const validateSchema = async (document) => {
   const diagnostics = [];
-  const settings = await getDocumentSettings(document.uri);
-  connection.console.log(JSON.stringify(settings));
-  let contextDialectUri;
-  let dialectUri;
 
+  const settings = await getDocumentSettings(document.uri);
   const instance = JsoncInstance.fromTextDocument(document);
   if (instance.typeOf() === "undefined") {
     return;
   }
 
-  try {
-    const $schema = instance.get("#/$schema");
-   // Determine the context dialect URI from the document
-    contextDialectUri = $schema.value();
-    dialectUri = contextDialectUri;
-
-    const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
-    for (const { dialectUri, schemaInstance } of schemaResources) {
-      if (!hasDialect(dialectUri)) {
-        const $schema = schemaInstance.get("#/$schema");
-        if ($schema.typeOf() === "string") {
-          diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
-        } else {
-          diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
-        }
-
-        continue;
+  const $schema = instance.get("#/$schema");
+  const contextDialectUri = $schema.value() ?? settings.defaultDialect;
+  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (!hasDialect(dialectUri)) {
+      const $schema = schemaInstance.get("#/$schema");
+      if ($schema.typeOf() === "string") {
+        diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
+      } else {
+        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
       }
 
-      const [output, annotations] = await validate(dialectUri, schemaInstance);
+      continue;
+    }
 
-      if (!output.valid) {
-        for await (const [instance, message] of invalidNodes(output)) {
-          diagnostics.push(buildDiagnostic(instance, message, settings.schemaValidationSeverity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error));
-        }
-      }
+    const [output, annotations] = await validate(dialectUri, schemaInstance);
 
-      const deprecations = annotations.annotatedWith("deprecated");
-      for (const deprecated of deprecations) {
-        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
-          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
-          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
-        }
+    if (!output.valid) {
+      for await (const [instance, message] of invalidNodes(output)) {
+        diagnostics.push(buildDiagnostic(instance, message, settings.schemaValidationSeverity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error));
       }
     }
-  } catch (error) {
-    const defaultDialect = settings.defaultDialect;
-    dialectUri = defaultDialect;
+
+    const deprecations = annotations.annotatedWith("deprecated");
+    for (const deprecated of deprecations) {
+      if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
+        const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
+        diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+      }
+    }
   }
 
-
-  connection.console.log(`Schema used: ${dialectUri}`);
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
 };
 
-// Clear cached document settings when configuration changes
 connection.onDidChangeConfiguration((change) => {
   if (hasConfigurationCapability) {
-    // Reset all cached document settings
     documentSettings.clear();
   } else {
-    // Update global settings with new values from configuration change
     globalSettings = change.settings.jsonSchemaLanguageServer || globalSettings;
   }
 
-  // Revalidate all open text documents
-  documents.all().forEach((document) => validateSchema(document));
+  validateWorkspace();
 });
 
 const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
