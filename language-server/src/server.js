@@ -178,7 +178,12 @@ documents.onDidChangeContent(async ({ document }) => {
 const validateSchema = async (document) => {
   const diagnostics = [];
 
-  const settings = await getDocumentSettings(document.uri);
+  let settings = await getDocumentSettings(document.uri);
+  if (!settings) {
+    connection.console.log("Settings not available");
+    settings = {};
+  }
+
   const instance = JsoncInstance.fromTextDocument(document);
   if (instance.typeOf() === "undefined") {
     return;
