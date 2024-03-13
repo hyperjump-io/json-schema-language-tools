@@ -142,7 +142,9 @@ documents.onDidChangeContent(async ({ document }) => {
 
   if (isSchema(document.uri)) {
     await waitUntil(() => isWorkspaceLoaded);
-    await validateSchema(document);
+    if (document.getText() !== "") {
+      await validateSchema(document);
+    }
   }
 });
 
@@ -150,6 +152,10 @@ const validateSchema = async (document) => {
   const diagnostics = [];
 
   const instance = JsoncInstance.fromTextDocument(document);
+  if (instance === undefined) {
+    return;
+  }
+
   const $schema = instance.get("#/$schema");
   const contextDialectUri = $schema.value();
   const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
