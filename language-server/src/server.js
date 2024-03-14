@@ -26,6 +26,7 @@ import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
+import { validateReferences } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -170,7 +171,10 @@ const validateSchema = async (document) => {
         diagnostics.push(buildDiagnostic(instance, message));
       }
     }
-
+    const referenceDiagnostics = await validateReferences(instance);
+    if (referenceDiagnostics.length > 0) {
+      diagnostics.push(...referenceDiagnostics);
+    }
     const deprecations = annotations.annotatedWith("deprecated");
     for (const deprecated of deprecations) {
       if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
