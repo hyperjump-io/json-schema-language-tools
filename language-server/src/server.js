@@ -142,9 +142,7 @@ documents.onDidChangeContent(async ({ document }) => {
 
   if (isSchema(document.uri)) {
     await waitUntil(() => isWorkspaceLoaded);
-    if (document.getText() !== "") {
-      await validateSchema(document);
-    }
+    await validateSchema(document);
   }
 });
 
@@ -152,7 +150,7 @@ const validateSchema = async (document) => {
   const diagnostics = [];
 
   const instance = JsoncInstance.fromTextDocument(document);
-  if (instance === undefined) {
+  if (instance.typeOf() === "undefined") {
     return;
   }
 

@@ -22,10 +22,6 @@ export class JsoncInstance {
       allowEmptyContent: true
     });
 
-    if (root === undefined) {
-      return undefined;
-    }
-
     return new JsoncInstance(textDocument, root, root, "", {});
   }
 
