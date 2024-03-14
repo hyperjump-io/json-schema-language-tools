@@ -133,7 +133,7 @@ async function getDocumentSettings(resource) {
     documentSettings.set(resource, result);
   }
 
-  return result;
+  return result ?? {};
 }
 
 let isWorkspaceLoaded = false;
@@ -178,12 +178,7 @@ documents.onDidChangeContent(async ({ document }) => {
 const validateSchema = async (document) => {
   const diagnostics = [];
 
-  let settings = await getDocumentSettings(document.uri);
-  if (!settings) {
-    connection.console.log("Settings not available");
-    settings = {};
-  }
-
+  const settings = await getDocumentSettings(document.uri);
   const instance = JsoncInstance.fromTextDocument(document);
   if (instance.typeOf() === "undefined") {
     return;
