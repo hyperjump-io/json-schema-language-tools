@@ -116,26 +116,6 @@ connection.onInitialized(async () => {
   await validateWorkspace();
 });
 
-const documentSettings = new Map();
-let globalSettings = {};
-
-async function getDocumentSettings(resource) {
-  if (!hasConfigurationCapability) {
-    return globalSettings;
-  }
-
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = await connection.workspace.getConfiguration({
-      scopeUri: resource,
-      section: "jsonSchemaLanguageServer"
-    });
-    documentSettings.set(resource, result);
-  }
-
-  return result ?? {};
-}
-
 let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
@@ -163,6 +143,38 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 connection.listen();
 
 const documents = new TextDocuments(TextDocument);
+
+// CONFIGURATION
+
+const documentSettings = new Map();
+let globalSettings = {};
+
+async function getDocumentSettings(resource) {
+  if (!hasConfigurationCapability) {
+    return globalSettings;
+  }
+
+  let result = documentSettings.get(resource);
+  if (!result) {
+    result = await connection.workspace.getConfiguration({
+      scopeUri: resource,
+      section: "jsonSchemaLanguageServer"
+    });
+    documentSettings.set(resource, result);
+  }
+
+  return result ?? {};
+}
+
+connection.onDidChangeConfiguration((change) => {
+  if (hasConfigurationCapability) {
+    documentSettings.clear();
+  } else {
+    globalSettings = change.settings.jsonSchemaLanguageServer || globalSettings;
+  }
+
+  validateWorkspace();
+});
 
 // INLINE ERRORS
 
@@ -203,7 +215,7 @@ const validateSchema = async (document) => {
 
     if (!output.valid) {
       for await (const [instance, message] of invalidNodes(output)) {
-        diagnostics.push(buildDiagnostic(instance, message, settings.schemaValidationSeverity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error));
+        diagnostics.push(buildDiagnostic(instance, message));
       }
     }
 
@@ -218,16 +230,6 @@ const validateSchema = async (document) => {
 
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
 };
-
-connection.onDidChangeConfiguration((change) => {
-  if (hasConfigurationCapability) {
-    documentSettings.clear();
-  } else {
-    globalSettings = change.settings.jsonSchemaLanguageServer || globalSettings;
-  }
-
-  validateWorkspace();
-});
 
 const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
   return {
@@ -304,7 +306,6 @@ const buildTokens = (builder, document, settings) => {
   const $schema = instance.get("#/$schema");
   const dialectUri = $schema?.value() ?? settings.defaultDialect;
   const schemaResources = decomposeSchemaDocument(instance, dialectUri);
-
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
     builder.push(
@@ -316,7 +317,6 @@ const buildTokens = (builder, document, settings) => {
     );
   }
 };
-
 
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
   connection.console.log(`semanticTokens.on: ${textDocument.uri}`);
