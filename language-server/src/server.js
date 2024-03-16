@@ -160,7 +160,9 @@ async function getDocumentSettings(resource) {
       scopeUri: resource,
       section: "jsonSchemaLanguageServer"
     });
-    documentSettings.set(resource, result);
+    if (result !== null) {
+      documentSettings.set(resource, result);
+    }
   }
 
   return result ?? {};
