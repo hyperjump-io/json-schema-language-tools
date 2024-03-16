@@ -154,18 +154,15 @@ async function getDocumentSettings(resource) {
     return globalSettings;
   }
 
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = await connection.workspace.getConfiguration({
+  if (!documentSettings.has(resource)) {
+    const result = await connection.workspace.getConfiguration({
       scopeUri: resource,
       section: "jsonSchemaLanguageServer"
     });
-    if (result !== null) {
-      documentSettings.set(resource, result);
-    }
+    documentSettings.set(resource, result ?? globalSettings);
   }
 
-  return result ?? {};
+  return documentSettings.get(resource);
 }
 
 connection.onDidChangeConfiguration((change) => {
