@@ -306,7 +306,13 @@ const getTokenBuilder = (uri) => {
 const buildTokens = (builder, document, settings) => {
   const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
-  const dialectUri = $schema?.value() ?? settings.defaultDialect;
+  let dialectUri;
+  try {
+    dialectUri = $schema?.value() ?? settings.defaultDialect;
+  } catch (error) {
+    // SKIP
+  }
+
   const schemaResources = decomposeSchemaDocument(instance, dialectUri);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
@@ -335,17 +341,18 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
   }
 });
 
-connection.languages.semanticTokens.onDelta(({ textDocument, previousResultId }) => {
+connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
   connection.console.log(`semanticTokens.onDelta: ${textDocument.uri}`);
 
   const document = documents.get(textDocument.uri);
+  const settings = await getDocumentSettings(document.uri);
   if (document === undefined) {
     return { edits: [] };
   }
 
   const builder = getTokenBuilder(document);
   builder.previousResult(previousResultId);
-  buildTokens(builder, document);
+  buildTokens(builder, document, settings);
 
   return builder.buildEdits();
 });
