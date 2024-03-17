@@ -10,7 +10,8 @@ import {
   TextDocuments,
   TextDocumentSyncKind,
   CompletionItemKind,
-  FileChangeType
+  FileChangeType,
+  MarkupKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { readFile } from "node:fs/promises";
@@ -73,7 +74,8 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
     completionProvider: {
       resolveProvider: false,
       triggerCharacters: ["\"", ":", " "]
-    }
+    },
+    hoverProvider: true
   };
 
   if (hasWorkspaceFolderCapability) {
@@ -402,6 +404,44 @@ const trailingHashDialects = new Set([
   "http://json-schema.org/draft-07/schema"
 ]);
 const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
+
+// KEYWORD HOVER
+
+connection.onHover(async (textDocumentPositionParams) => {
+  const { textDocument: { uri: textDocumentURI }, position } = textDocumentPositionParams;
+  const document = documents.get(textDocumentURI);
+
+  const schemaResources = await getSchemaResources(document);
+  for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (!hasDialect(dialectUri)) {
+      continue;
+    }
+
+    try {
+      const annotations = await annotate(dialectUri, schemaInstance);
+      const keyword = annotations.getInstanceAtPosition(position);
+      if (keyword.typeOf() !== "undefined") {
+        // Found
+        const description = keyword.annotation("description", dialectUri).join("\n");
+        return buildHover(MarkupKind.Markdown, description, keyword.startPosition(), keyword.endPosition());
+      }
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        return null;
+      }
+    }
+  }
+});
+
+const buildHover = (kind, value, startPosition, endPosition) => {
+  return {
+    contents: { kind, value },
+    range: {
+      start: startPosition,
+      end: endPosition
+    }
+  };
+};
 
 connection.listen();
 documents.listen(connection);
