@@ -20,6 +20,7 @@ import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
+
 // Other
 import { decomposeSchemaDocument, validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
@@ -144,13 +145,13 @@ documents.onDidChangeContent(async ({ document }) => {
     await validateSchema(document);
   }
 });
-
+export let contextDialectUri;
 const validateSchema = async (document) => {
   const diagnostics = [];
 
   const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
-  const contextDialectUri = $schema?.value();
+  contextDialectUri = $schema?.value();
   const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
   for (const { dialectUri, schemaInstance } of schemaResources) {
     if (!hasDialect(dialectUri)) {

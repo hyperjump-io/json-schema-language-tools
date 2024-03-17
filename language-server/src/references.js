@@ -1,7 +1,9 @@
 import { JsoncInstanceFromJSON } from "./json-instance-from-json.js";
 import { validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
+import { contextDialectUri } from "./server.js";
 import { buildDiagnostic, extractBaseUri, isValidUrl } from "./util.js";
+import {getKeywordName} from "@hyperjump/json-schema/experimental";
 
 // TODO: Handle anchor fragments
 
@@ -13,7 +15,10 @@ import { buildDiagnostic, extractBaseUri, isValidUrl } from "./util.js";
 export const validateReferences = async (instance) => {
   const diagnostics = [];
   const promises = [];
+  const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
+
   let baseUri = "";
+  const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId))
   /**
    *
    * @param {JsoncInstance} instance
@@ -27,8 +32,7 @@ export const validateReferences = async (instance) => {
           baseUri = extractBaseUri(valueInstance.value());
         }
         if (
-          key.value() === "$ref" &&
-          typeof valueInstance.value() === "string"
+          referenceKeywordNames.includes(key.value()) && typeof valueInstance.value() === "string"
         ) {
           const ref = valueInstance.value();
           const isLocalRef = isLocalReference(ref);
