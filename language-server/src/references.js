@@ -1,4 +1,3 @@
-import { JsoncInstanceFromJSON } from "./json-instance-from-json.js";
 import { validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { contextDialectUri } from "./server.js";
@@ -91,7 +90,7 @@ const handleExternalReference = async (ref, baseUri) => {
   }
   try {
     const schema = await fetchExternalSchema(url);
-    const instance = JsoncInstanceFromJSON.fromJSON(JSON.stringify(schema));
+    const instance = JsoncInstance.fromJSON(JSON.stringify(schema));
     let isValidRef = false;
     try {
       [isValidRef] = await validate(url, instance);
