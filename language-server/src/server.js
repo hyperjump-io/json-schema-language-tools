@@ -121,7 +121,7 @@ connection.onInitialized(async () => {
   await validateWorkspace({ changes: [] });
 });
 
-connection.onHover((textDocumentPositionParams) => {
+connection.onHover(async (textDocumentPositionParams) => {
   const { textDocument: { uri: textDocumentURI }, position } = textDocumentPositionParams;
   const document = documents.get(textDocumentURI);
   const instance = JsoncInstance.fromTextDocument(document);
@@ -130,23 +130,29 @@ connection.onHover((textDocumentPositionParams) => {
   }
   const $schema = instance.get("#/$schema");
   const contextDialectUri = $schema.value();
-  const hoverKeyInstance = instance.keyAtPosition(position);
-  if (hoverKeyInstance !== undefined) {
-    return buildHover(MarkupKind.Markdown, contextDialectUri, hoverKeyInstance);
+
+  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (!hasDialect(dialectUri)) {
+      continue;
+    }
+    const [, annotations] = await validate(dialectUri, schemaInstance);
+    const keywordNode = annotations.keyAtPosition(position);
+    const keywordDescription = keywordNode?.annotation("description")[0];
+    if (keywordNode !== undefined && hasDialect(contextDialectUri) && keywordDescription) {
+      return buildHover(MarkupKind.Markdown, keywordNode, keywordDescription);
+    }
   }
 });
 
-const buildHover = (kind, dialectUri, hoverWord) => {
-  const value = hoverWord.value();
-  if (value) {
-    return {
-      contents: { kind, value },
-      range: {
-        start: hoverWord.startPosition(),
-        end: hoverWord.endPosition()
-      }
-    };
-  }
+const buildHover = (kind, hoverWord, hoverContent) => {
+  return {
+    contents: { kind, value: hoverContent },
+    range: {
+      start: hoverWord.startPosition(),
+      end: hoverWord.endPosition()
+    }
+  };
 };
 
 // WORKSPACE
