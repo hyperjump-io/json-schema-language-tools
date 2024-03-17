@@ -43,10 +43,6 @@ export const workspaceSchemas = async function* () {
     const path = fileURLToPath(uri);
 
     for (const filename of await readdir(path, { recursive: true })) {
-      if (!filename.endsWith(".schema.json")) {
-        continue;
-      }
-
       const schemaPath = resolve(path, filename);
 
       yield pathToFileURL(schemaPath).toString();

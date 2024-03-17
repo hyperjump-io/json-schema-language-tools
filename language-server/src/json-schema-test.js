@@ -2,9 +2,6 @@ import fs from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { toAbsoluteIri } from "@hyperjump/uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
-import "@hyperjump/json-schema/draft-07";
-import "@hyperjump/json-schema/draft-06";
-import "@hyperjump/json-schema/draft-04";
 import { validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -21,7 +18,7 @@ const shouldSkip = (skip, path) => {
   return false;
 };
 
-const testSuitePath = `${import.meta.dirname}/../node_modules/json-schema-test-suite`;
+const testSuitePath = `${import.meta.dirname}/../../node_modules/json-schema-test-suite`;
 
 const addRemotes = (dialectId, filePath = `${testSuitePath}/remotes`, url = "") => {
   fs.readdirSync(filePath, { withFileTypes: true })

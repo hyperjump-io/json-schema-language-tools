@@ -8,7 +8,7 @@
     "vscode:prepublish": "npm run build-client -- --minify && npm run build-server -- --minify",
     "build": "npm run build-client -- --sourcemap && npm run build-server -- --sourcemap",
     "build-client": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
-    "build-server": "esbuild ../language-server/src/server.js --bundle --outfile=out/server.js --external:vscode --format=cjs --platform=node",
+    "build-server": "esbuild ../language-server/src/server.js --bundle --main-fields=module,main --outfile=out/server.js --external:vscode --format=cjs --platform=node",
     "package": "vsce package --out=dist",
     "publish": "vsce publish"
   },

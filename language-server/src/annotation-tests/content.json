@@ -1,0 +1,57 @@
+[
+  {
+    "title": "`contentMediaType` is an annotation",
+    "schema": {
+      "contentMediaType": "application/json"
+    },
+    "subjects": [
+      {
+        "instance": "{ \"foo\": \"bar\" }",
+        "assertions": [
+          {
+            "location": "#",
+            "keyword": "contentMediaType",
+            "expected": ["application/json"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "`contentEncoding` is an annotation",
+    "schema": {
+      "contentEncoding": "base64"
+    },
+    "subjects": [
+      {
+        "instance": "SGVsbG8gZnJvbSBKU09OIFNjaGVtYQ==",
+        "assertions": [
+          {
+            "location": "#",
+            "keyword": "contentEncoding",
+            "expected": ["base64"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "`contentSchema` is an annotation",
+    "schema": {
+      "$id": "https://annotations.json-schema.org/test/contentSchema-is-an-annotation",
+      "contentSchema": { "type": "number" }
+    },
+    "subjects": [
+      {
+        "instance": "42",
+        "assertions": [
+          {
+            "location": "#",
+            "keyword": "contentSchema",
+            "expected": ["https://annotations.json-schema.org/test/contentSchema-is-an-annotation#/contentSchema"]
+          }
+        ]
+      }
+    ]
+  }
+]

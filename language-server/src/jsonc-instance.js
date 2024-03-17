@@ -32,6 +32,7 @@ export class JsoncInstance {
       allowTrailingComma: true,
       allowEmptyContent: true
     });
+
     return new JsoncInstance(textDocument, root, root, "", {});
   }
 
@@ -40,7 +41,9 @@ export class JsoncInstance {
   }
 
   value() {
-    if (this.node.value === undefined) {
+    if (this.node === undefined) {
+      return undefined;
+    } else if (this.node.value === undefined) {
       const json = this.textDocument.getText().slice(this.node.offset, this.node.offset + this.node.length);
       return JSON.parse(json);
     } else {
@@ -145,14 +148,14 @@ export class JsoncInstance {
       }
     }
 
-    return result;
+    return result ?? new JsoncInstance(this.textDocument, this.root, undefined, pointer, this.annotations);
   }
 
   asEmbedded() {
     return new JsoncInstance(this.textDocument, this.node, this.node, "", {});
   }
 
-  annotation(keyword, dialectId = "https://json-schema.org/validation") {
+  annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
     const keywordId = getKeywordId(keyword, dialectId);
     return this.annotations[this.pointer]?.[keywordId] || [];
   }

@@ -119,9 +119,11 @@ const validateWorkspace = async () => {
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
-    const textDocument = documents.get(uri);
-    if (textDocument) {
-      await validateSchema(textDocument);
+    if (isSchema(uri)) {
+      const textDocument = documents.get(uri);
+      if (textDocument) {
+        await validateSchema(textDocument);
+      }
     }
   }
 
@@ -150,13 +152,17 @@ const validateSchema = async (document) => {
   const diagnostics = [];
 
   const instance = JsoncInstance.fromTextDocument(document);
+  if (instance.typeOf() === "undefined") {
+    return;
+  }
+
   const $schema = instance.get("#/$schema");
   contextDialectUri = $schema?.value();
   const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
   for (const { dialectUri, schemaInstance } of schemaResources) {
     if (!hasDialect(dialectUri)) {
       const $schema = schemaInstance.get("#/$schema");
-      if ($schema) {
+      if ($schema.typeOf() === "string") {
         diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
       } else {
         diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
@@ -260,7 +266,7 @@ const getTokenBuilder = (uri) => {
 
 const buildTokens = (builder, document) => {
   const instance = JsoncInstance.fromTextDocument(document);
-  const dialectUri = instance.get("#/$schema")?.value();
+  const dialectUri = instance.get("#/$schema").value();
   const schemaResources = decomposeSchemaDocument(instance, dialectUri);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
