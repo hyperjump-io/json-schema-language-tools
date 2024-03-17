@@ -32,7 +32,7 @@ import { validateReferences } from "./references.js";
 
 setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
-
+export let contextDialectUri;
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
 const connection = createConnection(ProposedFeatures.all);
@@ -145,7 +145,7 @@ documents.onDidChangeContent(async ({ document }) => {
     await validateSchema(document);
   }
 });
-export let contextDialectUri;
+
 const validateSchema = async (document) => {
   const diagnostics = [];
 
