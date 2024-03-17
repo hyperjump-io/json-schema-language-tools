@@ -209,7 +209,14 @@ export class JsoncInstance {
       const propertyEndOffset = propertyStartOffset + propertyNameNode.length;
 
       if (positionOffset >= propertyStartOffset && positionOffset <= propertyEndOffset) {
-        return new JsoncInstance(this.textDocument, this.root, propertyNameNode, this.pointer, this.annotations);
+        let pointer;
+        if (this.pointer === "") {
+          pointer = `/${propertyNameNode.value}`;
+        } else {
+          pointer = `${this.pointer}/${propertyNameNode.value}`;
+        }
+
+        return new JsoncInstance(this.textDocument, this.root, propertyNameNode, pointer, this.annotations);
       }
 
       if (propertyNameNode.type === "object") {
