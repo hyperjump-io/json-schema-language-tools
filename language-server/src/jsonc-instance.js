@@ -195,6 +195,34 @@ export class JsoncInstance {
     const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
     return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
   }
+
+  keyAtPosition(position) {
+    const positionOffset = this.textDocument.offsetAt(position);
+
+    if (this.typeOf() !== "object") {
+      return undefined;
+    }
+
+    for (const propertyNode of this.node.children) {
+      const propertyNameNode = propertyNode.children[0];
+      const propertyStartOffset = propertyNameNode.offset;
+      const propertyEndOffset = propertyStartOffset + propertyNameNode.length;
+
+      if (positionOffset >= propertyStartOffset && positionOffset <= propertyEndOffset) {
+        return new JsoncInstance(this.textDocument, this.root, propertyNameNode, this.pointer, this.annotations);
+      }
+
+      if (propertyNameNode.type === "object") {
+        const nestedInstance = new JsoncInstance(this.textDocument, this.root, propertyNameNode, this.pointer, this.annotations);
+        const nestedKey = nestedInstance.keyAtPosition(position);
+        if (nestedKey !== undefined) {
+          return nestedKey;
+        }
+      }
+    }
+
+    return undefined;
+  }  
 }
 
 const pointerSegments = function* (pointer) {

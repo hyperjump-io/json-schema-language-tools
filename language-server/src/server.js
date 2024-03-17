@@ -4,6 +4,7 @@ import {
   DiagnosticSeverity,
   DiagnosticTag,
   DidChangeWatchedFilesNotification,
+  MarkupKind,
   ProposedFeatures,
   DidChangeConfigurationNotification,
   SemanticTokensBuilder,
@@ -72,7 +73,8 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
     completionProvider: {
       resolveProvider: false,
       triggerCharacters: ["\"", ":", " "]
-    }
+    },
+    hoverProvider: true
   };
 
   if (hasWorkspaceFolderCapability) {
@@ -119,7 +121,37 @@ connection.onInitialized(async () => {
   await validateWorkspace({ changes: [] });
 });
 
+connection.onHover((textDocumentPositionParams) => {
+  const { textDocument: { uri: textDocumentURI }, position } = textDocumentPositionParams;
+  const document = documents.get(textDocumentURI);
+  const instance = JsoncInstance.fromTextDocument(document);
+  if (instance.typeOf() === "undefined") {
+    return;
+  }
+  const $schema = instance.get("#/$schema");
+  const contextDialectUri = $schema.value();
+  const hoverKeyInstance = instance.keyAtPosition(position);
+  if (hoverKeyInstance !== undefined) {
+    return buildHover(MarkupKind.Markdown, contextDialectUri, hoverKeyInstance);
+  }
+});
+
+const buildHover = (kind, dialectUri, hoverWord) => {
+  const value = hoverWord.value();
+  if (value) {
+    return {
+      contents: { kind, value },
+      range: {
+        start: hoverWord.startPosition(),
+        end: hoverWord.endPosition()
+      }
+    };
+  }
+};
+
 // WORKSPACE
+
+let isWorkspaceLoaded = false;
 
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
