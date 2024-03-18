@@ -169,7 +169,7 @@ connection.onDidChangeConfiguration((change) => {
   if (hasConfigurationCapability) {
     documentSettings.clear();
   } else {
-    globalSettings = change.settings.jsonSchemaLanguageServer || globalSettings;
+    globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
   }
 
   validateWorkspace();
@@ -303,13 +303,7 @@ const getTokenBuilder = (uri) => {
 const buildTokens = (builder, document, settings) => {
   const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
-  let dialectUri;
-  try {
-    dialectUri = $schema?.value() ?? settings.defaultDialect;
-  } catch (error) {
-    // SKIP
-  }
-
+  const dialectUri = $schema.value ?? settings.defaultDialect;
   const schemaResources = decomposeSchemaDocument(instance, dialectUri);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
