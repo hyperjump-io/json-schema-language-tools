@@ -60,10 +60,11 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
     }
   };
 
-  if (capabilities.workspace?.workspaceFolders) {
+  if (hasWorkspaceFolderCapability) {
     serverCapabilities.workspace = {
       workspaceFolders: {
-        supported: true
+        supported: true,
+        changeNotifications: true
       }
     };
   }
