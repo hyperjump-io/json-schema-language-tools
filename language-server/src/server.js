@@ -203,12 +203,10 @@ const validateSchema = async (document) => {
       const $schema = schemaInstance.get("#/$schema");
       if ($schema.typeOf() === "string") {
         diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
+      } else if (contextDialectUri) {
+        diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
       } else {
-        if (contextDialectUri) {
-          diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
-        } else {
-          diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
-        }
+        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
       }
 
       continue;
