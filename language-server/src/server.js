@@ -204,7 +204,11 @@ const validateSchema = async (document) => {
       if ($schema.typeOf() === "string") {
         diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
       } else {
-        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
+        if (contextDialectUri) {
+          diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
+        } else {
+          diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
+        }
       }
 
       continue;
@@ -303,7 +307,7 @@ const getTokenBuilder = (uri) => {
 const buildTokens = (builder, document, settings) => {
   const instance = JsoncInstance.fromTextDocument(document);
   const $schema = instance.get("#/$schema");
-  const dialectUri = $schema.value ?? settings.defaultDialect;
+  const dialectUri = $schema.value() ?? settings.defaultDialect;
   const schemaResources = decomposeSchemaDocument(instance, dialectUri);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
