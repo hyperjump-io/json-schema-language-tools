@@ -1,7 +1,7 @@
-import { parseTree } from "jsonc-parser";
+import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
-import { drop, find, head, some } from "@hyperjump/pact";
+import { find, some } from "@hyperjump/pact";
 import { toAbsoluteUri } from "./util.js";
 
 
@@ -119,25 +119,10 @@ export class JsoncInstance {
     if (uri[0] !== "#") {
       throw Error(`No JSON document found at '${toAbsoluteUri(uri)}'`);
     }
-    let result = new JsoncInstance(this.textDocument, this.root, this.root, "", this.annotations);
 
     const pointer = decodeURI(uri.substring(1));
-    for (const segment of pointerSegments(pointer)) {
-      if (!result) {
-        break;
-      }
-
-      if (result.typeOf() === "object") {
-        const pair = find(([propertyName]) => propertyName.value() === segment, result.entries());
-        result = pair?.[1];
-      } else if (result.typeOf() === "array") {
-        result = head(drop(parseInt(segment, 10), result.iter()));
-      } else {
-        result = undefined;
-      }
-    }
-
-    return result ?? new JsoncInstance(this.textDocument, this.root, undefined, pointer, this.annotations);
+    const node = findNodeAtLocation(this.root, [...pointerSegments(pointer)]);
+    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
   }
 
   asEmbedded() {
