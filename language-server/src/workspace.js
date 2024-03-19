@@ -49,18 +49,3 @@ export const workspaceSchemas = async function* () {
     }
   }
 };
-
-export const waitUntil = (condition, checkInterval = 1000) => {
-  return new Promise((resolve) => {
-    if (condition()) {
-      resolve();
-    } else {
-      const interval = setInterval(() => {
-        if (condition()) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, checkInterval);
-    }
-  });
-};

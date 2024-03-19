@@ -11,6 +11,8 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 // Hyperjump
 import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema";
@@ -25,7 +27,7 @@ import "@hyperjump/json-schema/draft-04";
 import { decomposeSchemaDocument, validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
-import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
+import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
 
 
@@ -121,25 +123,25 @@ connection.onInitialized(async () => {
 
 // WORKSPACE
 
-let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
 
   const reporter = await connection.window.createWorkDoneProgress();
   reporter.begin("JSON Schema: Indexing workspace");
-  isWorkspaceLoaded = false;
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
     if (isSchema(uri)) {
-      const textDocument = documents.get(uri);
-      if (textDocument) {
-        await validateSchema(textDocument);
+      let textDocument = documents.get(uri);
+      if (!textDocument) {
+        const instanceJson = await readFile(fileURLToPath(uri), "utf8");
+        textDocument = TextDocument.create(uri, "json", 1, instanceJson);
       }
+
+      await validateSchema(textDocument);
     }
   }
 
-  isWorkspaceLoaded = true;
   reporter.done();
 };
 
@@ -166,14 +168,14 @@ async function getDocumentSettings(resource) {
   return documentSettings.get(resource);
 }
 
-connection.onDidChangeConfiguration((change) => {
+connection.onDidChangeConfiguration(async (change) => {
   if (hasConfigurationCapability) {
     documentSettings.clear();
   } else {
     globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
   }
 
-  validateWorkspace();
+  await validateWorkspace();
 });
 
 // INLINE ERRORS
@@ -182,12 +184,12 @@ documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
 
   if (isSchema(document.uri)) {
-    await waitUntil(() => isWorkspaceLoaded);
     await validateSchema(document);
   }
 });
 
 const validateSchema = async (document) => {
+  connection.console.log(`Schema Validation: ${document.uri}`);
   const diagnostics = [];
 
   const settings = await getDocumentSettings(document.uri);
