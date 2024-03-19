@@ -4,8 +4,9 @@ import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { drop, find, head, some } from "@hyperjump/pact";
 import { toAbsoluteUri } from "./util.js";
 
+
 export class JsoncInstance {
-  constructor(textDocument, root, node, pointer, annotations, isOriginJson=false) {
+  constructor(textDocument, root, node, pointer, annotations, isOriginJson = false) {
     this.textDocument = textDocument;
     this.root = root;
     this.node = node;
@@ -24,7 +25,10 @@ export class JsoncInstance {
     });
     return new JsoncInstance(textDocument, root, root, "", {}, true);
   }
-
+  /**
+   * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
+   * @returns {JsoncInstance}
+   */
   static fromTextDocument(textDocument) {
     const json = textDocument.getText();
     const root = parseTree(json, [], {
@@ -197,12 +201,16 @@ export class JsoncInstance {
   }
 
   startPosition() {
-    if (this.isOriginJson) throw new Error("method not available for json originated instance!");
+    if (this.isOriginJson) {
+      throw new Error("method not available for json originated instance!");
+    }
     return this.textDocument.positionAt(this.node.offset);
   }
 
   endPosition() {
-    if (this.isOriginJson) throw new Error("method not available for json originated instance!");
+    if (this.isOriginJson) {
+      throw new Error("method not available for json originated instance!");
+    }
     return this.textDocument.positionAt(this.node.offset + this.node.length);
   }
 

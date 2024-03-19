@@ -1,23 +1,22 @@
-import { validate } from "./json-schema.js";
-import { JsoncInstance } from "./jsonc-instance.js";
 import { contextDialectUri } from "./server.js";
-import { buildDiagnostic, extractBaseUri, isValidUrl } from "./util.js";
-import {getKeywordName} from "@hyperjump/json-schema/experimental";
+import { buildDiagnostic } from "./util.js";
+import { getKeywordName } from "@hyperjump/json-schema/experimental";
 
-// TODO: Handle anchor fragments
+/**
+ * TODO
+ * - handler external references
+ * - handler anchor fragments
+ */
 
 /**
  *
  * @param {JsoncInstance} instance
- * @returns
+ * @returns {Array<import("vscode-languageserver").Diagnostic>}
  */
-export const validateReferences = async (instance) => {
+export const validateReferences = (instance) => {
   const diagnostics = [];
-  const promises = [];
   const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
-
-  let baseUri = "";
-  const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId))
+  const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId));
   /**
    *
    * @param {JsoncInstance} instance
@@ -27,9 +26,6 @@ export const validateReferences = async (instance) => {
   async function validateRefs(instance, basePath = "") {
     if (instance.typeOf() === "object") {
       for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() == "$id" && typeof valueInstance.value() === "string") {
-          baseUri = extractBaseUri(valueInstance.value());
-        }
         if (
           referenceKeywordNames.includes(key.value()) && typeof valueInstance.value() === "string"
         ) {
@@ -38,21 +34,10 @@ export const validateReferences = async (instance) => {
           if (isLocalRef) {
             const isValidRef = checkLocalReference(ref, instance);
             if (!isValidRef) {
-              diagnostics.push(
-                buildDiagnostic(valueInstance, `Invalid reference: ${ref}`)
-              );
+              diagnostics.push(buildDiagnostic(valueInstance, `Invalid reference: ${ref}`));
             }
             return;
           }
-          promises.push(
-            handleExternalReference(ref, baseUri).then((isValidRef) => {
-              if (!isValidRef.success) {
-                diagnostics.push(
-                  buildDiagnostic(valueInstance, isValidRef.error)
-                );
-              }
-            })
-          );
         } else {
           validateRefs(valueInstance, basePath + "/" + key.value());
         }
@@ -63,58 +48,24 @@ export const validateReferences = async (instance) => {
       }
     }
   }
-
   validateRefs(instance);
-  await Promise.all(promises);
-
   return diagnostics;
 };
+/**
+ * @param {string} ref
+ * @returns {boolean}
+ */
+const isLocalReference = (ref) => ref.startsWith("#");
 
-function isLocalReference(ref) {
-  return ref.startsWith("#");
-}
-
+/**
+ * @param {string} ref
+ * @param {import("./jsonc-instance.js").JsoncInstance} instance
+ * @returns {boolean}
+ */
 const checkLocalReference = (ref, instance) => {
-  const resolvedRef = instance.get(ref);
-  return resolvedRef !== undefined;
-};
-
-const handleExternalReference = async (ref, baseUri) => {
-  let url = ref;
-  if (ref.startsWith("/")) {
-    if (!baseUri)
-      return { success: false, error: "Invalid $id for relative schema uri" };
-    url = baseUri + ref;
-  } else if (!isValidUrl(ref)) {
-    return { success: false, error: "Invalid $ref url" };
-  }
   try {
-    const schema = await fetchExternalSchema(url);
-    const instance = JsoncInstance.fromJSON(JSON.stringify(schema));
-    let isValidRef = false;
-    try {
-      [isValidRef] = await validate(url, instance);
-    } catch {}
-    if (isValidRef.valid) {
-      return { success: true };
-    } else {
-      return { success: false, error: "Not a valid reference" };
-    }
-  } catch (error) {
-    return { error: error.message, success: false };
-  }
-};
-
-const fetchExternalSchema = async (url) => {
-  try {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch schema");
-    }
-    const schema = await response.json();
-    return schema;
-  } catch (error) {
-    throw new Error("Failed to fetch schema");
+    return instance.get(ref).node !== undefined;
+  } catch (e) {
+    return false;
   }
 };

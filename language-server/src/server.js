@@ -20,19 +20,21 @@ import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
-
 // Other
 import { decomposeSchemaDocument, validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
+import { buildDiagnostic } from "./util.js";
 import { validateReferences } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
+
 export let contextDialectUri;
+
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
 const connection = createConnection(ProposedFeatures.all);
@@ -157,7 +159,7 @@ const validateSchema = async (document) => {
   }
 
   const $schema = instance.get("#/$schema");
-  contextDialectUri = $schema?.value();
+  contextDialectUri = $schema.value();
   const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
   for (const { dialectUri, schemaInstance } of schemaResources) {
     if (!hasDialect(dialectUri)) {
@@ -178,10 +180,12 @@ const validateSchema = async (document) => {
         diagnostics.push(buildDiagnostic(instance, message));
       }
     }
-    const referenceDiagnostics = await validateReferences(instance);
+
+    const referenceDiagnostics = validateReferences(instance);
     if (referenceDiagnostics.length > 0) {
       diagnostics.push(...referenceDiagnostics);
     }
+
     const deprecations = annotations.annotatedWith("deprecated");
     for (const deprecated of deprecations) {
       if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
@@ -192,19 +196,6 @@ const validateSchema = async (document) => {
   }
 
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
-};
-
-const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
-  return {
-    severity: severity,
-    tags: tags,
-    range: {
-      start: instance.startPosition(),
-      end: instance.endPosition()
-    },
-    message: message,
-    source: "json-schema"
-  };
 };
 
 // SEMANTIC TOKENS

@@ -1,16 +1,15 @@
 import { DiagnosticSeverity } from "vscode-languageserver";
 
+
 export const toAbsoluteUri = (uri) => uri.replace(/#.*$/, "");
 
-export const extractBaseUri = (id) => {
-  const match = id.match(/^((https|http):\/\/[^/]+)/);
-  return match ? match[0] : "";
-};
-
-export const isValidUrl = (url) => {
-  return /^(http|https):\/\/[^ "]+$/.test(url);
-};
-
+/**
+ * @param {import("./jsonc-instance").JsoncInstance} instance
+ * @param {string} message
+ * @param {DiagnosticSeverity} severity
+ * @param {Array<string>} tags
+ * @returns {import("vscode-languageserver").Diagnostic}
+ */
 export const buildDiagnostic = (
   instance,
   message,
@@ -22,9 +21,9 @@ export const buildDiagnostic = (
     tags,
     range: {
       start: instance.startPosition(),
-      end: instance.endPosition(),
+      end: instance.endPosition()
     },
     message,
-    source: "json-schema",
+    source: "json-schema"
   };
 };
