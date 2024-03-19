@@ -37,6 +37,8 @@ const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
+const documents = new TextDocuments(TextDocument);
+
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 let hasConfigurationCapability = false;
@@ -117,6 +119,8 @@ connection.onInitialized(async () => {
   await validateWorkspace();
 });
 
+// WORKSPACE
+
 let isWorkspaceLoaded = false;
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
@@ -140,10 +144,6 @@ const validateWorkspace = async () => {
 };
 
 connection.onDidChangeWatchedFiles(validateWorkspace);
-
-connection.listen();
-
-const documents = new TextDocuments(TextDocument);
 
 // CONFIGURATION
 
@@ -196,8 +196,7 @@ const validateSchema = async (document) => {
     return;
   }
 
-  const $schema = instance.get("#/$schema");
-  const contextDialectUri = $schema.value() ?? settings.defaultDialect;
+  const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
   const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
   for (const { dialectUri, schemaInstance } of schemaResources) {
     if (!hasDialect(dialectUri)) {
@@ -292,22 +291,18 @@ documents.onDidClose((event) => {
 });
 
 const getTokenBuilder = (uri) => {
-  let result = tokenBuilders.get(uri);
-  if (result !== undefined) {
-    return result;
+  if (!tokenBuilders.has(uri)) {
+    tokenBuilders.set(uri, new SemanticTokensBuilder());
   }
 
-  result = new SemanticTokensBuilder();
-  tokenBuilders.set(uri, result);
-
-  return result;
+  return tokenBuilders.get(uri);
 };
 
-const buildTokens = (builder, document, settings) => {
-  const instance = JsoncInstance.fromTextDocument(document);
-  const $schema = instance.get("#/$schema");
-  const dialectUri = $schema.value() ?? settings.defaultDialect;
-  const schemaResources = decomposeSchemaDocument(instance, dialectUri);
+const buildTokens = async (builder, textDocument) => {
+  const instance = JsoncInstance.fromTextDocument(textDocument);
+  const settings = await getDocumentSettings(textDocument.uri);
+  const dialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
+  const schemaResources = decomposeSchemaDocument(instance, dialectUri, connection);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
     builder.push(
@@ -323,32 +318,27 @@ const buildTokens = (builder, document, settings) => {
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
   connection.console.log(`semanticTokens.on: ${textDocument.uri}`);
 
-  if (isSchema(textDocument.uri)) {
-    const builder = getTokenBuilder(textDocument.uri);
-    const document = documents.get(textDocument.uri);
-    const settings = await getDocumentSettings(document.uri);
-    buildTokens(builder, document, settings);
-
-    return builder.build();
-  } else {
+  if (!isSchema(textDocument.uri)) {
     return { data: [] };
   }
+
+  const builder = getTokenBuilder(textDocument.uri);
+  const document = documents.get(textDocument.uri);
+  await buildTokens(builder, document);
+
+  return builder.build();
 });
 
 connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
   connection.console.log(`semanticTokens.onDelta: ${textDocument.uri}`);
 
-  const document = documents.get(textDocument.uri);
-  const settings = await getDocumentSettings(document.uri);
-  if (document === undefined) {
-    return { edits: [] };
-  }
-
-  const builder = getTokenBuilder(document);
+  const builder = getTokenBuilder(textDocument.uri);
   builder.previousResult(previousResultId);
-  buildTokens(builder, document, settings);
+  const document = documents.get(textDocument.uri);
+  await buildTokens(builder, document);
 
   return builder.buildEdits();
 });
 
+connection.listen();
 documents.listen(connection);
