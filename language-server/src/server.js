@@ -11,7 +11,8 @@ import {
   TextDocuments,
   TextDocumentSyncKind,
   CompletionItemKind,
-  FileChangeType
+  FileChangeType,
+  MarkupKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { readFile } from "node:fs/promises";
