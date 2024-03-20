@@ -150,21 +150,28 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 
 // MANAGED INSTANCES
 
-const instances = new Map();
+const schemaResourceCache = new Map();
 
 const getSchemaResources = async (textDocument) => {
-  const key = `${textDocument.uri}|${textDocument.version}`;
+  let { version, schemaResources } = schemaResourceCache.get(textDocument.uri) ?? {};
 
-  if (textDocument.version === -1 || !instances.has(key)) {
+  if (version !== textDocument.version) {
     const instance = JsoncInstance.fromTextDocument(textDocument);
     const settings = await getDocumentSettings(instance.textDocument.uri);
     const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
-    const schemaResources = [...decomposeSchemaDocument(instance, contextDialectUri)];
-    instances.set(key, schemaResources);
+    schemaResources = [...decomposeSchemaDocument(instance, contextDialectUri)];
+
+    if (textDocument.version !== -1) {
+      schemaResourceCache.set(textDocument.uri, { version: textDocument.version, schemaResources });
+    }
   }
 
-  return instances.get(key);
+  return schemaResources;
 };
+
+documents.onDidClose(({ document }) => {
+  schemaResourceCache.delete(document.uri);
+});
 
 // CONFIGURATION
 
@@ -195,6 +202,10 @@ connection.onDidChangeConfiguration(async (change) => {
   }
 
   await validateWorkspace();
+});
+
+documents.onDidClose(({ document }) => {
+  documentSettings.delete(document.uri);
 });
 
 // INLINE ERRORS
@@ -305,8 +316,9 @@ const buildSemanticTokensLegend = (capability) => {
 };
 
 const tokenBuilders = new Map();
-documents.onDidClose((event) => {
-  tokenBuilders.delete(event.document.uri);
+
+documents.onDidClose(({ document }) => {
+  tokenBuilders.delete(document.uri);
 });
 
 const getTokenBuilder = (uri) => {

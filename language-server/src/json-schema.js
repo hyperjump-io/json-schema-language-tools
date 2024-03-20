@@ -85,7 +85,6 @@ const _decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {
 
     if (embeddedDialectUri) {
       const embeddedSchemaInstance = schemaInstance.asEmbedded();
-      delete schemaInstance.node.parent.children[1];
       yield* decomposeSchemaDocument(embeddedSchemaInstance, embeddedDialectUri);
     } else {
       for (const value of schemaInstance.values()) {

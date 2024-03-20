@@ -126,7 +126,10 @@ export class JsoncInstance {
   }
 
   asEmbedded() {
-    return new JsoncInstance(this.textDocument, this.node, this.node, "", {});
+    const instance = new JsoncInstance(this.textDocument, this.node, this.node, "", {});
+    delete this.node.parent.children[1];
+
+    return instance;
   }
 
   annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
