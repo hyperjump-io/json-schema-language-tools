@@ -164,10 +164,7 @@ export class JsoncInstance {
   }
 
   parent() {
-    const instance = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
-    instance.node = instance.node.parent;
-
-    return instance;
+    return new JsoncInstance(this.textDocument, this.root, this.node.parent, this.pointer, this.annotations);
   }
 
   startPosition() {

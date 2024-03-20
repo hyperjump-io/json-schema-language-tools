@@ -136,7 +136,7 @@ const validateWorkspace = async () => {
       let textDocument = documents.get(uri);
       if (!textDocument) {
         const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-        textDocument = TextDocument.create(uri, "json", 1, instanceJson);
+        textDocument = TextDocument.create(uri, "json", -1, instanceJson);
       }
 
       await validateSchema(textDocument);
@@ -147,6 +147,24 @@ const validateWorkspace = async () => {
 };
 
 connection.onDidChangeWatchedFiles(validateWorkspace);
+
+// MANAGED INSTANCES
+
+const instances = new Map();
+
+const getSchemaResources = async (textDocument) => {
+  const key = `${textDocument.uri}|${textDocument.version}`;
+
+  if (textDocument.version === -1 || !instances.has(key)) {
+    const instance = JsoncInstance.fromTextDocument(textDocument);
+    const settings = await getDocumentSettings(instance.textDocument.uri);
+    const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
+    const schemaResources = [...decomposeSchemaDocument(instance, contextDialectUri)];
+    instances.set(key, schemaResources);
+  }
+
+  return instances.get(key);
+};
 
 // CONFIGURATION
 
@@ -189,24 +207,22 @@ documents.onDidChangeContent(async ({ document }) => {
   }
 });
 
-const validateSchema = async (document) => {
-  connection.console.log(`Schema Validation: ${document.uri}`);
+const validateSchema = async (textDocument) => {
+  connection.console.log(`Schema Validation: ${textDocument.uri}`);
+
   const diagnostics = [];
 
-  const settings = await getDocumentSettings(document.uri);
-  const instance = JsoncInstance.fromTextDocument(document);
-  if (instance.typeOf() === "undefined") {
-    return;
-  }
-
-  const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
-  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  const schemaResources = await getSchemaResources(textDocument);
   for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (schemaInstance.typeOf() === "undefined") {
+      continue;
+    }
+
     if (!hasDialect(dialectUri)) {
       const $schema = schemaInstance.get("#/$schema");
       if ($schema.typeOf() === "string") {
         diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
-      } else if (contextDialectUri) {
+      } else if (dialectUri) {
         diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
       } else {
         diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
@@ -232,7 +248,7 @@ const validateSchema = async (document) => {
     }
   }
 
-  connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 };
 
 const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
@@ -301,11 +317,9 @@ const getTokenBuilder = (uri) => {
   return tokenBuilders.get(uri);
 };
 
-const buildTokens = async (builder, textDocument) => {
-  const instance = JsoncInstance.fromTextDocument(textDocument);
-  const settings = await getDocumentSettings(textDocument.uri);
-  const dialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
-  const schemaResources = decomposeSchemaDocument(instance, dialectUri, connection);
+const buildTokens = async (builder, uri) => {
+  const textDocument = documents.get(uri);
+  const schemaResources = await getSchemaResources(textDocument);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
     builder.push(
@@ -326,8 +340,7 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
   }
 
   const builder = getTokenBuilder(textDocument.uri);
-  const document = documents.get(textDocument.uri);
-  await buildTokens(builder, document);
+  await buildTokens(builder, textDocument.uri);
 
   return builder.build();
 });
@@ -337,8 +350,7 @@ connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResul
 
   const builder = getTokenBuilder(textDocument.uri);
   builder.previousResult(previousResultId);
-  const document = documents.get(textDocument.uri);
-  await buildTokens(builder, document);
+  await buildTokens(builder, textDocument.uri);
 
   return builder.buildEdits();
 });
