@@ -44,12 +44,13 @@ const documents = new TextDocuments(TextDocument);
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 let hasConfigurationCapability = false;
+let hasDidChangeConfigurationCapability = false;
 
 connection.onInitialize(({ capabilities, workspaceFolders }) => {
   connection.console.log("Initializing JSON Schema service ...");
-  hasConfigurationCapability = !!(
-    capabilities.workspace && !!capabilities.workspace.configuration
-  );
+
+  hasConfigurationCapability = !!capabilities.workspace?.configuration;
+  hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
 
   if (workspaceFolders) {
     addWorkspaceFolders(workspaceFolders);
@@ -82,7 +83,7 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
 });
 
 connection.onInitialized(async () => {
-  if (hasConfigurationCapability) {
+  if (hasDidChangeConfigurationCapability) {
     connection.client.register(DidChangeConfigurationNotification.type);
   }
 
