@@ -76,7 +76,7 @@ export class JsoncInstance {
       return;
     }
 
-    for (let itemIndex = 0; this.node.children[itemIndex]; itemIndex++) {
+    for (let itemIndex = 0; itemIndex < this.node.children.length; itemIndex++) {
       const itemNode = this.node.children[itemIndex];
       const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
       yield new JsoncInstance(this.textDocument, this.root, itemNode, pointer, this.annotations);
@@ -127,7 +127,14 @@ export class JsoncInstance {
 
   asEmbedded() {
     const instance = new JsoncInstance(this.textDocument, this.node, this.node, "", {});
-    delete this.node.parent.children[1];
+
+    const parent = this.node.parent;
+    const index = parent.type === "property" ? 1 : parent.children.findIndex((node) => node === this.node);
+    parent.children[index] = {
+      type: "boolean",
+      offset: this.node.offset,
+      length: 0
+    };
 
     return instance;
   }
