@@ -1,4 +1,4 @@
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
+import { findNodeAtLocation, findNodeAtOffset, parseTree, getNodePath } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { find, some } from "@hyperjump/pact";
@@ -180,6 +180,13 @@ export class JsoncInstance {
 
   textLength() {
     return this.node.length;
+  }
+
+  getInstanceAtPosition(position) {
+    const node = findNodeAtOffset(this.root, this.textDocument.offsetAt(position));
+    const pathToNode = getNodePath(node);
+    const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
+    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
   }
 }
 
