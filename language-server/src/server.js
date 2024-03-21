@@ -8,7 +8,8 @@ import {
   DidChangeConfigurationNotification,
   SemanticTokensBuilder,
   TextDocuments,
-  TextDocumentSyncKind
+  TextDocumentSyncKind,
+  CompletionItemKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { readFile } from "node:fs/promises";
@@ -16,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 // Hyperjump
 import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema";
-import { hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
+import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
@@ -67,6 +68,10 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
       full: {
         delta: true
       }
+    },
+    completionProvider: {
+      resolveProvider: false,
+      triggerCharacters: ["\"", ":", " "]
     }
   };
 
@@ -365,6 +370,26 @@ connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResul
   await buildTokens(builder, textDocument.uri);
 
   return builder.buildEdits();
+});
+
+// $SCHEMA COMPLETION
+connection.onCompletion((textDocumentPosition) => {
+  const doc = documents.get(textDocumentPosition.textDocument.uri);
+  if (!doc) {
+    return [];
+  }
+
+  const instance = JsoncInstance.fromTextDocument(doc);
+
+  const currentProperty = instance.getInstanceAtPosition(textDocumentPosition.position);
+  if (currentProperty.pointer.endsWith("/$schema")) {
+    return getDialectIds().map((uri) => {
+      return {
+        label: uri,
+        kind: CompletionItemKind.Value
+      };
+    });
+  }
 });
 
 connection.listen();
