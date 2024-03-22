@@ -197,39 +197,59 @@ export class JsoncInstance {
   }
 
   keyAtPosition(position) {
-    const positionOffset = this.textDocument.offsetAt(position);
+    const offset = this.textDocument.offsetAt(position);
+    return this.keyAtOffset(offset);
+  }
 
-    if (this.typeOf() !== "object") {
-      return undefined;
-    }
+  keyAtOffset(offset) {
+    if (this.typeOf() === "object") {
+      for (const [key, value] of this.entries()) {
+        // JsoncInstance.entries() just skips properties with
+        // undefined values. So, no need to check for property
+        // value nodes that are undefined due to schema decomposition.
 
-    for (const propertyNode of this.node.children) {
-      const propertyNameNode = propertyNode.children[0];
-      const propertyStartOffset = propertyNameNode.offset;
-      const propertyEndOffset = propertyStartOffset + propertyNameNode.length;
-
-      if (positionOffset >= propertyStartOffset && positionOffset <= propertyEndOffset) {
-        let pointer;
-        if (this.pointer === "") {
-          pointer = `/${propertyNameNode.value}`;
-        } else {
-          pointer = `${this.pointer}/${propertyNameNode.value}`;
+        // First check if the property key matches
+        const startOffset = key.node.offset;
+        const endOffset = startOffset + key.node.length;
+        if (offset >= startOffset && offset <= endOffset) {
+          return key;
         }
 
-        return new JsoncInstance(this.textDocument, this.root, propertyNameNode, pointer, this.annotations);
-      }
-
-      if (propertyNameNode.type === "object") {
-        const nestedInstance = new JsoncInstance(this.textDocument, this.root, propertyNameNode, this.pointer, this.annotations);
-        const nestedKey = nestedInstance.keyAtPosition(position);
-        if (nestedKey !== undefined) {
-          return nestedKey;
+        // If not, search in the property value
+        const returned = value.keyAtOffset(offset);
+        if (typeof returned.pointer !== "undefined") {
+          return returned;
         }
       }
-    }
+      return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+    } else if (this.typeOf() === "array") {
+      for (const [index, element] of this.node.children.entries()) {
+        if (!element) {
+          // Array element nodes might be undefined due to schema decompositon
+          // Just skip them
+          continue;
+        }
+        const pointer = JsonPointer.append(index, this.pointer);
+        const instance = new JsoncInstance(this.textDocument, this.root, element, pointer, this.annotations);
+        const returned = instance.keyAtOffset(offset);
+        if (typeof returned.pointer !== "undefined") {
+          return returned;
+        }
+      }
+      return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+    } else {
+      const startOffset = this.node.offset;
+      const endOffset = startOffset + this.node.length;
 
-    return undefined;
-  }  
+      if (offset >= startOffset && offset <= endOffset) {
+        // Found but not a key. Stop searching.
+        return new JsoncInstance(this.textDocument, this.root, undefined, this.pointer, this.annotations);
+      } else {
+        // Not found. Continue searching.
+        return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+      }
+    }
+  }
 }
 
 const pointerSegments = function* (pointer) {

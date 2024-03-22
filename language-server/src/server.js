@@ -138,20 +138,24 @@ connection.onHover(async (textDocumentPositionParams) => {
       continue;
     }
     const [, annotations] = await validate(dialectUri, schemaInstance);
-    const keywordNode = annotations.keyAtPosition(position);
-    const keywordDescription = keywordNode?.annotation("description")[0];
-    if (keywordNode !== undefined && hasDialect(contextDialectUri) && keywordDescription) {
-      return buildHover(MarkupKind.Markdown, keywordNode, keywordDescription);
+    const keyword = annotations.keyAtPosition(position);
+    if (keyword.typeOf() !== "undefined") {
+      // Found
+      const description = keyword.annotation("description", dialectUri).join("\n");
+      return buildHover(MarkupKind.Markdown, description, keyword.startPosition(), keyword.endPosition());
+    } else if (keyword.typeOf() === "undefined" && typeof keyword.pointer !== "undefined") {
+      // Found but not a key
+      return;
     }
   }
 });
 
-const buildHover = (kind, hoverWord, hoverContent) => {
+const buildHover = (kind, value, startPosition, endPosition) => {
   return {
-    contents: { kind, value: hoverContent },
+    contents: { kind, value },
     range: {
-      start: hoverWord.startPosition(),
-      end: hoverWord.endPosition()
+      start: startPosition,
+      end: endPosition
     }
   };
 };
