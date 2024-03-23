@@ -153,7 +153,7 @@ export class JsoncInstance {
     return instance;
   }
 
-  annotatedWith(keyword, dialectId = "https://json-schema.org/validation") {
+  annotatedWith(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
     const instances = [];
 
     const keywordId = getKeywordId(keyword, dialectId);

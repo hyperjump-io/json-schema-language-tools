@@ -16,9 +16,8 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 // Hyperjump
-import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema";
+import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
-import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
