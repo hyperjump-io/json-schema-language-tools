@@ -119,7 +119,7 @@ const getEmbeddedDialectUri = (schemaInstance, contextDialectUri) => {
   const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", contextDialectUri);
   if (legacyIdToken) {
     const legacyId = schemaInstance.step(legacyIdToken);
-    if (legacyId.typeOf() === "string" && legacyIdToken.value()[0] !== "#") {
+    if (legacyId.typeOf() === "string" && legacyId.value()[0] !== "#") {
       return contextDialectUri;
     }
   }

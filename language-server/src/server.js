@@ -389,12 +389,19 @@ connection.onCompletion((textDocumentPosition) => {
   if (currentProperty.pointer.endsWith("/$schema")) {
     return getDialectIds().map((uri) => {
       return {
-        label: uri,
+        label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
         kind: CompletionItemKind.Value
       };
     });
   }
 });
+
+const trailingHashDialects = new Set([
+  "http://json-schema.org/draft-04/schema",
+  "http://json-schema.org/draft-06/schema",
+  "http://json-schema.org/draft-07/schema"
+]);
+const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
 
 connection.listen();
 documents.listen(connection);
