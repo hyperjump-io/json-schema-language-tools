@@ -9,7 +9,8 @@ import {
   SemanticTokensBuilder,
   TextDocuments,
   TextDocumentSyncKind,
-  CompletionItemKind
+  CompletionItemKind,
+  FileChangeType
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { readFile } from "node:fs/promises";
@@ -99,11 +100,7 @@ connection.onInitialized(async () => {
       ]
     });
   } else {
-    watchWorkspace((_eventType, filename) => {
-      if (isSchema(filename)) {
-        validateWorkspace();
-      }
-    });
+    watchWorkspace(onWorkspaceChange, isSchema);
   }
 
   if (hasWorkspaceFolderCapability) {
@@ -112,18 +109,14 @@ connection.onInitialized(async () => {
       removeWorkspaceFolders(removed);
 
       if (!hasWorkspaceWatchCapability) {
-        watchWorkspace((_eventType, filename) => {
-          if (isSchema(filename)) {
-            validateWorkspace();
-          }
-        });
+        watchWorkspace(onWorkspaceChange, isSchema);
       }
 
-      await validateWorkspace();
+      await validateWorkspace({ changes: [] });
     });
   }
 
-  await validateWorkspace();
+  await validateWorkspace({ changes: [] });
 });
 
 // WORKSPACE
@@ -135,19 +128,31 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
 
   // Re/validate all schemas
-  for await (const uri of workspaceSchemas()) {
-    if (isSchema(uri)) {
-      let textDocument = documents.get(uri);
-      if (!textDocument) {
-        const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-        textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-      }
-
-      await validateSchema(textDocument);
+  for await (const uri of workspaceSchemas(isSchema)) {
+    let textDocument = documents.get(uri);
+    if (!textDocument) {
+      const instanceJson = await readFile(fileURLToPath(uri), "utf8");
+      textDocument = TextDocument.create(uri, "json", -1, instanceJson);
     }
+
+    await validateSchema(textDocument);
   }
 
   reporter.done();
+};
+
+const onWorkspaceChange = (eventType, filename) => {
+  // eventType === "rename" means file added or deleted (on most platforms?)
+  // eventType === "change" means file saved
+  // filename is not always available (when is it not available?)
+  validateWorkspace({
+    changes: [
+      {
+        uri: filename,
+        type: eventType === "change" ? FileChangeType.Changed : FileChangeType.Deleted
+      }
+    ]
+  });
 };
 
 connection.onDidChangeWatchedFiles(validateWorkspace);
@@ -205,7 +210,7 @@ connection.onDidChangeConfiguration(async (change) => {
     globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
   }
 
-  await validateWorkspace();
+  await validateWorkspace({ changes: [] });
 });
 
 documents.onDidClose(({ document }) => {

@@ -24,7 +24,7 @@ export const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-export const watchWorkspace = (handler) => {
+export const watchWorkspace = (handler, isSchema) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -33,19 +33,23 @@ export const watchWorkspace = (handler) => {
     }
 
     watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
-      handler(eventType, filename);
+      if (isSchema(filename)) {
+        handler(eventType, filename);
+      }
     });
   }
 };
 
-export const workspaceSchemas = async function* () {
+export const workspaceSchemas = async function* (isSchema) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
     for (const filename of await readdir(path, { recursive: true })) {
-      const schemaPath = resolve(path, filename);
+      if (isSchema(filename)) {
+        const schemaPath = resolve(path, filename);
 
-      yield pathToFileURL(schemaPath).toString();
+        yield pathToFileURL(schemaPath).toString();
+      }
     }
   }
 };
