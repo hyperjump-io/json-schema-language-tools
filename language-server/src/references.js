@@ -1,6 +1,9 @@
-import { contextDialectUri } from "./server.js";
+import { contextDialectUri, isSchema, workspaceUri } from "./server.js";
 import { buildDiagnostic } from "./util.js";
 import { getKeywordName } from "@hyperjump/json-schema/experimental";
+import { workspaceSchemas } from "./workspace.js";
+import { join } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
 /**
  * TODO
@@ -10,22 +13,26 @@ import { getKeywordName } from "@hyperjump/json-schema/experimental";
 
 /**
  *
- * @param {JsoncInstance} instance
- * @returns {Array<import("vscode-languageserver").Diagnostic>}
+ * @param {import("./jsonc-instance.js").JsoncInstance} instance
+ * @returns {Promise<Array<import("vscode-languageserver").Diagnostic>>}
  */
-export const validateReferences = (instance) => {
+export const validateReferences = async (instance) => {
   const diagnostics = [];
+  let baseUri;
   const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
   const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId));
   /**
    *
-   * @param {JsoncInstance} instance
+   * @param {import("./jsonc-instance.js").JsoncInstance} instance
    * @param {string} basePath
    * @returns
    */
   async function validateRefs(instance, basePath = "") {
     if (instance.typeOf() === "object") {
       for (const [key, valueInstance] of instance.entries()) {
+        if (key.value() === "$id") {
+          baseUri = valueInstance.value();
+        }
         if (
           referenceKeywordNames.includes(key.value()) && typeof valueInstance.value() === "string"
         ) {
@@ -38,17 +45,47 @@ export const validateReferences = (instance) => {
             }
             return;
           }
+          if (workspaceUri === null) {
+            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
+            return;
+          }
+          if (baseUri === undefined) {
+            const [baseRef, fragment] = ref.split("#");
+            const fullReferenceUri = pathToFileURL(join(fileURLToPath(workspaceUri), baseRef)).toString();
+            if (!isSchema(fullReferenceUri)) {
+              diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
+              return;
+            }
+            let found = false;
+            for await (const uri of workspaceSchemas()) {
+              if (uri === fullReferenceUri) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
+              return;
+            }
+            if (fragment) {
+              if (fragment.startsWith("/")) {
+                //JSON POINTER
+                return;
+              }
+            }
+            return;
+          }
         } else {
-          validateRefs(valueInstance, basePath + "/" + key.value());
+          await validateRefs(valueInstance, basePath + "/" + key.value());
         }
       }
     } else if (instance.typeOf() === "array") {
       for (const item of instance.iter()) {
-        validateRefs(item, basePath);
+        await validateRefs(item, basePath);
       }
     }
   }
-  validateRefs(instance);
+  await validateRefs(instance);
   return diagnostics;
 };
 /**

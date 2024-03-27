@@ -35,8 +35,9 @@ setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
 export let contextDialectUri;
+export let workspaceUri;
 
-const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
+export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
@@ -46,6 +47,7 @@ let hasWorkspaceWatchCapability = false;
 let hasConfigurationCapability = false;
 
 connection.onInitialize(({ capabilities, workspaceFolders }) => {
+  workspaceUri = workspaceFolders === null ? null : workspaceFolders[0].uri;
   connection.console.log("Initializing JSON Schema service ...");
   hasConfigurationCapability = !!(
     capabilities.workspace && !!capabilities.workspace.configuration
@@ -129,7 +131,6 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
   isWorkspaceLoaded = false;
 
-  // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
     if (isSchema(uri)) {
       const textDocument = documents.get(uri);
@@ -225,7 +226,7 @@ const validateSchema = async (document) => {
       }
     }
 
-    const referenceDiagnostics = validateReferences(instance);
+    const referenceDiagnostics = await validateReferences(instance);
     if (referenceDiagnostics.length > 0) {
       diagnostics.push(...referenceDiagnostics);
     }
