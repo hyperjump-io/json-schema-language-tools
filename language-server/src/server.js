@@ -31,7 +31,6 @@ import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { buildDiagnostic } from "./util.js";
-import { validateReferences } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -39,13 +38,12 @@ setShouldValidateSchema(false);
 
 export let contextDialectUri;
 export let workspaceUri;
-
+export const documents = new TextDocuments(TextDocument);
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
-const documents = new TextDocuments(TextDocument);
 
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
@@ -265,11 +263,6 @@ const validateSchema = async (textDocument) => {
       }
     }
 
-    const referenceDiagnostics = await validateReferences(instance);
-    if (referenceDiagnostics.length > 0) {
-      diagnostics.push(...referenceDiagnostics);
-    }
-
     const deprecations = annotations.annotatedWith("deprecated");
     for (const deprecated of deprecations) {
       if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
@@ -280,19 +273,6 @@ const validateSchema = async (textDocument) => {
   }
 
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-};
-
-const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
-  return {
-    severity: severity,
-    tags: tags,
-    range: {
-      start: instance.startPosition(),
-      end: instance.endPosition()
-    },
-    message: message,
-    source: "json-schema"
-  };
 };
 
 // SEMANTIC TOKENS
