@@ -6,25 +6,21 @@ import { toAbsoluteUri } from "./util.js";
 
 
 export class JsoncInstance {
-  constructor(textDocument, root, node, pointer, annotations, isOriginJson = false) {
+  /**
+   * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
+   * @param {import("jsonc-parser").Node | undefined} root
+   * @param {import("jsonc-parser").Node | undefined} node
+   * @param {string} pointer
+   * @param {*} annotations
+   */
+  constructor(textDocument, root, node, pointer, annotations) {
     this.textDocument = textDocument;
     this.root = root;
     this.node = node;
     this.pointer = pointer;
     this.annotations = annotations;
-    this.isOriginJson = isOriginJson;
   }
 
-  static fromJSON(jsonString) {
-    const textDocument = new Object();
-    textDocument.getText = () => jsonString;
-    const root = parseTree(jsonString, [], {
-      disallowComments: false,
-      allowTrailingComma: true,
-      allowEmptyContent: true
-    });
-    return new JsoncInstance(textDocument, root, root, "", {}, true);
-  }
   /**
    * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
    * @returns {JsoncInstance}
@@ -193,16 +189,10 @@ export class JsoncInstance {
   }
 
   startPosition() {
-    if (this.isOriginJson) {
-      throw new Error("method not available for json originated instance!");
-    }
     return this.textDocument.positionAt(this.node.offset);
   }
 
   endPosition() {
-    if (this.isOriginJson) {
-      throw new Error("method not available for json originated instance!");
-    }
     return this.textDocument.positionAt(this.node.offset + this.node.length);
   }
 
