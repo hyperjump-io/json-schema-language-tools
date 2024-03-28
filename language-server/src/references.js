@@ -1,21 +1,23 @@
-import { contextDialectUri, documents, isSchema, workspaceUri } from "./server.js";
-import { buildDiagnostic } from "./util.js";
-import { getKeywordName } from "@hyperjump/json-schema/experimental";
+import { documents, workspaceUri } from "./server.js";
+import { buildDiagnostic, isSchema } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
 import { join } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { JsoncInstance } from "./jsonc-instance.js";
+import { readFile } from "fs/promises";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { keywordNameFor } from "./json-schema.js";
 
 /**
  *
  * @param {JsoncInstance} instance
  * @returns {Promise<Array<import("vscode-languageserver").Diagnostic>>}
  */
-export const validateReferences = async (instance) => {
+export const validateReferences = async (instance, dialectUri) => {
   const diagnostics = [];
   let baseUri;
   const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
-  const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId));
+  const referenceKeywordNames = referenceKeywordIds.map((keywordId) => keywordNameFor(keywordId, dialectUri));
   /**
    *
    * @param {JsoncInstance} instance
@@ -63,9 +65,10 @@ export const validateReferences = async (instance) => {
               return;
             }
             if (fragment) {
-              const document = documents.get(fullReferenceUri);
+              let document = documents.get(fullReferenceUri);
               if (!document) {
-                return;
+                const instanceJson = await readFile(fileURLToPath(fullReferenceUri), "utf8");
+                document = TextDocument.create(fullReferenceUri, "json", -1, instanceJson);
               }
               const referenceInstance = JsoncInstance.fromTextDocument(document);
               if (fragment.startsWith("/")) {
@@ -74,6 +77,10 @@ export const validateReferences = async (instance) => {
                   diagnostics.push(buildDiagnostic(valueInstance, `Invalid pointer reference in the external schema: ${ref}`));
                 }
                 return;
+              }
+              //ANCHOR FRAGMENT
+              if (!isAnchor(fragment)) {
+                diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment in the external reference: ${ref}`));
               }
             }
             return;
@@ -95,6 +102,9 @@ export const validateReferences = async (instance) => {
  * @param {string} ref
  * @returns {boolean}
  */
+
+const isAnchor = RegExp.prototype.test.bind(/^[A-Za-z][A-Za-z0-9\-_,:.]*$/);
+
 const isLocalReference = (ref) => ref.startsWith("#");
 
 /**

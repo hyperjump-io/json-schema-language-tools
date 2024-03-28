@@ -27,3 +27,5 @@ export const buildDiagnostic = (
     source: "json-schema"
   };
 };
+
+export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);

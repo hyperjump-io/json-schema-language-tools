@@ -30,16 +30,16 @@ import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { buildDiagnostic } from "./util.js";
+import { buildDiagnostic, isSchema } from "./util.js";
+import { validateReferences } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
-export let contextDialectUri;
 export let workspaceUri;
 export const documents = new TextDocuments(TextDocument);
-export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
+
 
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
@@ -132,7 +132,7 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
 
   // Re/validate all schemas
-  for await (const uri of workspaceSchemas(isSchema)) {
+  for await (const uri of workspaceSchemas()) {
     let textDocument = documents.get(uri);
     if (!textDocument) {
       const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -256,7 +256,10 @@ const validateSchema = async (textDocument) => {
     }
 
     const [output, annotations] = await validate(dialectUri, schemaInstance);
-
+    const referenceDiagnostics = await validateReferences(schemaInstance, dialectUri);
+    if (referenceDiagnostics.length > 0) {
+      diagnostics.push(...referenceDiagnostics);
+    }
     if (!output.valid) {
       for await (const [instance, message] of invalidNodes(output)) {
         diagnostics.push(buildDiagnostic(instance, message));
