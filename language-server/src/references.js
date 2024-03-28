@@ -1,11 +1,9 @@
-import { documents, workspaceUri } from "./server.js";
-import { buildDiagnostic, isAnchor, isSchema } from "./util.js";
+import { workspaceUri } from "./server.js";
+import { buildDiagnostic, fetchFile, isAnchor, isSchema } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { JsoncInstance } from "./jsonc-instance.js";
-import { readFile } from "node:fs/promises";
-import { TextDocument } from "vscode-languageserver-textdocument";
 import { keywordNameFor } from "./json-schema.js";
 
 /**
@@ -102,11 +100,7 @@ export const validateReferences = async (instance, dialectUri) => {
               return;
             }
             if (fragment) {
-              let document = documents.get(fullReferenceUri);
-              if (!document) {
-                const instanceJson = await readFile(fileURLToPath(fullReferenceUri), "utf8");
-                document = TextDocument.create(fullReferenceUri, "json", -1, instanceJson);
-              }
+              const document = await fetchFile(fullReferenceUri);
               const referenceInstance = JsoncInstance.fromTextDocument(document);
               if (fragment.startsWith("/")) {
                 //JSON POINTER
@@ -141,12 +135,11 @@ export const validateReferences = async (instance, dialectUri) => {
   await validateRefs(instance);
   return diagnostics;
 };
+
 /**
  * @param {string} ref
  * @returns {boolean}
  */
-
-
 const isLocalReference = (ref) => ref.startsWith("#");
 
 /**

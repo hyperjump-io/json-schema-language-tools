@@ -13,8 +13,6 @@ import {
   FileChangeType
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 
 // Hyperjump
 import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
@@ -30,7 +28,7 @@ import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { buildDiagnostic, isSchema } from "./util.js";
+import { buildDiagnostic, fetchFile, isSchema } from "./util.js";
 import { validateReferences } from "./references.js";
 
 
@@ -133,12 +131,7 @@ const validateWorkspace = async () => {
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
-    let textDocument = documents.get(uri);
-    if (!textDocument) {
-      const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-      textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-    }
-
+    const textDocument = await fetchFile(uri);
     await validateSchema(textDocument);
   }
 
