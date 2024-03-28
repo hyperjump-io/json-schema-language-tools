@@ -1,19 +1,14 @@
-import { contextDialectUri, isSchema, workspaceUri } from "./server.js";
+import { contextDialectUri, documents, isSchema, workspaceUri } from "./server.js";
 import { buildDiagnostic } from "./util.js";
 import { getKeywordName } from "@hyperjump/json-schema/experimental";
 import { workspaceSchemas } from "./workspace.js";
 import { join } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-
-/**
- * TODO
- * - handler external references
- * - handler anchor fragments
- */
+import { JsoncInstance } from "./jsonc-instance.js";
 
 /**
  *
- * @param {import("./jsonc-instance.js").JsoncInstance} instance
+ * @param {JsoncInstance} instance
  * @returns {Promise<Array<import("vscode-languageserver").Diagnostic>>}
  */
 export const validateReferences = async (instance) => {
@@ -23,7 +18,7 @@ export const validateReferences = async (instance) => {
   const referenceKeywordNames = referenceKeywordIds.map((keywordId) => getKeywordName(contextDialectUri, keywordId));
   /**
    *
-   * @param {import("./jsonc-instance.js").JsoncInstance} instance
+   * @param {JsoncInstance} instance
    * @param {string} basePath
    * @returns
    */
@@ -39,7 +34,7 @@ export const validateReferences = async (instance) => {
           const ref = valueInstance.value();
           const isLocalRef = isLocalReference(ref);
           if (isLocalRef) {
-            const isValidRef = checkLocalReference(ref, instance);
+            const isValidRef = checkReference(ref, instance);
             if (!isValidRef) {
               diagnostics.push(buildDiagnostic(valueInstance, `Invalid reference: ${ref}`));
             }
@@ -68,8 +63,16 @@ export const validateReferences = async (instance) => {
               return;
             }
             if (fragment) {
+              const document = documents.get(fullReferenceUri);
+              if (!document) {
+                return;
+              }
+              const referenceInstance = JsoncInstance.fromTextDocument(document);
               if (fragment.startsWith("/")) {
                 //JSON POINTER
+                if (!checkReference("#" + fragment, referenceInstance)) {
+                  diagnostics.push(buildDiagnostic(valueInstance, `Invalid pointer reference in the external schema: ${ref}`));
+                }
                 return;
               }
             }
@@ -96,10 +99,10 @@ const isLocalReference = (ref) => ref.startsWith("#");
 
 /**
  * @param {string} ref
- * @param {import("./jsonc-instance.js").JsoncInstance} instance
+ * @param {JsoncInstance} instance
  * @returns {boolean}
  */
-const checkLocalReference = (ref, instance) => {
+const checkReference = (ref, instance) => {
   try {
     return instance.get(ref).node !== undefined;
   } catch (e) {

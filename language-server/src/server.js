@@ -148,7 +148,7 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 
 connection.listen();
 
-const documents = new TextDocuments(TextDocument);
+export const documents = new TextDocuments(TextDocument);
 
 // CONFIGURATION
 
