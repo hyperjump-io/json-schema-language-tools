@@ -4,7 +4,6 @@ import {
   DiagnosticSeverity,
   DiagnosticTag,
   DidChangeWatchedFilesNotification,
-  MarkupKind,
   ProposedFeatures,
   DidChangeConfigurationNotification,
   SemanticTokensBuilder,
@@ -161,8 +160,6 @@ const buildHover = (kind, value, startPosition, endPosition) => {
 };
 
 // WORKSPACE
-
-let isWorkspaceLoaded = false;
 
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
