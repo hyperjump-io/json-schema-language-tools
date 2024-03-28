@@ -85,7 +85,6 @@ const _decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {
 
     if (embeddedDialectUri) {
       const embeddedSchemaInstance = schemaInstance.asEmbedded();
-      delete schemaInstance.node.parent.children[1];
       yield* decomposeSchemaDocument(embeddedSchemaInstance, embeddedDialectUri);
     } else {
       for (const value of schemaInstance.values()) {
@@ -105,14 +104,14 @@ const getEmbeddedDialectUri = (schemaInstance, contextDialectUri) => {
   }
 
   const $schema = schemaInstance.step("$schema");
-  if ($schema?.typeOf() === "string") {
+  if ($schema.typeOf() === "string") {
     return $schema.value();
   }
 
   const idToken = keywordNameFor("https://json-schema.org/keyword/id", contextDialectUri);
   if (idToken) {
     const id = schemaInstance.step(idToken);
-    if (id?.typeOf() === "string") {
+    if (id.typeOf() === "string") {
       return contextDialectUri;
     }
   }
@@ -120,7 +119,7 @@ const getEmbeddedDialectUri = (schemaInstance, contextDialectUri) => {
   const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", contextDialectUri);
   if (legacyIdToken) {
     const legacyId = schemaInstance.step(legacyIdToken);
-    if (legacyId?.typeOf() === "string" && legacyIdToken.value()[0] !== "#") {
+    if (legacyId.typeOf() === "string" && legacyId.value()[0] !== "#") {
       return contextDialectUri;
     }
   }

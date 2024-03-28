@@ -8,6 +8,11 @@ Features:
 * Semantic highlighting of deprecated keywords
 * Full support for draft-04/06/07/2019-09/2020-12
 
+## Settings
+
+* `jsonSchemaLanguageServer.defaultDialect` -- The dialect to use if the schema
+  doesn't use `$schema` to declare the schema's dialect.
+
 ## Contributing
 
 Contributions are welcome and encouraged! If you have a feature/bug/improvement

@@ -1,4 +1,4 @@
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
+import { findNodeAtLocation, findNodeAtOffset, parseTree, getNodePath } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { find, some } from "@hyperjump/pact";
@@ -65,7 +65,7 @@ export class JsoncInstance {
 
   step(propertyName) {
     const pair = find(([key]) => key.value() === propertyName, this.entries());
-    return pair?.[1];
+    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer));
   }
 
   * entries() {
@@ -91,7 +91,7 @@ export class JsoncInstance {
       return;
     }
 
-    for (let itemIndex = 0; this.node.children[itemIndex]; itemIndex++) {
+    for (let itemIndex = 0; itemIndex < this.node.children.length; itemIndex++) {
       const itemNode = this.node.children[itemIndex];
       const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
       yield new JsoncInstance(this.textDocument, this.root, itemNode, pointer, this.annotations);
@@ -141,7 +141,17 @@ export class JsoncInstance {
   }
 
   asEmbedded() {
-    return new JsoncInstance(this.textDocument, this.node, this.node, "", {});
+    const instance = new JsoncInstance(this.textDocument, this.node, this.node, "", {});
+
+    const parent = this.node.parent;
+    const index = parent.type === "property" ? 1 : parent.children.findIndex((node) => node === this.node);
+    parent.children[index] = {
+      type: "boolean",
+      offset: this.node.offset,
+      length: 0
+    };
+
+    return instance;
   }
 
   annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
@@ -165,7 +175,7 @@ export class JsoncInstance {
     return instance;
   }
 
-  annotatedWith(keyword, dialectId = "https://json-schema.org/validation") {
+  annotatedWith(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
     const instances = [];
 
     const keywordId = getKeywordId(keyword, dialectId);
@@ -179,10 +189,7 @@ export class JsoncInstance {
   }
 
   parent() {
-    const instance = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
-    instance.node = instance.node.parent;
-
-    return instance;
+    return new JsoncInstance(this.textDocument, this.root, this.node.parent, this.pointer, this.annotations);
   }
 
   startPosition() {
@@ -201,6 +208,13 @@ export class JsoncInstance {
 
   textLength() {
     return this.node.length;
+  }
+
+  getInstanceAtPosition(position) {
+    const node = findNodeAtOffset(this.root, this.textDocument.offsetAt(position));
+    const pathToNode = getNodePath(node);
+    const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
+    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
   }
 }
 

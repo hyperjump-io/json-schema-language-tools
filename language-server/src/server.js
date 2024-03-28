@@ -8,14 +8,17 @@ import {
   DidChangeConfigurationNotification,
   SemanticTokensBuilder,
   TextDocuments,
-  TextDocumentSyncKind
+  TextDocumentSyncKind,
+  CompletionItemKind,
+  FileChangeType
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 // Hyperjump
-import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema";
-import { hasDialect, DETAILED } from "@hyperjump/json-schema/experimental";
-import "@hyperjump/json-schema/draft-2020-12";
+import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
@@ -25,7 +28,7 @@ import "@hyperjump/json-schema/draft-04";
 import { decomposeSchemaDocument, validate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
-import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace, waitUntil } from "./workspace.js";
+import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { buildDiagnostic } from "./util.js";
 import { validateReferences } from "./references.js";
@@ -42,16 +45,19 @@ export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 const connection = createConnection(ProposedFeatures.all);
 connection.console.log("Starting JSON Schema service ...");
 
+const documents = new TextDocuments(TextDocument);
+
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 let hasConfigurationCapability = false;
+let hasDidChangeConfigurationCapability = false;
 
 connection.onInitialize(({ capabilities, workspaceFolders }) => {
   workspaceUri = workspaceFolders === null ? null : workspaceFolders[0].uri;
   connection.console.log("Initializing JSON Schema service ...");
-  hasConfigurationCapability = !!(
-    capabilities.workspace && !!capabilities.workspace.configuration
-  );
+
+  hasConfigurationCapability = !!capabilities.workspace?.configuration;
+  hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
 
   if (workspaceFolders) {
     addWorkspaceFolders(workspaceFolders);
@@ -68,6 +74,10 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
       full: {
         delta: true
       }
+    },
+    completionProvider: {
+      resolveProvider: false,
+      triggerCharacters: ["\"", ":", " "]
     }
   };
 
@@ -84,7 +94,7 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
 });
 
 connection.onInitialized(async () => {
-  if (hasConfigurationCapability) {
+  if (hasDidChangeConfigurationCapability) {
     connection.client.register(DidChangeConfigurationNotification.type);
   }
 
@@ -96,11 +106,7 @@ connection.onInitialized(async () => {
       ]
     });
   } else {
-    watchWorkspace((_eventType, filename) => {
-      if (isSchema(filename)) {
-        validateWorkspace();
-      }
-    });
+    watchWorkspace(onWorkspaceChange, isSchema);
   }
 
   if (hasWorkspaceFolderCapability) {
@@ -109,46 +115,78 @@ connection.onInitialized(async () => {
       removeWorkspaceFolders(removed);
 
       if (!hasWorkspaceWatchCapability) {
-        watchWorkspace((_eventType, filename) => {
-          if (isSchema(filename)) {
-            validateWorkspace();
-          }
-        });
+        watchWorkspace(onWorkspaceChange, isSchema);
       }
 
-      await validateWorkspace();
+      await validateWorkspace({ changes: [] });
     });
   }
 
-  await validateWorkspace();
+  await validateWorkspace({ changes: [] });
 });
 
-let isWorkspaceLoaded = false;
+// WORKSPACE
+
 const validateWorkspace = async () => {
   connection.console.log("Validating workspace");
 
   const reporter = await connection.window.createWorkDoneProgress();
   reporter.begin("JSON Schema: Indexing workspace");
-  isWorkspaceLoaded = false;
 
-  for await (const uri of workspaceSchemas()) {
-    if (isSchema(uri)) {
-      const textDocument = documents.get(uri);
-      if (textDocument) {
-        await validateSchema(textDocument);
-      }
+  // Re/validate all schemas
+  for await (const uri of workspaceSchemas(isSchema)) {
+    let textDocument = documents.get(uri);
+    if (!textDocument) {
+      const instanceJson = await readFile(fileURLToPath(uri), "utf8");
+      textDocument = TextDocument.create(uri, "json", -1, instanceJson);
     }
+
+    await validateSchema(textDocument);
   }
 
-  isWorkspaceLoaded = true;
   reporter.done();
+};
+
+const onWorkspaceChange = (eventType, filename) => {
+  // eventType === "rename" means file added or deleted (on most platforms?)
+  // eventType === "change" means file saved
+  // filename is not always available (when is it not available?)
+  validateWorkspace({
+    changes: [
+      {
+        uri: filename,
+        type: eventType === "change" ? FileChangeType.Changed : FileChangeType.Deleted
+      }
+    ]
+  });
 };
 
 connection.onDidChangeWatchedFiles(validateWorkspace);
 
-connection.listen();
+// MANAGED INSTANCES
 
-export const documents = new TextDocuments(TextDocument);
+const schemaResourceCache = new Map();
+
+const getSchemaResources = async (textDocument) => {
+  let { version, schemaResources } = schemaResourceCache.get(textDocument.uri) ?? {};
+
+  if (version !== textDocument.version) {
+    const instance = JsoncInstance.fromTextDocument(textDocument);
+    const settings = await getDocumentSettings(instance.textDocument.uri);
+    const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
+    schemaResources = [...decomposeSchemaDocument(instance, contextDialectUri)];
+
+    if (textDocument.version !== -1) {
+      schemaResourceCache.set(textDocument.uri, { version: textDocument.version, schemaResources });
+    }
+  }
+
+  return schemaResources;
+};
+
+documents.onDidClose(({ document }) => {
+  schemaResourceCache.delete(document.uri);
+});
 
 // CONFIGURATION
 
@@ -171,14 +209,18 @@ async function getDocumentSettings(resource) {
   return documentSettings.get(resource);
 }
 
-connection.onDidChangeConfiguration((change) => {
+connection.onDidChangeConfiguration(async (change) => {
   if (hasConfigurationCapability) {
     documentSettings.clear();
   } else {
     globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
   }
 
-  validateWorkspace();
+  await validateWorkspace({ changes: [] });
+});
+
+documents.onDidClose(({ document }) => {
+  documentSettings.delete(document.uri);
 });
 
 // INLINE ERRORS
@@ -187,29 +229,26 @@ documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
 
   if (isSchema(document.uri)) {
-    await waitUntil(() => isWorkspaceLoaded);
     await validateSchema(document);
   }
 });
 
-const validateSchema = async (document) => {
+const validateSchema = async (textDocument) => {
+  connection.console.log(`Schema Validation: ${textDocument.uri}`);
+
   const diagnostics = [];
 
-  const settings = await getDocumentSettings(document.uri);
-  const instance = JsoncInstance.fromTextDocument(document);
-  if (instance.typeOf() === "undefined") {
-    return;
-  }
-
-  const $schema = instance.get("#/$schema");
-  contextDialectUri = $schema.value() ?? settings.defaultDialect;
-  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  const schemaResources = await getSchemaResources(textDocument);
   for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (schemaInstance.typeOf() === "undefined") {
+      continue;
+    }
+
     if (!hasDialect(dialectUri)) {
       const $schema = schemaInstance.get("#/$schema");
       if ($schema.typeOf() === "string") {
         diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
-      } else if (contextDialectUri) {
+      } else if (dialectUri) {
         diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
       } else {
         diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
@@ -240,7 +279,20 @@ const validateSchema = async (document) => {
     }
   }
 
-  connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+};
+
+const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
+  return {
+    severity: severity,
+    tags: tags,
+    range: {
+      start: instance.startPosition(),
+      end: instance.endPosition()
+    },
+    message: message,
+    source: "json-schema"
+  };
 };
 
 // SEMANTIC TOKENS
@@ -284,27 +336,22 @@ const buildSemanticTokensLegend = (capability) => {
 };
 
 const tokenBuilders = new Map();
-documents.onDidClose((event) => {
-  tokenBuilders.delete(event.document.uri);
+
+documents.onDidClose(({ document }) => {
+  tokenBuilders.delete(document.uri);
 });
 
 const getTokenBuilder = (uri) => {
-  let result = tokenBuilders.get(uri);
-  if (result !== undefined) {
-    return result;
+  if (!tokenBuilders.has(uri)) {
+    tokenBuilders.set(uri, new SemanticTokensBuilder());
   }
 
-  result = new SemanticTokensBuilder();
-  tokenBuilders.set(uri, result);
-
-  return result;
+  return tokenBuilders.get(uri);
 };
 
-const buildTokens = (builder, document, settings) => {
-  const instance = JsoncInstance.fromTextDocument(document);
-  const $schema = instance.get("#/$schema");
-  const dialectUri = $schema.value() ?? settings.defaultDialect;
-  const schemaResources = decomposeSchemaDocument(instance, dialectUri);
+const buildTokens = async (builder, uri) => {
+  const textDocument = documents.get(uri);
+  const schemaResources = await getSchemaResources(textDocument);
   for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
     const startPosition = keywordInstance.startPosition();
     builder.push(
@@ -320,32 +367,52 @@ const buildTokens = (builder, document, settings) => {
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
   connection.console.log(`semanticTokens.on: ${textDocument.uri}`);
 
-  if (isSchema(textDocument.uri)) {
-    const builder = getTokenBuilder(textDocument.uri);
-    const document = documents.get(textDocument.uri);
-    const settings = await getDocumentSettings(document.uri);
-    buildTokens(builder, document, settings);
-
-    return builder.build();
-  } else {
+  if (!isSchema(textDocument.uri)) {
     return { data: [] };
   }
+
+  const builder = getTokenBuilder(textDocument.uri);
+  await buildTokens(builder, textDocument.uri);
+
+  return builder.build();
 });
 
 connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
   connection.console.log(`semanticTokens.onDelta: ${textDocument.uri}`);
 
-  const document = documents.get(textDocument.uri);
-  const settings = await getDocumentSettings(document.uri);
-  if (document === undefined) {
-    return { edits: [] };
-  }
-
-  const builder = getTokenBuilder(document);
+  const builder = getTokenBuilder(textDocument.uri);
   builder.previousResult(previousResultId);
-  buildTokens(builder, document, settings);
+  await buildTokens(builder, textDocument.uri);
 
   return builder.buildEdits();
 });
 
+// $SCHEMA COMPLETION
+connection.onCompletion((textDocumentPosition) => {
+  const doc = documents.get(textDocumentPosition.textDocument.uri);
+  if (!doc) {
+    return [];
+  }
+
+  const instance = JsoncInstance.fromTextDocument(doc);
+
+  const currentProperty = instance.getInstanceAtPosition(textDocumentPosition.position);
+  if (currentProperty.pointer.endsWith("/$schema")) {
+    return getDialectIds().map((uri) => {
+      return {
+        label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
+        kind: CompletionItemKind.Value
+      };
+    });
+  }
+});
+
+const trailingHashDialects = new Set([
+  "http://json-schema.org/draft-04/schema",
+  "http://json-schema.org/draft-06/schema",
+  "http://json-schema.org/draft-07/schema"
+]);
+const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
+
+connection.listen();
 documents.listen(connection);

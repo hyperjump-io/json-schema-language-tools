@@ -18,5 +18,10 @@ vim.lsp.start({
   name = "hyperjump-json-schema",
   cmd = { "node", "/path/to/json-schema-language-tools/language-server/src/server.js", "--stdio" },
   root_dir = vim.fs.dirname(paths[1]),
+  -- settings = {
+  --   jsonSchemaLanguageServer = {
+  --     -- Put any settings here
+  --   }
+  -- }
 })
 ```
