@@ -22,10 +22,8 @@ const searchAnchorFragment = (dialectUri, instance, anchor) => {
   const findAnchor = (instance, basePath = "") => {
     if (instance.typeOf() === "object") {
       for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() === anchorKeywordName) {
-          if (valueInstance.value() === anchor) {
-            return true;
-          }
+        if (key.value() === anchorKeywordName && valueInstance.value() === anchor) {
+          return true;
         }
         if (findAnchor(valueInstance, `${basePath}/${key.value()}`)) {
           return true;
@@ -146,7 +144,7 @@ export const validateReferences = async (instance, dialectUri) => {
           }
           return;
         } else {
-          await validateRefs(valueInstance, basePath + "/" + key.value());
+          await validateRefs(valueInstance, `${basePath}/${key.value()}`);
         }
       }
     } else if (instance.typeOf() === "array") {
