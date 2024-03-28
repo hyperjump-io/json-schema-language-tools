@@ -1,12 +1,48 @@
 import { documents, workspaceUri } from "./server.js";
-import { buildDiagnostic, isSchema } from "./util.js";
+import { buildDiagnostic, isAnchor, isSchema } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
-import { join } from "path";
+import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { JsoncInstance } from "./jsonc-instance.js";
-import { readFile } from "fs/promises";
+import { readFile } from "node:fs/promises";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { keywordNameFor } from "./json-schema.js";
+
+/**
+ *
+ * @param {JsoncInstance} instance
+ * @param {string} anchor
+ * @returns {boolean}
+ */
+const searchAnchorFragment = (dialectUri, instance, anchor) => {
+  const anchorKeywordName = keywordNameFor("https://json-schema.org/keyword/anchor", dialectUri);
+  /**
+   * @param {JsoncInstance} instance
+   * @param {string} basePath
+   */
+  const findAnchor = (instance, basePath = "") => {
+    if (instance.typeOf() === "object") {
+      for (const [key, valueInstance] of instance.entries()) {
+        if (key.value() === anchorKeywordName) {
+          if (valueInstance.value() === anchor) {
+            return true;
+          }
+        }
+        if (findAnchor(valueInstance, `${basePath}/${key.value()}`)) {
+          return true;
+        }
+      }
+    } else if (instance.typeOf() === "array") {
+      for (const item of instance.iter()) {
+        if (findAnchor(item, basePath)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  return findAnchor(instance);
+};
 
 /**
  *
@@ -27,7 +63,7 @@ export const validateReferences = async (instance, dialectUri) => {
   async function validateRefs(instance, basePath = "") {
     if (instance.typeOf() === "object") {
       for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() === "$id") {
+        if (key.value() === keywordNameFor("https://json-schema.org/keyword/id")) {
           baseUri = valueInstance.value();
         }
         if (
@@ -80,7 +116,13 @@ export const validateReferences = async (instance, dialectUri) => {
               }
               //ANCHOR FRAGMENT
               if (!isAnchor(fragment)) {
+                diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment pattern in the external reference: ${ref}`));
+                return;
+              }
+
+              if (!searchAnchorFragment(dialectUri, referenceInstance, fragment)) {
                 diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment in the external reference: ${ref}`));
+                return;
               }
             }
             return;
@@ -103,7 +145,6 @@ export const validateReferences = async (instance, dialectUri) => {
  * @returns {boolean}
  */
 
-const isAnchor = RegExp.prototype.test.bind(/^[A-Za-z][A-Za-z0-9\-_,:.]*$/);
 
 const isLocalReference = (ref) => ref.startsWith("#");
 

@@ -29,3 +29,4 @@ export const buildDiagnostic = (
 };
 
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
+export const isAnchor = RegExp.prototype.test.bind(/^[A-Za-z][A-Za-z0-9\-_,:.]*$/);
