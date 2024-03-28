@@ -195,6 +195,61 @@ export class JsoncInstance {
     const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
     return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
   }
+
+  keyAtPosition(position) {
+    const offset = this.textDocument.offsetAt(position);
+    return this.keyAtOffset(offset);
+  }
+
+  keyAtOffset(offset) {
+    if (this.typeOf() === "object") {
+      for (const [key, value] of this.entries()) {
+        // JsoncInstance.entries() just skips properties with
+        // undefined values. So, no need to check for property
+        // value nodes that are undefined due to schema decomposition.
+
+        // First check if the property key matches
+        const startOffset = key.node.offset;
+        const endOffset = startOffset + key.node.length;
+        if (offset >= startOffset && offset <= endOffset) {
+          return key;
+        }
+
+        // If not, search in the property value
+        const returned = value.keyAtOffset(offset);
+        if (typeof returned.pointer !== "undefined") {
+          return returned;
+        }
+      }
+      return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+    } else if (this.typeOf() === "array") {
+      for (const [index, element] of this.node.children.entries()) {
+        if (!element) {
+          // Array element nodes might be undefined due to schema decompositon
+          // Just skip them
+          continue;
+        }
+        const pointer = JsonPointer.append(index, this.pointer);
+        const instance = new JsoncInstance(this.textDocument, this.root, element, pointer, this.annotations);
+        const returned = instance.keyAtOffset(offset);
+        if (typeof returned.pointer !== "undefined") {
+          return returned;
+        }
+      }
+      return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+    } else {
+      const startOffset = this.node.offset;
+      const endOffset = startOffset + this.node.length;
+
+      if (offset >= startOffset && offset <= endOffset) {
+        // Found but not a key. Stop searching.
+        return new JsoncInstance(this.textDocument, this.root, undefined, this.pointer, this.annotations);
+      } else {
+        // Not found. Continue searching.
+        return new JsoncInstance(this.textDocument, this.root, undefined, undefined, this.annotations);
+      }
+    }
+  }
 }
 
 const pointerSegments = function* (pointer) {

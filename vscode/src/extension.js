@@ -1,6 +1,6 @@
 "use strict";
 const path = require("node:path");
-const { LanguageClient, TransportKind } = require("vscode-languageclient/node.js");
+const { LanguageClient, TransportKind, MarkupKind } = require("vscode-languageclient/node.js");
 
 
 let client;
@@ -25,7 +25,14 @@ const activate = (context) => {
     documentSelector: [
       { language: "json", pattern: "**/*.schema.json" },
       { language: "json", pattern: "**/schema.json" }
-    ]
+    ],
+    capabilities: {
+      textDocument: {
+        hover: {
+          contentFormat: [MarkupKind.Markdown, MarkupKind.PlainText]
+        }
+      }
+    }
   };
 
   client = new LanguageClient("jsonSchemaLanguageServer", "JSON Schema Language Server", serverOptions, clientOptions);

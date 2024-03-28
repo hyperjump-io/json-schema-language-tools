@@ -10,7 +10,8 @@ import {
   TextDocuments,
   TextDocumentSyncKind,
   CompletionItemKind,
-  FileChangeType
+  FileChangeType,
+  MarkupKind
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { readFile } from "node:fs/promises";
@@ -72,7 +73,8 @@ connection.onInitialize(({ capabilities, workspaceFolders }) => {
     completionProvider: {
       resolveProvider: false,
       triggerCharacters: ["\"", ":", " "]
-    }
+    },
+    hoverProvider: true
   };
 
   if (hasWorkspaceFolderCapability) {
@@ -118,6 +120,44 @@ connection.onInitialized(async () => {
 
   await validateWorkspace({ changes: [] });
 });
+
+connection.onHover(async (textDocumentPositionParams) => {
+  const { textDocument: { uri: textDocumentURI }, position } = textDocumentPositionParams;
+  const document = documents.get(textDocumentURI);
+  const instance = JsoncInstance.fromTextDocument(document);
+  if (instance.typeOf() === "undefined") {
+    return;
+  }
+  const $schema = instance.get("#/$schema");
+  const contextDialectUri = $schema.value();
+
+  const schemaResources = decomposeSchemaDocument(instance, contextDialectUri);
+  for (const { dialectUri, schemaInstance } of schemaResources) {
+    if (!hasDialect(dialectUri)) {
+      continue;
+    }
+    const [, annotations] = await validate(dialectUri, schemaInstance);
+    const keyword = annotations.keyAtPosition(position);
+    if (keyword.typeOf() !== "undefined") {
+      // Found
+      const description = keyword.annotation("description", dialectUri).join("\n");
+      return buildHover(MarkupKind.Markdown, description, keyword.startPosition(), keyword.endPosition());
+    } else if (keyword.typeOf() === "undefined" && typeof keyword.pointer !== "undefined") {
+      // Found but not a key
+      return;
+    }
+  }
+});
+
+const buildHover = (kind, value, startPosition, endPosition) => {
+  return {
+    contents: { kind, value },
+    range: {
+      start: startPosition,
+      end: endPosition
+    }
+  };
+};
 
 // WORKSPACE
 
