@@ -1,7 +1,8 @@
 import { workspaceUri } from "./server.js";
-import { buildDiagnostic, fetchFile, isAnchor, isSchema } from "./util.js";
+import { buildDiagnostic, fetchFile, isAbsoluteUrl, isAnchor, isSchema } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
 import { dirname, join } from "node:path";
+import { resolve } from "node:url";
 import { fileURLToPath, pathToFileURL } from "url";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { keywordNameFor } from "./json-schema.js";
@@ -61,7 +62,7 @@ export const validateReferences = async (instance, dialectUri) => {
   async function validateRefs(instance, basePath = "") {
     if (instance.typeOf() === "object") {
       for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() === keywordNameFor("https://json-schema.org/keyword/id")) {
+        if (key.value() === keywordNameFor("https://json-schema.org/keyword/id", dialectUri)) {
           baseUri = valueInstance.value();
         }
         if (
@@ -80,18 +81,22 @@ export const validateReferences = async (instance, dialectUri) => {
             diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
             return;
           }
-          if (baseUri === undefined) {
-            const [baseRef, fragment] = ref.split("#");
-            const instanceUri = fileURLToPath(instance.textDocument.uri);
-            const fullReferenceUri = pathToFileURL(join(dirname(instanceUri), baseRef)).toString();
-            if (!isSchema(fullReferenceUri)) {
-              diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
-              return;
+          let fullReferenceUri;
+          const [baseRef, fragment] = ref.split("#");
+          const isAbsolute = isAbsoluteUrl(ref);
+          if (isAbsolute || baseUri !== undefined) {
+            if (isAbsolute) {
+              fullReferenceUri = baseRef;
+            } else {
+              fullReferenceUri = resolve(baseUri, baseRef);
             }
             let found = false;
             for await (const uri of workspaceSchemas()) {
-              if (uri === fullReferenceUri) {
+              const document = JsoncInstance.fromTextDocument(await fetchFile(uri));
+              const idNode = document.get(`#/${keywordNameFor("https://json-schema.org/keyword/id", dialectUri)}`);
+              if (idNode.node && idNode.node.value === fullReferenceUri) {
                 found = true;
+                fullReferenceUri = document.textDocument.uri;
                 break;
               }
             }
@@ -99,29 +104,47 @@ export const validateReferences = async (instance, dialectUri) => {
               diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
               return;
             }
-            if (fragment) {
-              const document = await fetchFile(fullReferenceUri);
-              const referenceInstance = JsoncInstance.fromTextDocument(document);
-              if (fragment.startsWith("/")) {
-                //JSON POINTER
-                if (!checkReference("#" + fragment, referenceInstance)) {
-                  diagnostics.push(buildDiagnostic(valueInstance, `Invalid pointer reference in the external schema: ${ref}`));
-                }
-                return;
-              }
-              //ANCHOR FRAGMENT
-              if (!isAnchor(fragment)) {
-                diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment pattern in the external reference: ${ref}`));
-                return;
-              }
-
-              if (!searchAnchorFragment(dialectUri, referenceInstance, fragment)) {
-                diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment in the external reference: ${ref}`));
-                return;
-              }
-            }
+          } else {
+            const instanceUri = fileURLToPath(instance.textDocument.uri);
+            fullReferenceUri = pathToFileURL(join(dirname(instanceUri), baseRef)).toString();
+          }
+          if (!isSchema(fullReferenceUri)) {
+            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
             return;
           }
+          let found = false;
+          for await (const uri of workspaceSchemas()) {
+            if (uri === fullReferenceUri) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
+            return;
+          }
+          if (fragment) {
+            const document = await fetchFile(fullReferenceUri);
+            const referenceInstance = JsoncInstance.fromTextDocument(document);
+            if (fragment.startsWith("/")) {
+              //JSON POINTER
+              if (!checkReference("#" + fragment, referenceInstance)) {
+                diagnostics.push(buildDiagnostic(valueInstance, `Invalid pointer reference in the external schema: ${ref}`));
+              }
+              return;
+            }
+            //ANCHOR FRAGMENT
+            if (!isAnchor(fragment)) {
+              diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment pattern in the external reference: ${ref}`));
+              return;
+            }
+
+            if (!searchAnchorFragment(dialectUri, referenceInstance, fragment)) {
+              diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment in the external reference: ${ref}`));
+              return;
+            }
+          }
+          return;
         } else {
           await validateRefs(valueInstance, basePath + "/" + key.value());
         }
