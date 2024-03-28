@@ -1,7 +1,7 @@
 import { documents, workspaceUri } from "./server.js";
 import { buildDiagnostic, isAnchor, isSchema } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { readFile } from "node:fs/promises";
@@ -84,7 +84,8 @@ export const validateReferences = async (instance, dialectUri) => {
           }
           if (baseUri === undefined) {
             const [baseRef, fragment] = ref.split("#");
-            const fullReferenceUri = pathToFileURL(join(fileURLToPath(workspaceUri), baseRef)).toString();
+            const instanceUri = fileURLToPath(instance.textDocument.uri);
+            const fullReferenceUri = pathToFileURL(join(dirname(instanceUri), baseRef)).toString();
             if (!isSchema(fullReferenceUri)) {
               diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
               return;
