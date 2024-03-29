@@ -50,7 +50,7 @@ export class JsoncInstance {
 
   step(propertyName) {
     const pair = find(([key]) => key.value() === propertyName, this.entries());
-    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer, this.annotations));
+    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer), this.annotations);
   }
 
   * entries() {
