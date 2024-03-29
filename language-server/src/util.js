@@ -45,6 +45,6 @@ export const fetchFile = async (uri) => {
   return textDocument;
 };
 
-export const isAbsoluteUrl = RegExp.prototype.test.bind(/^[A-z]:\/\/*/);
+export const isAbsoluteUrl = RegExp.prototype.test.bind(/^https?:\/\/*/);
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 export const isAnchor = RegExp.prototype.test.bind(/^[A-Za-z][A-Za-z0-9\-_,:.]*$/);
