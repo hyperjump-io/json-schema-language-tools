@@ -102,7 +102,11 @@ connection.onInitialized(async () => {
       ]
     });
   } else {
-    watchWorkspace(onWorkspaceChange, isSchema);
+    try {
+      watchWorkspace(onWorkspaceChange);
+    } catch (e) {
+      connection.console.log("Not able to watch directories, OS: linux");
+    }
   }
 
   if (hasWorkspaceFolderCapability) {

@@ -25,7 +25,7 @@ export const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-export const watchWorkspace = (handler, isSchema) => {
+export const watchWorkspace = (handler) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -33,7 +33,7 @@ export const watchWorkspace = (handler, isSchema) => {
       watchers[path].close();
     }
 
-    watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
+    watchers[path] = watch(path, { recursive: false }, (eventType, filename) => {
       if (isSchema(filename)) {
         handler(eventType, filename);
       }
