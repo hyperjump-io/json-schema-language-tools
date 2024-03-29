@@ -50,7 +50,7 @@ export class JsoncInstance {
 
   step(propertyName) {
     const pair = find(([key]) => key.value() === propertyName, this.entries());
-    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer));
+    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer, this.annotations));
   }
 
   * entries() {
@@ -190,10 +190,15 @@ export class JsoncInstance {
   }
 
   getInstanceAtPosition(position) {
-    const node = findNodeAtOffset(this.root, this.textDocument.offsetAt(position));
-    const pathToNode = getNodePath(node);
-    const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
-    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
+    const offset = this.textDocument.offsetAt(position);
+    const node = findNodeAtOffset(this.root, offset);
+    if (node) {
+      const pathToNode = getNodePath(node);
+      const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
+      return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
+    } else {
+      return new JsoncInstance(this.textDocument, this.root, undefined, "", this.annotations);
+    }
   }
 }
 
