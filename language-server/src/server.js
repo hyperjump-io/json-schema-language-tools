@@ -36,10 +36,10 @@ setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
 export let workspaceUri;
-export const documents = new TextDocuments(TextDocument);
 
 
 const connection = createConnection(ProposedFeatures.all);
+const documents = new TextDocuments(TextDocument);
 connection.console.log("Starting JSON Schema service ...");
 
 
@@ -131,7 +131,7 @@ const validateWorkspace = async () => {
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
-    const textDocument = await fetchFile(uri);
+    const textDocument = await fetchFile(documents, uri);
     await validateSchema(textDocument);
   }
 
@@ -249,7 +249,7 @@ const validateSchema = async (textDocument) => {
     }
 
     const [output, annotations] = await validate(dialectUri, schemaInstance);
-    const referenceDiagnostics = await validateReferences(schemaInstance, dialectUri);
+    const referenceDiagnostics = await validateReferences(schemaInstance, documents, dialectUri);
     if (referenceDiagnostics.length > 0) {
       diagnostics.push(...referenceDiagnostics);
     }

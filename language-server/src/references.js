@@ -44,9 +44,11 @@ const searchAnchorFragment = (dialectUri, instance, anchor) => {
 /**
  *
  * @param {JsoncInstance} instance
+ * @param {import("vscode-languageserver").TextDocuments} documents
+ * @param {string} dialectUri
  * @returns {Promise<Array<import("vscode-languageserver").Diagnostic>>}
  */
-export const validateReferences = async (instance, dialectUri) => {
+export const validateReferences = async (instance, documents, dialectUri) => {
   const diagnostics = [];
   let baseUri;
   const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
@@ -90,7 +92,7 @@ export const validateReferences = async (instance, dialectUri) => {
             }
             let found = false;
             for await (const uri of workspaceSchemas()) {
-              const document = JsoncInstance.fromTextDocument(await fetchFile(uri));
+              const document = JsoncInstance.fromTextDocument(await fetchFile(documents, uri));
               const idNode = document.get(`#/${keywordNameFor("https://json-schema.org/keyword/id", dialectUri)}`);
               if (idNode.node && idNode.node.value === fullReferenceUri) {
                 found = true;
@@ -122,7 +124,7 @@ export const validateReferences = async (instance, dialectUri) => {
             return;
           }
           if (fragment) {
-            const document = await fetchFile(fullReferenceUri);
+            const document = await fetchFile(documents, fullReferenceUri);
             const referenceInstance = JsoncInstance.fromTextDocument(document);
             if (fragment.startsWith("/")) {
               //JSON POINTER
