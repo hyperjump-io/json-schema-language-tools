@@ -46,8 +46,18 @@ export class JsoncInstance {
   }
 
   step(propertyName) {
-    const pair = find(([key]) => key.value() === propertyName, this.entries());
-    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer), this.annotations);
+    let node;
+
+    if (this.typeOf() === "object") {
+      const pair = find((pair) => getNodeValue(pair.children[0]) === propertyName, this.node.children);
+      node = pair?.children[1];
+    } else if (this.typeOf() === "array") {
+      const index = parseInt(propertyName, 10);
+      node = this.node.children[index];
+    }
+
+    const pointer = JsonPointer.append(propertyName, this.pointer);
+    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
   }
 
   * entries() {
