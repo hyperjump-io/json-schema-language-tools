@@ -2,18 +2,18 @@ import * as Browser from "@hyperjump/browser";
 import { getSchema } from "@hyperjump/json-schema/experimental";
 
 
-export const invalidNodes = async function* (outputUnit) {
-  const instance = outputUnit.instanceLocation;
-  for await (const message of toErrorMessage(outputUnit)) {
+export const invalidNodes = async function* (instance, outputUnit) {
+  for await (const message of toErrorMessage(instance, outputUnit)) {
     yield [instance, message];
   }
 
   for (const error of outputUnit.errors) {
-    yield* invalidNodes(error);
+    const errorInstance = instance.get(outputUnit.instanceLocation);
+    yield* invalidNodes(errorInstance, error);
   }
 };
 
-const toErrorMessage = async function* (outputUnit) {
+const toErrorMessage = async function* (instance, outputUnit) {
   if (outputUnit.keyword === "https://json-schema.org/keyword/additionalProperties") {
     // Skip
   } else if (outputUnit.keyword === "https://json-schema.org/keyword/allOf") {
@@ -30,8 +30,7 @@ const toErrorMessage = async function* (outputUnit) {
     const schema = await getSchema(outputUnit.absoluteKeywordLocation);
     const dependentRequired = Browser.value(schema);
 
-    const object = JSON.parse(outputUnit.instanceLocation.text);
-
+    const object = instance.value();
     for (const propertyName in dependentRequired) {
       if (propertyName in object) {
         for (const required of dependentRequired[propertyName]) {
@@ -111,8 +110,7 @@ const toErrorMessage = async function* (outputUnit) {
     const schema = await getSchema(outputUnit.absoluteKeywordLocation);
     const required = Browser.value(schema);
 
-    const object = JSON.parse(outputUnit.instanceLocation.text);
-
+    const object = instance.value();
     for (const propertyName of required) {
       if (!(propertyName in object)) {
         yield `Property ${propertyName} is required.`;

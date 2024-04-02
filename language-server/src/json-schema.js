@@ -1,74 +1,12 @@
-import {
-  compile,
-  interpret,
-  getSchema,
-  getKeywordName,
-  subscribe,
-  unsubscribe,
-  DETAILED
-} from "@hyperjump/json-schema/experimental";
+import { DETAILED, compile, getSchema, getKeywordName } from "@hyperjump/json-schema/experimental";
+import { interpret } from "@hyperjump/json-schema/annotations/experimental";
 import { toAbsoluteUri } from "./util.js";
 
 
-export const validate = async (uri, instance) => {
+export const annotate = async (uri, instance) => {
   const schema = await getSchema(uri);
   const compiled = await compile(schema);
-  return annotateInterpret(compiled, instance);
-};
-
-const annotateInterpret = ({ ast, schemaUri }, instance) => {
-  const output = [instance];
-  const subscriptionToken = subscribe("result", outputHandler(output));
-
-  try {
-    const validationResult = interpret({ ast, schemaUri }, instance, DETAILED);
-    return [validationResult, output[0]];
-  } finally {
-    unsubscribe("result", subscriptionToken);
-  }
-};
-
-const outputHandler = (output) => {
-  let isPassing = true;
-  const instanceStack = [];
-
-  return (message, resultNode) => {
-    if (message === "result.start") {
-      instanceStack.push(output[0]);
-      isPassing = true;
-    } else if (message === "result" && isPassing) {
-      output[0] = output[0].get(`#${resultNode.instanceLocation.pointer}`);
-
-      if (resultNode.valid) {
-        if (resultNode.keyword in keywordHandlers) {
-          const annotation = keywordHandlers[resultNode.keyword](resultNode.ast);
-          output[0] = output[0].annotate(resultNode.keyword, annotation);
-        }
-      } else {
-        output[0] = instanceStack[instanceStack.length - 1];
-        isPassing = false;
-      }
-    } else if (message === "result.end") {
-      instanceStack.pop();
-    }
-  };
-};
-
-const identity = (a) => a;
-
-const keywordHandlers = {
-  "https://json-schema.org/keyword/title": identity,
-  "https://json-schema.org/keyword/description": identity,
-  "https://json-schema.org/keyword/default": identity,
-  "https://json-schema.org/keyword/deprecated": identity,
-  "https://json-schema.org/keyword/readOnly": identity,
-  "https://json-schema.org/keyword/writeOnly": identity,
-  "https://json-schema.org/keyword/examples": identity,
-  "https://json-schema.org/keyword/format": identity,
-  "https://json-schema.org/keyword/contentMediaType": identity,
-  "https://json-schema.org/keyword/contentEncoding": identity,
-  "https://json-schema.org/keyword/contentSchema": identity,
-  "https://json-schema.org/keyword/unknown": identity
+  return interpret(compiled, instance, DETAILED);
 };
 
 export const decomposeSchemaDocument = function* (schemaInstance, contextDialectUri) {

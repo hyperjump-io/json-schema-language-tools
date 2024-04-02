@@ -18,14 +18,15 @@ import { fileURLToPath } from "node:url";
 
 // Hyperjump
 import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
+import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
+import { ValidationError } from "@hyperjump/json-schema/annotations/experimental";
 
 // Other
-import { decomposeSchemaDocument, validate } from "./json-schema.js";
+import { annotate, decomposeSchemaDocument } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
@@ -251,19 +252,22 @@ const validateSchema = async (textDocument) => {
       continue;
     }
 
-    const [output, annotations] = await validate(dialectUri, schemaInstance);
+    try {
+      const annotatedInstance = await annotate(dialectUri, schemaInstance);
 
-    if (!output.valid) {
-      for await (const [instance, message] of invalidNodes(output)) {
-        diagnostics.push(buildDiagnostic(instance, message));
+      for (const deprecated of annotatedInstance.annotatedWith("deprecated")) {
+        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
+          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
+          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+        }
       }
-    }
-
-    const deprecations = annotations.annotatedWith("deprecated");
-    for (const deprecated of deprecations) {
-      if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
-        const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
-        diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        for await (const [instance, message] of invalidNodes(schemaInstance, error.output)) {
+          diagnostics.push(buildDiagnostic(instance, message));
+        }
+      } else {
+        throw error;
       }
     }
   }
@@ -377,6 +381,7 @@ connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResul
 });
 
 // $SCHEMA COMPLETION
+
 connection.onCompletion((textDocumentPosition) => {
   const doc = documents.get(textDocumentPosition.textDocument.uri);
   if (!doc) {

@@ -1,8 +1,8 @@
-import { findNodeAtLocation, findNodeAtOffset, parseTree, getNodePath } from "jsonc-parser";
+import { findNodeAtOffset, parseTree, getNodePath, getNodeValue } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { find, some } from "@hyperjump/pact";
-import { toAbsoluteUri } from "./util.js";
+import { toAbsoluteUri, uriFragment } from "./util.js";
 
 
 export class JsoncInstance {
@@ -26,17 +26,14 @@ export class JsoncInstance {
   }
 
   uri() {
-    return this;
+    return `${this.textDocument.uri}#${this.pointer}`;
   }
 
   value() {
     if (this.node === undefined) {
       return undefined;
-    } else if (this.node.value === undefined) {
-      const json = this.textDocument.getText().slice(this.node.offset, this.node.offset + this.node.length);
-      return JSON.parse(json);
     } else {
-      return this.node.value;
+      return getNodeValue(this.node);
     }
   }
 
@@ -115,14 +112,15 @@ export class JsoncInstance {
     return this.node.children.length;
   }
 
-  get(uri = "") {
-    if (uri[0] !== "#") {
-      throw Error(`No JSON document found at '${toAbsoluteUri(uri)}'`);
+  get(uri) {
+    const schemaId = toAbsoluteUri(uri);
+    if (schemaId !== this.textDocument.uri && schemaId !== "") {
+      throw Error(`Not a local reference: ${uri}`);
     }
 
-    const pointer = decodeURI(uri.substring(1));
-    const node = findNodeAtLocation(this.root, [...pointerSegments(pointer)]);
-    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
+    const pointer = uriFragment(uri);
+    const node = findNodeAtPointer(this.root, [...pointerSegments(pointer)]);
+    return new JsoncInstance(this.textDocument, this.root, node, node ? pointer : "", this.annotations);
   }
 
   asEmbedded() {
@@ -218,4 +216,25 @@ const pointerSegments = function* (pointer) {
 
     yield segment.toString().replace(/~1/g, "/").replace(/~0/g, "~");
   }
+};
+
+const findNodeAtPointer = (root, path) => {
+  let node = root;
+  for (const segment of path) {
+    if (!node) {
+      return;
+    }
+
+    if (node.type === "object") {
+      const propertyNode = node.children.find((propertyNode) => propertyNode.children[0].value === segment);
+      node = propertyNode?.children[1];
+    } else if (node.type === "array") {
+      const index = parseInt(segment, 10);
+      node = node.children[index];
+    } else {
+      return;
+    }
+  }
+
+  return node;
 };

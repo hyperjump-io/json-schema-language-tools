@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { toAbsoluteIri } from "@hyperjump/uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
-import { validate } from "./json-schema.js";
+import { annotate } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -74,8 +74,13 @@ export const runTestSuite = (draft, dialectId, skip) => {
                     const instanceJson = JSON.stringify(test.data, null, "  ");
                     const textDocument = TextDocument.create(url, "json", 1, instanceJson);
                     const instance = JsoncInstance.fromTextDocument(textDocument);
-                    const [output] = await validate(url, instance);
-                    expect(output.valid).to.equal(test.valid);
+                    let isValid = true;
+                    try {
+                      await annotate(url, instance);
+                    } catch (error) {
+                      isValid = false;
+                    }
+                    expect(isValid).to.equal(test.valid);
                   });
                 }
               });
