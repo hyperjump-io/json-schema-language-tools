@@ -33,7 +33,7 @@ export const watchWorkspace = (handler) => {
       watchers[path].close();
     }
 
-    watchers[path] = watch(path, { recursive: false }, (eventType, filename) => {
+    watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
       if (isSchema(filename)) {
         handler(eventType, filename);
       }
