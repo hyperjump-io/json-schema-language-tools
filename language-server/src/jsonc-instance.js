@@ -25,6 +25,24 @@ export class JsoncInstance {
     return new JsoncInstance(textDocument, root, root, "", {});
   }
 
+  _fromNode(node, pointer) {
+    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
+  }
+
+  asEmbedded() {
+    const instance = new JsoncInstance(this.textDocument, this.node, this.node, "", {});
+
+    const parent = this.node.parent;
+    const index = parent.type === "property" ? 1 : parent.children.findIndex((node) => node === this.node);
+    parent.children[index] = {
+      type: "boolean",
+      offset: this.node.offset,
+      length: 0
+    };
+
+    return instance;
+  }
+
   uri() {
     return `${this.textDocument.uri}#${this.pointer}`;
   }
@@ -57,7 +75,7 @@ export class JsoncInstance {
     }
 
     const pointer = JsonPointer.append(propertyName, this.pointer);
-    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
+    return this._fromNode(node, pointer);
   }
 
   * entries() {
@@ -72,8 +90,8 @@ export class JsoncInstance {
       const propertyName = propertyNode.children[0].value;
       const pointer = JsonPointer.append(propertyName, this.pointer);
       yield [
-        new JsoncInstance(this.textDocument, this.root, propertyNode.children[0], pointer, this.annotations),
-        new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations)
+        this._fromNode(propertyNode.children[0], pointer),
+        this._fromNode(propertyNode.children[1], pointer)
       ];
     }
   }
@@ -86,7 +104,7 @@ export class JsoncInstance {
     for (let itemIndex = 0; itemIndex < this.node.children.length; itemIndex++) {
       const itemNode = this.node.children[itemIndex];
       const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, itemNode, pointer, this.annotations);
+      yield this._fromNode(itemNode, pointer);
     }
   }
 
@@ -98,7 +116,7 @@ export class JsoncInstance {
     for (const propertyNode of this.node.children) {
       const propertyNameNode = propertyNode.children[0];
       const pointer = JsonPointer.append(propertyNameNode.value, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, propertyNameNode, pointer, this.annotations);
+      yield this._fromNode(propertyNameNode, pointer);
     }
   }
 
@@ -110,7 +128,7 @@ export class JsoncInstance {
     for (const propertyNode of this.node.children) {
       const propertyName = propertyNode.children[0].value;
       const pointer = JsonPointer.append(propertyName, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations);
+      yield this._fromNode(propertyNode.children[1], pointer);
     }
   }
 
@@ -130,21 +148,7 @@ export class JsoncInstance {
 
     const pointer = uriFragment(uri);
     const node = findNodeAtPointer(this.root, [...pointerSegments(pointer)]);
-    return new JsoncInstance(this.textDocument, this.root, node, node ? pointer : "", this.annotations);
-  }
-
-  asEmbedded() {
-    const instance = new JsoncInstance(this.textDocument, this.node, this.node, "", {});
-
-    const parent = this.node.parent;
-    const index = parent.type === "property" ? 1 : parent.children.findIndex((node) => node === this.node);
-    parent.children[index] = {
-      type: "boolean",
-      offset: this.node.offset,
-      length: 0
-    };
-
-    return instance;
+    return this._fromNode(node, node ? pointer : "");
   }
 
   annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
@@ -182,7 +186,7 @@ export class JsoncInstance {
   }
 
   parent() {
-    return new JsoncInstance(this.textDocument, this.root, this.node.parent, this.pointer, this.annotations);
+    return this._fromNode(this.node.parent, this.pointer);
   }
 
   startPosition() {
@@ -203,9 +207,9 @@ export class JsoncInstance {
     if (node) {
       const pathToNode = getNodePath(node);
       const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
-      return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
+      return this._fromNode(node, pointer);
     } else {
-      return new JsoncInstance(this.textDocument, this.root, undefined, "", this.annotations);
+      return this._fromNode(undefined, "");
     }
   }
 }
