@@ -233,8 +233,7 @@ const validateSchema = async (textDocument) => {
 
   const diagnostics = [];
 
-  const schemaResources = await getSchemaResources(textDocument);
-  for (const { dialectUri, schemaInstance } of schemaResources) {
+  for (const { dialectUri, schemaInstance } of await getSchemaResources(textDocument)) {
     if (schemaInstance.typeOf() === "undefined") {
       continue;
     }
@@ -382,22 +381,18 @@ connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResul
 
 // $SCHEMA COMPLETION
 
-connection.onCompletion((textDocumentPosition) => {
-  const doc = documents.get(textDocumentPosition.textDocument.uri);
-  if (!doc) {
-    return [];
-  }
-
-  const instance = JsoncInstance.fromTextDocument(doc);
-
-  const currentProperty = instance.getInstanceAtPosition(textDocumentPosition.position);
-  if (currentProperty.pointer.endsWith("/$schema")) {
-    return getDialectIds().map((uri) => {
-      return {
-        label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
-        kind: CompletionItemKind.Value
-      };
-    });
+connection.onCompletion(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  for (const { schemaInstance } of await getSchemaResources(document)) {
+    const currentProperty = schemaInstance.getInstanceAtPosition(position);
+    if (currentProperty.pointer.endsWith("/$schema")) {
+      return getDialectIds().map((uri) => {
+        return {
+          label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
+          kind: CompletionItemKind.Value
+        };
+      });
+    }
   }
 });
 
