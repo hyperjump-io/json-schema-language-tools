@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "JSON Schema Language Tools",
   "type": "module",
+  "scripts": {
+    "postinstall": "cd vscode && npm install && cd ../language-server && npm install && cd .."
+  },
   "author": "Jason Desrosiers <jdesrosi@gmail.com>",
   "license": "MIT",
   "repository": "github:hyperjump-io/json-schema-language-tools",

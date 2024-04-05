@@ -1,8 +1,8 @@
-import { findNodeAtLocation, findNodeAtOffset, parseTree, getNodePath } from "jsonc-parser";
+import { findNodeAtOffset, parseTree, getNodePath, getNodeValue } from "jsonc-parser";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import { find, some } from "@hyperjump/pact";
-import { toAbsoluteUri } from "./util.js";
+import { toAbsoluteUri, uriFragment } from "./util.js";
 
 
 export class JsoncInstance {
@@ -36,103 +36,7 @@ export class JsoncInstance {
     return new JsoncInstance(textDocument, root, root, "", {});
   }
 
-  uri() {
-    return this;
-  }
-
-  value() {
-    if (this.node === undefined) {
-      return undefined;
-    } else if (this.node.value === undefined) {
-      const json = this.textDocument.getText().slice(this.node.offset, this.node.offset + this.node.length);
-      return JSON.parse(json);
-    } else {
-      return this.node.value;
-    }
-  }
-
-  has(key) {
-    return some((propertyName) => propertyName.value() === key, this.keys());
-  }
-
-  typeOf() {
-    return this.node?.type ?? "undefined";
-  }
-
-  step(propertyName) {
-    const pair = find(([key]) => key.value() === propertyName, this.entries());
-    return pair ? pair[1] : new JsoncInstance(this.textDocument, this.root, undefined, JsonPointer.append(propertyName, this.pointer));
-  }
-
-  * entries() {
-    if (this.typeOf() !== "object") {
-      return;
-    }
-
-    for (const propertyNode of this.node.children) {
-      if (!propertyNode.children[1]) {
-        continue;
-      }
-      const propertyName = propertyNode.children[0].value;
-      const pointer = JsonPointer.append(propertyName, this.pointer);
-      yield [
-        new JsoncInstance(this.textDocument, this.root, propertyNode.children[0], pointer, this.annotations),
-        new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations)
-      ];
-    }
-  }
-
-  * iter() {
-    if (this.typeOf() !== "array") {
-      return;
-    }
-
-    for (let itemIndex = 0; itemIndex < this.node.children.length; itemIndex++) {
-      const itemNode = this.node.children[itemIndex];
-      const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, itemNode, pointer, this.annotations);
-    }
-  }
-
-  * keys() {
-    if (this.typeOf() !== "object") {
-      return;
-    }
-
-    for (const propertyNode of this.node.children) {
-      const propertyNameNode = propertyNode.children[0];
-      const pointer = JsonPointer.append(propertyNameNode.value, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, propertyNameNode, pointer, this.annotations);
-    }
-  }
-
-  * values() {
-    if (this.typeOf() !== "object") {
-      return;
-    }
-
-    for (const propertyNode of this.node.children) {
-      const propertyName = propertyNode.children[0].value;
-      const pointer = JsonPointer.append(propertyName, this.pointer);
-      yield new JsoncInstance(this.textDocument, this.root, propertyNode.children[1], pointer, this.annotations);
-    }
-  }
-
-  length() {
-    if (this.typeOf() !== "array") {
-      return;
-    }
-
-    return this.node.children.length;
-  }
-
-  get(uri = "") {
-    if (uri[0] !== "#") {
-      throw Error(`No JSON document found at '${toAbsoluteUri(uri)}'`);
-    }
-
-    const pointer = decodeURI(uri.substring(1));
-    const node = findNodeAtLocation(this.root, [...pointerSegments(pointer)]);
+  _fromNode(node, pointer) {
     return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotations);
   }
 
@@ -148,6 +52,114 @@ export class JsoncInstance {
     };
 
     return instance;
+  }
+
+  uri() {
+    return `${this.textDocument.uri}#${this.pointer}`;
+  }
+
+  value() {
+    if (this.node === undefined) {
+      return undefined;
+    } else {
+      return getNodeValue(this.node);
+    }
+  }
+
+  has(key) {
+    return some((propertyName) => propertyName.value() === key, this.keys());
+  }
+
+  typeOf() {
+    return this.node?.type ?? "undefined";
+  }
+
+  step(propertyName) {
+    let node;
+
+    if (this.typeOf() === "object") {
+      const pair = find((pair) => getNodeValue(pair.children[0]) === propertyName, this.node.children);
+      node = pair?.children[1];
+    } else if (this.typeOf() === "array") {
+      const index = parseInt(propertyName, 10);
+      node = this.node.children[index];
+    }
+
+    const pointer = JsonPointer.append(propertyName, this.pointer);
+    return this._fromNode(node, pointer);
+  }
+
+  * entries() {
+    if (this.typeOf() !== "object") {
+      return;
+    }
+
+    for (const propertyNode of this.node.children) {
+      if (!propertyNode.children[1]) {
+        continue;
+      }
+      const propertyName = propertyNode.children[0].value;
+      const pointer = JsonPointer.append(propertyName, this.pointer);
+      yield [
+        this._fromNode(propertyNode.children[0], pointer),
+        this._fromNode(propertyNode.children[1], pointer)
+      ];
+    }
+  }
+
+  * iter() {
+    if (this.typeOf() !== "array") {
+      return;
+    }
+
+    for (let itemIndex = 0; itemIndex < this.node.children.length; itemIndex++) {
+      const itemNode = this.node.children[itemIndex];
+      const pointer = JsonPointer.append(`${itemIndex}`, this.pointer);
+      yield this._fromNode(itemNode, pointer);
+    }
+  }
+
+  * keys() {
+    if (this.typeOf() !== "object") {
+      return;
+    }
+
+    for (const propertyNode of this.node.children) {
+      const propertyNameNode = propertyNode.children[0];
+      const pointer = JsonPointer.append(propertyNameNode.value, this.pointer);
+      yield this._fromNode(propertyNameNode, pointer);
+    }
+  }
+
+  * values() {
+    if (this.typeOf() !== "object") {
+      return;
+    }
+
+    for (const propertyNode of this.node.children) {
+      const propertyName = propertyNode.children[0].value;
+      const pointer = JsonPointer.append(propertyName, this.pointer);
+      yield this._fromNode(propertyNode.children[1], pointer);
+    }
+  }
+
+  length() {
+    if (this.typeOf() !== "array") {
+      return;
+    }
+
+    return this.node.children.length;
+  }
+
+  get(uri) {
+    const schemaId = toAbsoluteUri(uri);
+    if (schemaId !== this.textDocument.uri && schemaId !== "") {
+      throw Error(`Not a local reference: ${uri}`);
+    }
+
+    const pointer = uriFragment(uri);
+    const node = findNodeAtPointer(this.root, [...pointerSegments(pointer)]);
+    return this._fromNode(node, node ? pointer : "");
   }
 
   annotation(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
@@ -185,7 +197,7 @@ export class JsoncInstance {
   }
 
   parent() {
-    return new JsoncInstance(this.textDocument, this.root, this.node.parent, this.pointer, this.annotations);
+    return this._fromNode(this.node.parent, this.pointer);
   }
 
   startPosition() {
@@ -201,10 +213,15 @@ export class JsoncInstance {
   }
 
   getInstanceAtPosition(position) {
-    const node = findNodeAtOffset(this.root, this.textDocument.offsetAt(position));
-    const pathToNode = getNodePath(node);
-    const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
-    return new JsoncInstance(this.textDocument, this.root, node, pointer, this.annotation);
+    const offset = this.textDocument.offsetAt(position);
+    const node = findNodeAtOffset(this.root, offset);
+    if (node) {
+      const pathToNode = getNodePath(node);
+      const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
+      return this._fromNode(node, pointer);
+    } else {
+      return this._fromNode(undefined, "");
+    }
   }
 }
 
@@ -224,4 +241,25 @@ const pointerSegments = function* (pointer) {
 
     yield segment.toString().replace(/~1/g, "/").replace(/~0/g, "~");
   }
+};
+
+const findNodeAtPointer = (root, path) => {
+  let node = root;
+  for (const segment of path) {
+    if (!node) {
+      return;
+    }
+
+    if (node.type === "object") {
+      const propertyNode = node.children.find((propertyNode) => propertyNode.children[0].value === segment);
+      node = propertyNode?.children[1];
+    } else if (node.type === "array") {
+      const index = parseInt(segment, 10);
+      node = node.children[index];
+    } else {
+      return;
+    }
+  }
+
+  return node;
 };

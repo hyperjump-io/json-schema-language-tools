@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
 
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { validate } from "./json-schema.js";
+import { annotate } from "./json-schema.js";
 import { toAbsoluteUri } from "./util.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { JsoncInstance } from "./jsonc-instance.js";
@@ -45,7 +45,7 @@ describe("Annotations", () => {
               beforeEach(async () => {
                 const instanceJson = JSON.stringify(subject.instance, null, "  ");
                 const textDocument = TextDocument.create(id, "json", 1, instanceJson);
-                [, instance] = await validate(id, JsoncInstance.fromTextDocument(textDocument));
+                instance = await annotate(id, JsoncInstance.fromTextDocument(textDocument));
               });
 
               subject.assertions.forEach((assertion) => {
