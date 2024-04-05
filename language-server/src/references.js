@@ -1,179 +1,43 @@
-import { workspaceUri } from "./server.js";
-import { buildDiagnostic, fetchFile, isAbsoluteUrl, isAnchor, isSchema } from "./util.js";
-import { workspaceSchemas } from "./workspace.js";
-import { dirname, join } from "node:path";
-import { resolve } from "node:url";
-import { fileURLToPath, pathToFileURL } from "url";
-import { JsoncInstance } from "./jsonc-instance.js";
 import { keywordNameFor } from "./json-schema.js";
 
 /**
- *
- * @param {JsoncInstance} instance
- * @param {string} anchor
- * @returns {boolean}
+ * `document uri` -> `pointer -> value`
+ * @type {Map<string, Map<string, string>}
  */
-const searchAnchorFragment = (dialectUri, instance, anchor) => {
-  const anchorKeywordName = keywordNameFor("https://json-schema.org/keyword/anchor", dialectUri);
-  /**
-   * @param {JsoncInstance} instance
-   * @param {string} basePath
-   */
-  const findAnchor = (instance, basePath = "") => {
-    if (instance.typeOf() === "object") {
-      for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() === anchorKeywordName && valueInstance.value() === anchor) {
-          return true;
-        }
-        if (findAnchor(valueInstance, `${basePath}/${key.value()}`)) {
-          return true;
-        }
-      }
-    } else if (instance.typeOf() === "array") {
-      for (const item of instance.iter()) {
-        if (findAnchor(item, basePath)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-  return findAnchor(instance);
-};
+const references = new Map();
 
 /**
- *
- * @param {JsoncInstance} instance
- * @param {import("vscode-languageserver").TextDocuments} documents
+ * @param {JsoncInstance} keywordInstance
  * @param {string} dialectUri
- * @returns {Promise<Array<import("vscode-languageserver").Diagnostic>>}
  */
-export const validateReferences = async (instance, documents, dialectUri) => {
-  const diagnostics = [];
-  let baseUri;
-  const referenceKeywordIds = ["https://json-schema.org/keyword/ref", "https://json-schema.org/keyword/draft-04/ref"];
+export const addReference = (keywordInstance, dialectUri) => {
+  const referenceKeywordIds = [
+    "https://json-schema.org/keyword/ref",
+    "https://json-schema.org/keyword/draft-04/ref"
+  ];
   const referenceKeywordNames = referenceKeywordIds.map((keywordId) => keywordNameFor(keywordId, dialectUri));
-  /**
-   *
-   * @param {JsoncInstance} instance
-   * @param {string} basePath
-   * @returns
-   */
-  async function validateRefs(instance, basePath = "") {
-    if (instance.typeOf() === "object") {
-      for (const [key, valueInstance] of instance.entries()) {
-        if (key.value() === keywordNameFor("https://json-schema.org/keyword/id", dialectUri)) {
-          baseUri = valueInstance.value();
-        }
-        if (
-          referenceKeywordNames.includes(key.value()) && typeof valueInstance.value() === "string"
-        ) {
-          const ref = valueInstance.value();
-          const isLocalRef = isLocalReference(ref);
-          if (isLocalRef) {
-            const isValidRef = checkReference(ref, instance);
-            if (!isValidRef) {
-              diagnostics.push(buildDiagnostic(valueInstance, `Invalid reference: ${ref}`));
-            }
-            return;
-          }
-          if (workspaceUri === null) {
-            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
-            return;
-          }
-          let fullReferenceUri;
-          const [baseRef, fragment] = ref.split("#");
-          const isAbsolute = isAbsoluteUrl(ref);
-          if (isAbsolute || baseUri !== undefined) {
-            if (isAbsolute) {
-              fullReferenceUri = baseRef;
-            } else {
-              fullReferenceUri = resolve(baseUri, baseRef);
-            }
-            let found = false;
-            for await (const uri of workspaceSchemas()) {
-              const document = JsoncInstance.fromTextDocument(await fetchFile(documents, uri));
-              const idNode = document.get(`#/${keywordNameFor("https://json-schema.org/keyword/id", dialectUri)}`);
-              if (idNode.node && idNode.node.value === fullReferenceUri) {
-                found = true;
-                fullReferenceUri = document.textDocument.uri;
-                break;
-              }
-            }
-            if (!found) {
-              diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
-              return;
-            }
-          } else {
-            const instanceUri = fileURLToPath(instance.textDocument.uri);
-            fullReferenceUri = pathToFileURL(join(dirname(instanceUri), baseRef)).toString();
-          }
-          if (!isSchema(fullReferenceUri)) {
-            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
-            return;
-          }
-          let found = false;
-          for await (const uri of workspaceSchemas()) {
-            if (uri === fullReferenceUri) {
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            diagnostics.push(buildDiagnostic(valueInstance, `Invalid external reference: ${ref}`));
-            return;
-          }
-          if (fragment) {
-            const document = await fetchFile(documents, fullReferenceUri);
-            const referenceInstance = JsoncInstance.fromTextDocument(document);
-            if (fragment.startsWith("/")) {
-              //JSON POINTER
-              if (!checkReference("#" + fragment, referenceInstance)) {
-                diagnostics.push(buildDiagnostic(valueInstance, `Invalid pointer reference in the external schema: ${ref}`));
-              }
-              return;
-            }
-            //ANCHOR FRAGMENT
-            if (!isAnchor(fragment)) {
-              diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment pattern in the external reference: ${ref}`));
-              return;
-            }
-
-            if (!searchAnchorFragment(dialectUri, referenceInstance, fragment)) {
-              diagnostics.push(buildDiagnostic(valueInstance, `Invalid anchor fragment in the external reference: ${ref}`));
-              return;
-            }
-          }
-          return;
-        } else {
-          await validateRefs(valueInstance, `${basePath}/${key.value()}`);
-        }
-      }
-    } else if (instance.typeOf() === "array") {
-      for (const item of instance.iter()) {
-        await validateRefs(item, basePath);
-      }
-    }
+  if (!referenceKeywordNames.includes(keywordInstance.value())) {
+    return;
   }
-  await validateRefs(instance);
-  return diagnostics;
+  if (keywordInstance?.node?.parent?.children?.length > 1) {
+    const { pointer, textDocument, node } = keywordInstance;
+
+    if (!isValidRef(pointer)) {
+      return;
+    }
+
+    if (!references.has(textDocument.uri)) {
+      references.set(textDocument.uri, new Map());
+    }
+    references.get(textDocument.uri).set(pointer, node.parent.children[1]);
+  }
 };
 
 /**
- * @param {string} ref
+ * @param {string} path
  * @returns {boolean}
  */
-const isLocalReference = (ref) => ref.startsWith("#");
-
-/**
- * @param {string} ref
- * @param {JsoncInstance} instance
- * @returns {boolean}
- */
-const checkReference = (ref, instance) => {
-  try {
-    return instance.get(ref).node !== undefined;
-  } catch (e) {
-    return false;
-  }
+const isValidRef = (path) => {
+  // verify if the keyword is actually a reference.
+  return true;
 };

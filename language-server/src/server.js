@@ -28,8 +28,10 @@ import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { buildDiagnostic, fetchFile, isSchema } from "./util.js";
-import { validateReferences } from "./references.js";
+import { buildDiagnostic, isSchema } from "./util.js";
+import { deleteFromInactiveDocumentStore, fetchDocument } from "./documents.js";
+import { addIdentifierForInstance } from "./identifiers.js";
+import { addReference } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -129,9 +131,20 @@ const validateWorkspace = async () => {
   const reporter = await connection.window.createWorkDoneProgress();
   reporter.begin("JSON Schema: Indexing workspace");
 
+  for await (const uri of workspaceSchemas()) {
+    const textDocument = await fetchDocument(documents, uri);
+    const schemaResources = await getSchemaResources(textDocument);
+    for (const { schemaInstance, dialectUri } of schemaResources) {
+      addIdentifierForInstance(schemaInstance, dialectUri);
+      for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
+        addReference(keywordInstance, dialectUri);
+      }
+    }
+  }
+
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
-    const textDocument = await fetchFile(documents, uri);
+    const textDocument = await fetchDocument(documents, uri);
     await validateSchema(textDocument);
   }
 
@@ -155,6 +168,10 @@ const onWorkspaceChange = (eventType, filename) => {
 connection.onDidChangeWatchedFiles(validateWorkspace);
 
 // MANAGED INSTANCES
+
+documents.onDidOpen(({ document }) => {
+  deleteFromInactiveDocumentStore(document.uri);
+});
 
 const schemaResourceCache = new Map();
 
@@ -249,10 +266,6 @@ const validateSchema = async (textDocument) => {
     }
 
     const [output, annotations] = await validate(dialectUri, schemaInstance);
-    const referenceDiagnostics = await validateReferences(schemaInstance, documents, dialectUri);
-    if (referenceDiagnostics.length > 0) {
-      diagnostics.push(...referenceDiagnostics);
-    }
     if (!output.valid) {
       for await (const [instance, message] of invalidNodes(output)) {
         diagnostics.push(buildDiagnostic(instance, message));

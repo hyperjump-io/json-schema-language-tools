@@ -125,6 +125,12 @@ const getEmbeddedDialectUri = (schemaInstance, contextDialectUri) => {
   }
 };
 
+/**
+ *
+ * @param {string} keywordUri
+ * @param {string} dialectUri
+ * @returns {string | undefined}
+ */
 export const keywordNameFor = (keywordUri, dialectUri) => {
   try {
     return getKeywordName(dialectUri, keywordUri);

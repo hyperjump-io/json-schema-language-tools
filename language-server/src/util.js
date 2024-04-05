@@ -1,10 +1,45 @@
 import { DiagnosticSeverity } from "vscode-languageserver";
-import { readFile } from "node:fs/promises";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { fileURLToPath } from "node:url";
+import { keywordNameFor } from "./json-schema.js";
 
 
 export const toAbsoluteUri = (uri) => uri.replace(/#.*$/, "");
+
+/**
+ * @param {import("./jsonc-instance").JsoncInstance} instance
+ * @param {Array<string>} keywordUris
+ * @param {string} dialectUri
+ */
+export const searchKeyword = (instance, keywordUris, dialectUri) => {
+  const keywords = keywordUris.map((uri) => keywordNameFor(uri, dialectUri));
+
+  /**
+   * @type {Array<import("./jsonc-instance.js").JsoncInstance>}
+   */
+  const found = [];
+
+  /**
+   *
+   * @param {import("./jsonc-instance").JsoncInstance} instance
+   * @param {string} basePath
+   */
+  const search = (instance, basePath = "") => {
+    if (instance.typeOf() === "object") {
+      for (const [key, valueInstance] of instance.entries()) {
+        if (
+          keywords.includes(key.value())
+        ) {
+          found.push(valueInstance);
+        }
+      }
+    } else if (instance.typeOf() === "array") {
+      for (const item of instance.iter()) {
+        search(item, basePath);
+      }
+    }
+  };
+  search(instance);
+  return found;
+};
 
 /**
  * @param {import("./jsonc-instance").JsoncInstance} instance
@@ -29,20 +64,6 @@ export const buildDiagnostic = (
     message,
     source: "json-schema"
   };
-};
-
-/**
- * @param {import("vscode-languageserver").TextDocuments<TextDocument>} documents
- * @param {string} uri
- * @returns {Promise<TextDocument>}
- */
-export const fetchFile = async (documents, uri) => {
-  let textDocument = documents.get(uri);
-  if (!textDocument) {
-    const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-    textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-  }
-  return textDocument;
 };
 
 export const isAbsoluteUrl = RegExp.prototype.test.bind(/^https?:\/\/*/);
