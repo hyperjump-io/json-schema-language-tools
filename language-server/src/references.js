@@ -29,7 +29,7 @@ export const addReference = (keywordInstance, dialectUri) => {
     if (!references.has(textDocument.uri)) {
       references.set(textDocument.uri, new Map());
     }
-    references.get(textDocument.uri).set(pointer, node.parent.children[1]);
+    references.get(textDocument.uri).set(pointer, node.parent.children[1].value);
   }
 };
 
