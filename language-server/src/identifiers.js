@@ -12,6 +12,16 @@ const identifiers = new Map();
  */
 const embeddedSchemaIdentifiers = new Map();
 
+export const deleteIdentifiersForDocument = (uri) => {
+  embeddedSchemaIdentifiers.delete(uri);
+  identifiers.forEach((docUri) => {
+    if (docUri === uri) {
+      identifiers.delete(docUri);
+      return;
+    }
+  });
+};
+
 /**
  * @param {import("./jsonc-instance").JsoncInstance} instance
  * @param {string} dialectUri

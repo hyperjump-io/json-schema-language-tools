@@ -31,8 +31,8 @@ import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWor
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { buildDiagnostic, isSchema } from "./util.js";
 import { deleteFromInactiveDocumentStore, fetchDocument } from "./documents.js";
-import { addIdentifierForInstance } from "./identifiers.js";
-import { addReference } from "./references.js";
+import { addIdentifierForInstance, deleteIdentifiersForDocument } from "./identifiers.js";
+import { addReference, deleteReferencesForDocument, getReferenceForDocument, validateReference } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -176,7 +176,7 @@ documents.onDidOpen(({ document }) => {
 
 const schemaResourceCache = new Map();
 
-const getSchemaResources = async (textDocument) => {
+export const getSchemaResources = async (textDocument) => {
   let { version, schemaResources } = schemaResourceCache.get(textDocument.uri) ?? {};
 
   if (version !== textDocument.version) {
@@ -247,7 +247,29 @@ const validateSchema = async (textDocument) => {
 
   const diagnostics = [];
 
-  for (const { dialectUri, schemaInstance } of await getSchemaResources(textDocument)) {
+  const schemaResources = await getSchemaResources(textDocument);
+
+  deleteIdentifiersForDocument(textDocument.uri);
+  deleteReferencesForDocument(textDocument.uri);
+
+  for (const { schemaInstance, dialectUri } of schemaResources) {
+    addIdentifierForInstance(schemaInstance, dialectUri);
+    for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
+      addReference(keywordInstance, dialectUri);
+    }
+  }
+
+  const referenceMap = getReferenceForDocument(textDocument.uri);
+  if (referenceMap !== undefined) {
+    referenceMap.forEach(async (instance, ref) => {
+      const isValid = await validateReference(documents, textDocument, ref);
+      if (!isValid) {
+        diagnostics.push(buildDiagnostic(instance, "Invalid reference"));
+      }
+    });
+  }
+
+  for (const { dialectUri, schemaInstance } of schemaResources) {
     if (schemaInstance.typeOf() === "undefined") {
       continue;
     }
