@@ -39,12 +39,13 @@ export class JsoncInstance {
       offset: this.node.offset,
       length: 0
     };
+    delete this.node.parent;
 
     return instance;
   }
 
   uri() {
-    return `${this.textDocument.uri}#${this.pointer}`;
+    return `#${this.pointer}`;
   }
 
   value() {
@@ -142,7 +143,7 @@ export class JsoncInstance {
 
   get(uri) {
     const schemaId = toAbsoluteUri(uri);
-    if (schemaId !== this.textDocument.uri && schemaId !== "") {
+    if (schemaId !== "") {
       throw Error(`Not a local reference: ${uri}`);
     }
 
@@ -204,7 +205,7 @@ export class JsoncInstance {
   getInstanceAtPosition(position) {
     const offset = this.textDocument.offsetAt(position);
     const node = findNodeAtOffset(this.root, offset);
-    if (node) {
+    if (node && node.type !== "property") {
       const pathToNode = getNodePath(node);
       const pointer = pathToNode.reduce((pointer, segment) => JsonPointer.append(segment, pointer), "");
       return this._fromNode(node, pointer);
