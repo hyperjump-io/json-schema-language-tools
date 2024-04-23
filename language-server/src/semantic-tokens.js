@@ -1,37 +1,22 @@
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
+import * as Instance from "./json-instance.js";
 import { toAbsoluteUri } from "./util.js";
 
 
-export const getSemanticTokens = (schemaResources) => {
-  const semanticTokens = allSemanticTokens(schemaResources);
-  return sortSemanticTokens(semanticTokens);
-};
-
-const allSemanticTokens = function* (schemaResources) {
-  for (const { dialectUri, schemaInstance } of schemaResources) {
-    yield* schemaHandler(schemaInstance, dialectUri);
+export const getSemanticTokens = function* (schemaDocument) {
+  for (const { schemaResource, dialectUri } of schemaDocument.schemaResources) {
+    yield* schemaHandler(schemaResource, dialectUri);
   }
 };
 
-const sortSemanticTokens = (semanticTokens) => {
-  return [...semanticTokens].sort((a, b) => {
-    const aStartPosition = a.keywordInstance.startPosition();
-    const bStartPosition = b.keywordInstance.startPosition();
-
-    return aStartPosition.line === bStartPosition.line
-      ? aStartPosition.character - bStartPosition.character
-      : aStartPosition.line - bStartPosition.line;
-  });
-};
-
-const schemaHandler = function* (schemaInstance, dialectUri) {
-  for (const [keyNode, valueNode] of schemaInstance.entries()) {
-    const keywordName = keyNode.value();
+const schemaHandler = function* (schemaResource, dialectUri) {
+  for (const [keyNode, valueNode] of Instance.entries(schemaResource)) {
+    const keywordName = Instance.value(keyNode);
     const keywordId = keywordIdFor(keywordName, dialectUri);
 
     if (keywordId) {
       if (keywordId === "https://json-schema.org/keyword/comment") {
-        yield { keywordInstance: keyNode.parent(), tokenType: "comment" };
+        yield { keywordInstance: keyNode.parent, tokenType: "comment" };
       } else if (toAbsoluteUri(keywordId) !== "https://json-schema.org/keyword/unknown") {
         yield { keywordInstance: keyNode, tokenType: "keyword" };
         yield* getKeywordHandler(keywordId)(valueNode, dialectUri);
@@ -50,14 +35,14 @@ const keywordIdFor = (keywordName, dialectUri) => {
   }
 };
 
-const schemaMapHandler = function* (schemaInstance, dialectUri) {
-  for (const schemaNode of schemaInstance.values()) {
+const schemaMapHandler = function* (schemaResource, dialectUri) {
+  for (const schemaNode of Instance.values(schemaResource)) {
     yield* schemaHandler(schemaNode, dialectUri);
   }
 };
 
-const schemaArrayHandler = function* (schemaInstance, dialectUri) {
-  for (const schemaNode of schemaInstance.iter()) {
+const schemaArrayHandler = function* (schemaResource, dialectUri) {
+  for (const schemaNode of Instance.iter(schemaResource)) {
     yield* schemaHandler(schemaNode, dialectUri);
   }
 };

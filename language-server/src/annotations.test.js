@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { annotate } from "./json-schema.js";
+import { getSchema, compile, interpret } from "@hyperjump/json-schema/experimental";
+import * as Instance from "./json-instance.js";
 import { toAbsoluteUri } from "./util.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { JsoncInstance } from "./jsonc-instance.js";
+import { parseTree } from "jsonc-parser";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,10 +29,13 @@ describe("Annotations", () => {
       suites.forEach((suite) => {
         describe(suite.title + "\n" + JSON.stringify(suite.schema, null, "  "), () => {
           let id;
+          let compiled;
 
           beforeAll(async () => {
-            id = `${host}/${encodeURIComponent(suite.title)}`;
+            id = `${host}/${encodeURI(suite.title)}`;
             registerSchema(suite.schema, id, dialectId);
+            const schema = await getSchema(id);
+            compiled = await compile(schema);
           });
 
           afterAll(() => {
@@ -42,17 +46,24 @@ describe("Annotations", () => {
             describe("Instance: " + JSON.stringify(subject.instance), () => {
               let instance;
 
-              beforeEach(async () => {
+              beforeAll(async () => {
                 const instanceJson = JSON.stringify(subject.instance, null, "  ");
                 const textDocument = TextDocument.create(id, "json", 1, instanceJson);
-                instance = await annotate(id, JsoncInstance.fromTextDocument(textDocument));
+                const json = textDocument.getText();
+                const root = parseTree(json, [], {
+                  disallowComments: false,
+                  allowTrailingComma: true,
+                  allowEmptyContent: true
+                });
+                instance = Instance.fromJsonc(root);
+                interpret(compiled, instance);
               });
 
               subject.assertions.forEach((assertion) => {
                 it(`${assertion.keyword} annotations at '${assertion.location}' should be ${JSON.stringify(assertion.expected)}`, () => {
-                  const dialect = suite.schema.$schema ? toAbsoluteUri(suite.schema.$schema) : undefined;
-                  const annotations = instance.get(assertion.location)
-                    .annotation(assertion.keyword, dialect);
+                  const dialect = suite.schema.$schema ? toAbsoluteUri(suite.schema.$schema) : dialectId;
+                  const subject = Instance.get(assertion.location, instance);
+                  const annotations = subject ? Instance.annotation(subject, assertion.keyword, dialect) : [];
                   expect(annotations).to.eql(assertion.expected);
                 });
               });

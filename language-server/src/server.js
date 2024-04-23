@@ -18,23 +18,21 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 // Hyperjump
-import { setMetaSchemaOutputFormat, setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
-import { hasDialect, DETAILED, getDialectIds } from "@hyperjump/json-schema/experimental";
-import { ValidationError } from "@hyperjump/json-schema/annotations/experimental";
+import { getDialectIds } from "@hyperjump/json-schema/experimental";
 
 // Other
-import { annotate, decomposeSchemaDocument } from "./json-schema.js";
-import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
+import { JsonSchemaDocument } from "./json-schema-document.js";
+import * as Instance from "./json-instance.js";
 
 
-setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
@@ -162,27 +160,25 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 
 // MANAGED INSTANCES
 
-const schemaResourceCache = new Map();
+const schemaDocuments = new Map();
 
-const getSchemaResources = async (textDocument) => {
-  let { version, schemaResources } = schemaResourceCache.get(textDocument.uri) ?? {};
+const getSchemaDocument = async (textDocument) => {
+  let { version, schemaDocument } = schemaDocuments.get(textDocument.uri) ?? {};
 
   if (version !== textDocument.version) {
-    const instance = JsoncInstance.fromTextDocument(textDocument);
-    const settings = await getDocumentSettings(instance.textDocument.uri);
-    const contextDialectUri = instance.get("#/$schema").value() ?? settings.defaultDialect;
-    schemaResources = [...decomposeSchemaDocument(instance, contextDialectUri)];
+    const settings = await getDocumentSettings(textDocument.uri);
+    schemaDocument = await JsonSchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
 
     if (textDocument.version !== -1) {
-      schemaResourceCache.set(textDocument.uri, { version: textDocument.version, schemaResources });
+      schemaDocuments.set(textDocument.uri, { version: textDocument.version, schemaDocument });
     }
   }
 
-  return schemaResources;
+  return schemaDocument;
 };
 
 documents.onDidClose(({ document }) => {
-  schemaResourceCache.delete(document.uri);
+  schemaDocuments.delete(document.uri);
 });
 
 // CONFIGURATION
@@ -235,54 +231,28 @@ const validateSchema = async (textDocument) => {
 
   const diagnostics = [];
 
-  for (const { dialectUri, schemaInstance } of await getSchemaResources(textDocument)) {
-    if (schemaInstance.typeOf() === "undefined") {
-      continue;
-    }
+  const schemaDocument = await getSchemaDocument(textDocument);
+  for await (const [instance, message] of invalidNodes(schemaDocument.errors)) {
+    diagnostics.push(buildDiagnostic(textDocument, instance, message));
+  }
 
-    if (!hasDialect(dialectUri)) {
-      const $schema = schemaInstance.get("#/$schema");
-      if ($schema.typeOf() === "string") {
-        diagnostics.push(buildDiagnostic($schema, "Unknown dialect"));
-      } else if (dialectUri) {
-        diagnostics.push(buildDiagnostic(schemaInstance, "Unknown dialect"));
-      } else {
-        diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
-      }
-
-      continue;
-    }
-
-    try {
-      const annotatedInstance = await annotate(dialectUri, schemaInstance);
-
-      for (const deprecated of annotatedInstance.annotatedWith("deprecated")) {
-        if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
-          const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";
-          diagnostics.push(buildDiagnostic(deprecated.parent(), message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
-        }
-      }
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        for await (const [instance, message] of invalidNodes(schemaInstance, error.output)) {
-          diagnostics.push(buildDiagnostic(instance, message));
-        }
-      } else {
-        throw error;
-      }
+  for (const deprecated of schemaDocument.annotatedWith("deprecated")) {
+    if (Instance.annotation(deprecated, "deprecated").some((deprecated) => deprecated)) {
+      const message = Instance.annotation(deprecated, "x-deprecationMessage").join("\n") || "deprecated";
+      diagnostics.push(buildDiagnostic(textDocument, deprecated.parent, message, DiagnosticSeverity.Warning, [DiagnosticTag.Deprecated]));
     }
   }
 
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 };
 
-const buildDiagnostic = (instance, message, severity = DiagnosticSeverity.Error, tags = []) => {
+const buildDiagnostic = (textDocument, node, message, severity = DiagnosticSeverity.Error, tags = []) => {
   return {
     severity: severity,
     tags: tags,
     range: {
-      start: instance.startPosition(),
-      end: instance.endPosition()
+      start: textDocument.positionAt(node.offset),
+      end: textDocument.positionAt(node.offset + node.textLength)
     },
     message: message,
     source: "json-schema"
@@ -345,17 +315,30 @@ const getTokenBuilder = (uri) => {
 
 const buildTokens = async (builder, uri) => {
   const textDocument = documents.get(uri);
-  const schemaResources = await getSchemaResources(textDocument);
-  for (const { keywordInstance, tokenType, tokenModifier } of getSemanticTokens(schemaResources)) {
-    const startPosition = keywordInstance.startPosition();
+  const schemaDocument = await getSchemaDocument(textDocument);
+  const semanticTokens = getSemanticTokens(schemaDocument);
+  for (const { keywordInstance, tokenType, tokenModifier } of sortSemanticTokens(semanticTokens, textDocument)) {
+    const startPosition = textDocument.positionAt(keywordInstance.offset);
     builder.push(
       startPosition.line,
       startPosition.character,
-      keywordInstance.textLength(),
+      keywordInstance.textLength,
       semanticTokensLegend.tokenTypes[tokenType] ?? 0,
       semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0
     );
   }
+};
+
+// VSCode requires this list to be in order. Neovim doesn't care.
+const sortSemanticTokens = (semanticTokens, textDocument) => {
+  return [...semanticTokens].sort((a, b) => {
+    const aStartPosition = textDocument.positionAt(a.keywordInstance.offset);
+    const bStartPosition = textDocument.positionAt(b.keywordInstance.offset);
+
+    return aStartPosition.line === bStartPosition.line
+      ? aStartPosition.character - bStartPosition.character
+      : aStartPosition.line - bStartPosition.line;
+  });
 };
 
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
@@ -385,16 +368,16 @@ connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResul
 
 connection.onCompletion(async ({ textDocument, position }) => {
   const document = documents.get(textDocument.uri);
-  for (const { schemaInstance } of await getSchemaResources(document)) {
-    const currentProperty = schemaInstance.getInstanceAtPosition(position);
-    if (currentProperty.pointer.endsWith("/$schema")) {
-      return getDialectIds().map((uri) => {
-        return {
-          label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
-          kind: CompletionItemKind.Value
-        };
-      });
-    }
+  const schemaDocument = await getSchemaDocument(document);
+  const offset = document.offsetAt(position);
+  const currentProperty = schemaDocument.findNodeAtOffset(offset);
+  if (currentProperty.pointer.endsWith("/$schema")) {
+    return getDialectIds().map((uri) => {
+      return {
+        label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
+        kind: CompletionItemKind.Value
+      };
+    });
   }
 });
 
@@ -407,41 +390,26 @@ const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
 
 // KEYWORD HOVER
 
-connection.onHover(async (textDocumentPositionParams) => {
-  const { textDocument: { uri: textDocumentURI }, position } = textDocumentPositionParams;
-  const document = documents.get(textDocumentURI);
-
-  const schemaResources = await getSchemaResources(document);
-  for (const { dialectUri, schemaInstance } of schemaResources) {
-    if (!hasDialect(dialectUri)) {
-      continue;
-    }
-
-    try {
-      const annotations = await annotate(dialectUri, schemaInstance);
-      const keyword = annotations.getInstanceAtPosition(position);
-      if (keyword.typeOf() !== "undefined") {
-        // Found
-        const description = keyword.annotation("description", dialectUri).join("\n");
-        return buildHover(MarkupKind.Markdown, description, keyword.startPosition(), keyword.endPosition());
+connection.onHover(async ({ textDocument, position }) => {
+  const document = documents.get(textDocument.uri);
+  const schemaDocument = await getSchemaDocument(document);
+  const offset = document.offsetAt(position);
+  const keyword = schemaDocument.findNodeAtOffset(offset);
+  if (keyword?.parent && Instance.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
+    // This is a little wierd because the we want to hover for the keyword, but
+    // the annotation is actually on the value not the keyword itself.
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value: Instance.annotation(keyword.parent.children[1], "description").join("\n")
+      },
+      range: {
+        start: document.positionAt(keyword.offset),
+        end: document.positionAt(keyword.offset + keyword.textLength)
       }
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return null;
-      }
-    }
+    };
   }
 });
-
-const buildHover = (kind, value, startPosition, endPosition) => {
-  return {
-    contents: { kind, value },
-    range: {
-      start: startPosition,
-      end: endPosition
-    }
-  };
-};
 
 connection.listen();
 documents.listen(connection);

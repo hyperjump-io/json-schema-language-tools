@@ -1,36 +1,32 @@
 import * as Browser from "@hyperjump/browser";
-import { getSchema } from "@hyperjump/json-schema/experimental";
 
 
-export const invalidNodes = async function* (instance, outputUnit) {
-  for await (const message of toErrorMessage(instance, outputUnit)) {
-    yield [instance, message];
-  }
-
-  for (const error of outputUnit.errors) {
-    const errorInstance = instance.get(outputUnit.instanceLocation);
-    yield* invalidNodes(errorInstance, error);
+export const invalidNodes = async function* (errors) {
+  for (const error of errors) {
+    for await (const message of toErrorMessage(error)) {
+      yield [error.instanceNode, message];
+    }
   }
 };
 
-const toErrorMessage = async function* (instance, outputUnit) {
-  if (outputUnit.keyword === "https://json-schema.org/keyword/additionalProperties") {
+const toErrorMessage = async function* (error) {
+  if (error.keyword === "https://json-schema.org/keyword/schema") {
+    yield error.message;
+  } else if (error.keyword === "https://json-schema.org/keyword/additionalProperties") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/allOf") {
+  } else if (error.keyword === "https://json-schema.org/keyword/allOf") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/anyOf") {
+  } else if (error.keyword === "https://json-schema.org/keyword/anyOf") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/const") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const constValue = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/const") {
+    const constValue = Browser.value(error.keywordNode);
     yield `Expected : ${JSON.stringify(constValue)}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/contains") {
+  } else if (error.keyword === "https://json-schema.org/keyword/contains") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/dependentRequired") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const dependentRequired = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/dependentRequired") {
+    const dependentRequired = Browser.value(error.keywordNode);
 
-    const object = instance.value();
+    const object = error.instanceNode.value();
     for (const propertyName in dependentRequired) {
       if (propertyName in object) {
         for (const required of dependentRequired[propertyName]) {
@@ -40,98 +36,83 @@ const toErrorMessage = async function* (instance, outputUnit) {
         }
       }
     }
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/dynamicRef") {
+  } else if (error.keyword === "https://json-schema.org/keyword/dynamicRef") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/draft-2020-12/dynamicRef") {
+  } else if (error.keyword === "https://json-schema.org/keyword/draft-2020-12/dynamicRef") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/enum") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const enumValue = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/enum") {
+    const enumValue = Browser.value(error.keywordNode);
     yield `Expected one of: ${enumValue.map((value) => JSON.stringify(value, null, "  ")).join(", ")}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const exclusiveMaximum = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
+    const exclusiveMaximum = Browser.value(error.keywordNode);
     yield `Must be less than ${exclusiveMaximum}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/exclusiveMinimum") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const exclusiveMinimum = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/exclusiveMinimum") {
+    const exclusiveMinimum = Browser.value(error.keywordNode);
     yield `Must be greater than ${exclusiveMinimum}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/items") {
+  } else if (error.keyword === "https://json-schema.org/keyword/items") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/maxItems") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const maxItems = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/maxItems") {
+    const maxItems = Browser.value(error.keywordNode);
     yield `Too many items. A maximum of ${maxItems} are allowed.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/maxLength") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const maxLength = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/maxLength") {
+    const maxLength = Browser.value(error.keywordNode);
     yield `A maximum of ${maxLength} characters are allowed.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/maxProperties") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const maxProperties = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/maxProperties") {
+    const maxProperties = Browser.value(error.keywordNode);
     yield `A maximum of ${maxProperties} properties are allowed.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/maximum") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const maximum = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/maximum") {
+    const maximum = Browser.value(error.keywordNode);
     yield `Must be less than or equal to ${maximum}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/minItems") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const minItems = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/minItems") {
+    const minItems = Browser.value(error.keywordNode);
     yield `A minimum of ${minItems} are required.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/minLength") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const minLength = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/minLength") {
+    const minLength = Browser.value(error.keywordNode);
     yield `A minimum of ${minLength} characters are required.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/minProperties") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const minProperties = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/minProperties") {
+    const minProperties = Browser.value(error.keywordNode);
     yield `A minimum of ${minProperties} properties are required.`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/minimum") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const minimum = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/minimum") {
+    const minimum = Browser.value(error.keywordNode);
     yield `Must be greater than or equal to ${minimum}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/multipleOf") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const multipleOf = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/multipleOf") {
+    const multipleOf = Browser.value(error.keywordNode);
     yield `Must be a multiple of ${multipleOf}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/pattern") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const pattern = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/pattern") {
+    const pattern = Browser.value(error.keywordNode);
     yield `Must match the pattern /${pattern.replace("/", "\\/")}/`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/prefixItems") {
+  } else if (error.keyword === "https://json-schema.org/keyword/prefixItems") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/properties") {
+  } else if (error.keyword === "https://json-schema.org/keyword/properties") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/propertyNames") {
+  } else if (error.keyword === "https://json-schema.org/keyword/propertyNames") {
     yield `Object contains invalid property names`;
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/ref") {
+  } else if (error.keyword === "https://json-schema.org/keyword/ref") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/required") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const required = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/required") {
+    const required = Browser.value(error.keywordNode);
 
-    const object = instance.value();
+    const object = error.instanceNode.value();
     for (const propertyName of required) {
       if (!(propertyName in object)) {
         yield `Property ${propertyName} is required.`;
       }
     }
-  } else if (outputUnit.keyword === "https://json-schema.org/keyword/type") {
-    const schema = await getSchema(outputUnit.absoluteKeywordLocation);
-    const type = Browser.value(schema);
+  } else if (error.keyword === "https://json-schema.org/keyword/type") {
+    const type = Browser.value(error.keywordNode);
     yield `Expected a(n) ${type}`;
-  } else if (outputUnit.keyword === "https://json-schema.org/evaluation/unevaluatedItems") {
+  } else if (error.keyword === "https://json-schema.org/evaluation/unevaluatedItems") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/evaluation/unevaluatedProperties") {
+  } else if (error.keyword === "https://json-schema.org/evaluation/unevaluatedProperties") {
     // Skip
-  } else if (outputUnit.keyword === "https://json-schema.org/evaluation/uniqueItems") {
+  } else if (error.keyword === "https://json-schema.org/evaluation/uniqueItems") {
     yield `All items must be unique`;
-  } else if (outputUnit.keyword === "https://json-schema.org/evaluation/validate") {
-    if (outputUnit.errors.length === 0) {
+  } else if (error.keyword === "https://json-schema.org/evaluation/validate") {
+    if (Browser.value(error.keywordNode) === false) {
       yield `No value allowed`;
     }
   } else {
-    const keyword = outputUnit.absoluteKeywordLocation.split("/").pop();
+    const keyword = error.keywordNode.cursor.split("/").pop();
     yield `Fails JSON Schema constraint '${keyword}'`;
   }
 };

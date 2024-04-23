@@ -2,9 +2,10 @@ import fs from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { toAbsoluteIri } from "@hyperjump/uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
-import { annotate } from "./json-schema.js";
-import { JsoncInstance } from "./jsonc-instance.js";
+import { getSchema, compile, interpret } from "@hyperjump/json-schema/experimental";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { parseTree } from "jsonc-parser";
+import * as Instance from "./json-instance.js";
 
 
 const shouldSkip = (skip, path) => {
@@ -53,13 +54,16 @@ export const runTestSuite = (draft, dialectId, skip) => {
           suites.forEach((suite) => {
             describe(suite.description, () => {
               let url;
+              let compiled;
 
-              beforeAll(() => {
+              beforeAll(async () => {
                 if (shouldSkip(skip, [draft, entry.name, suite.description])) {
                   return;
                 }
-                url = `http://${draft}-test-suite.json-schema.org/${encodeURIComponent(suite.description)}`;
+                url = `http://${draft}-test-suite.json-schema.org/${encodeURI(suite.description)}`;
                 registerSchema(suite.schema, url, dialectId);
+                const schema = await getSchema(url);
+                compiled = await compile(schema);
               });
 
               afterAll(() => {
@@ -73,14 +77,15 @@ export const runTestSuite = (draft, dialectId, skip) => {
                   it(test.description, async () => {
                     const instanceJson = JSON.stringify(test.data, null, "  ");
                     const textDocument = TextDocument.create(url, "json", 1, instanceJson);
-                    const instance = JsoncInstance.fromTextDocument(textDocument);
-                    let isValid = true;
-                    try {
-                      await annotate(url, instance);
-                    } catch (error) {
-                      isValid = false;
-                    }
-                    expect(isValid).to.equal(test.valid);
+                    const json = textDocument.getText();
+                    const root = parseTree(json, [], {
+                      disallowComments: false,
+                      allowTrailingComma: true,
+                      allowEmptyContent: true
+                    });
+                    const instance = Instance.fromJsonc(root);
+                    const output = interpret(compiled, instance);
+                    expect(output.valid).to.equal(test.valid);
                   });
                 }
               });
