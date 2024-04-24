@@ -27,7 +27,6 @@ export const buildDiagnostic = (
 
 export const isAbsoluteUrl = RegExp.prototype.test.bind(/^https?:\/\/*/);
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
-export const isAnchor = RegExp.prototype.test.bind(/^[A-Za-z][A-Za-z0-9\-_,:.]*$/);
 export const toAbsoluteUri = (uri) => {
   const position = uri.indexOf("#");
   return position === -1 ? uri : uri.slice(0, position);

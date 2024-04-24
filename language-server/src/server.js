@@ -31,8 +31,7 @@ import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWor
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { buildDiagnostic, isSchema } from "./util.js";
 import { deleteFromInactiveDocumentStore, fetchDocument } from "./documents.js";
-import { addIdentifierForInstance, deleteIdentifiersForDocument } from "./identifiers.js";
-import { addReference, deleteReferencesForDocument, getReferenceForDocument, validateReference } from "./references.js";
+import { findRef, validateReference } from "./references.js";
 
 
 setMetaSchemaOutputFormat(DETAILED);
@@ -131,17 +130,6 @@ const validateWorkspace = async () => {
 
   const reporter = await connection.window.createWorkDoneProgress();
   reporter.begin("JSON Schema: Indexing workspace");
-
-  for await (const uri of workspaceSchemas()) {
-    const textDocument = await fetchDocument(documents, uri);
-    const schemaResources = await getSchemaResources(textDocument);
-    for (const { schemaInstance, dialectUri } of schemaResources) {
-      addIdentifierForInstance(schemaInstance, dialectUri);
-      for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
-        addReference(keywordInstance, dialectUri);
-      }
-    }
-  }
 
   // Re/validate all schemas
   for await (const uri of workspaceSchemas()) {
@@ -249,26 +237,6 @@ const validateSchema = async (textDocument) => {
 
   const schemaResources = await getSchemaResources(textDocument);
 
-  deleteIdentifiersForDocument(textDocument.uri);
-  deleteReferencesForDocument(textDocument.uri);
-
-  for (const { schemaInstance, dialectUri } of schemaResources) {
-    addIdentifierForInstance(schemaInstance, dialectUri);
-    for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
-      addReference(keywordInstance, dialectUri);
-    }
-  }
-
-  const referenceMap = getReferenceForDocument(textDocument.uri);
-  if (referenceMap !== undefined) {
-    referenceMap.forEach(async (instance, ref) => {
-      const isValid = await validateReference(documents, textDocument, ref);
-      if (!isValid) {
-        diagnostics.push(buildDiagnostic(instance, "Invalid reference"));
-      }
-    });
-  }
-
   for (const { dialectUri, schemaInstance } of schemaResources) {
     if (schemaInstance.typeOf() === "undefined") {
       continue;
@@ -283,13 +251,26 @@ const validateSchema = async (textDocument) => {
       } else {
         diagnostics.push(buildDiagnostic(schemaInstance, "No dialect"));
       }
-
       continue;
     }
 
     try {
       const annotatedInstance = await annotate(dialectUri, schemaInstance);
 
+      const references = [];
+      for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
+        const found = findRef(keywordInstance, dialectUri);
+        if (typeof found !== "undefined") {
+          references.push(found);
+        }
+      }
+      for (const ref of references) {
+        const output = await validateReference(documents, textDocument, ref);
+        if (!output.valid) {
+          const instance = JsoncInstance.fromTextDocument(textDocument).get("#" + ref);
+          diagnostics.push(buildDiagnostic(instance, output.message));
+        }
+      }
       for (const deprecated of annotatedInstance.annotatedWith("deprecated")) {
         if (deprecated.annotation("deprecated").some((deprecated) => deprecated)) {
           const message = deprecated.annotation("x-deprecationMessage").join("\n") || "deprecated";

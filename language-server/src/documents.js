@@ -31,6 +31,13 @@ export const fetchDocument = async (documents, uri) => {
 };
 
 /**
+ * @param {import("vscode-languageserver").TextDocuments<TextDocument>} documents
+ */
+export const doesDocumentExist = (documents, uri) => {
+  return documents.keys().includes(uri) || inactiveDocumentStore.has(uri);
+};
+
+/**
  * @param {string} uri
  */
 export const deleteFromInactiveDocumentStore = (uri) => {
