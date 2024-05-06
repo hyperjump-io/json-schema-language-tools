@@ -43,7 +43,7 @@ export class JsonSchemaDocument {
           } else {
             document.errors.push({
               keyword: "https://json-schema.org/keyword/schema",
-              instanceLocation: schemaResource,
+              instanceNode: schemaResource,
               message: "No dialect"
             });
           }
