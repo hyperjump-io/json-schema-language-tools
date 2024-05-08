@@ -1,5 +1,20 @@
 import * as Browser from "@hyperjump/browser";
+import { subscribe } from "../pubsub.js";
 
+
+export default {
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
+    subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
+      for await (const [instance, message] of invalidNodes(schemaDocument.errors)) {
+        diagnostics.push({ instance, message });
+      }
+    });
+  }
+};
 
 export const invalidNodes = async function* (errors) {
   for (const error of errors) {
