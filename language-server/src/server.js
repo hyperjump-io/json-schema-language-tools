@@ -121,8 +121,6 @@ connection.onInitialized(async () => {
 // WORKSPACE
 
 const validateWorkspace = async () => {
-  connection.console.log("Validating workspace");
-
   const reporter = await connection.window.createWorkDoneProgress();
   reporter.begin("JSON Schema: Indexing workspace");
 
@@ -217,8 +215,6 @@ documents.onDidClose(({ document }) => {
 // INLINE ERRORS
 
 documents.onDidChangeContent(async ({ document }) => {
-  connection.console.log(`Schema changed: ${document.uri}`);
-
   if (isSchema(document.uri)) {
     await validateSchema(document);
   }
@@ -340,8 +336,6 @@ const sortSemanticTokens = (semanticTokens, textDocument) => {
 };
 
 connection.languages.semanticTokens.on(async ({ textDocument }) => {
-  connection.console.log(`semanticTokens.on: ${textDocument.uri}`);
-
   if (!isSchema(textDocument.uri)) {
     return { data: [] };
   }
@@ -353,8 +347,6 @@ connection.languages.semanticTokens.on(async ({ textDocument }) => {
 });
 
 connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
-  connection.console.log(`semanticTokens.onDelta: ${textDocument.uri}`);
-
   const builder = getTokenBuilder(textDocument.uri);
   builder.previousResult(previousResultId);
   await buildTokens(builder, textDocument.uri);
@@ -393,9 +385,10 @@ connection.onHover(async ({ textDocument, position }) => {
   const schemaDocument = await getSchemaDocument(document);
   const offset = document.offsetAt(position);
   const keyword = schemaDocument.findNodeAtOffset(offset);
-  if (keyword?.parent && Instance.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
-    // This is a little wierd because the we want to hover for the keyword, but
-    // the annotation is actually on the value not the keyword itself.
+
+  // This is a little wierd because we want the hover to be on the keyword, but
+  // the annotation is actually on the value not the keyword.
+  if (keyword.parent && Instance.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
     return {
       contents: {
         kind: MarkupKind.Markdown,
