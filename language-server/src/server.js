@@ -18,7 +18,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 // Hyperjump
-import { setShouldValidateSchema } from "@hyperjump/json-schema/draft-2020-12";
+import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
@@ -32,8 +32,6 @@ import { getSemanticTokens } from "./semantic-tokens.js";
 import { JsonSchemaDocument } from "./json-schema-document.js";
 import * as Instance from "./json-instance.js";
 
-
-setShouldValidateSchema(false);
 
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
