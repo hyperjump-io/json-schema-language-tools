@@ -267,7 +267,10 @@ const validateSchema = async (textDocument) => {
       for (const ref of references) {
         const output = await validateReference(documents, textDocument, ref);
         if (!output.valid) {
-          const instance = JsoncInstance.fromTextDocument(textDocument).get("#" + ref);
+          const instance = schemaInstance.get("#" + ref);
+          if (instance.value() === undefined) {
+            continue;
+          }
           diagnostics.push(buildDiagnostic(instance, output.message));
         }
       }
