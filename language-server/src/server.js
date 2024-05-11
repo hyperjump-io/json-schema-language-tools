@@ -37,7 +37,7 @@ import { findRef, validateReference } from "./references.js";
 setMetaSchemaOutputFormat(DETAILED);
 setShouldValidateSchema(false);
 
-export let workspaceUri;
+let workspaceUri;
 
 
 const connection = createConnection(ProposedFeatures.all);
@@ -160,7 +160,7 @@ connection.onDidChangeWatchedFiles(validateWorkspace);
 
 const schemaResourceCache = new Map();
 
-export const getSchemaResources = async (textDocument) => {
+const getSchemaResources = async (textDocument) => {
   let { version, schemaResources } = schemaResourceCache.get(textDocument.uri) ?? {};
 
   if (version !== textDocument.version) {
@@ -261,7 +261,7 @@ const validateSchema = async (textDocument) => {
         }
       }
       for (const ref of references) {
-        const output = await validateReference(documents, textDocument, ref);
+        const output = await validateReference(workspaceUri, documents, textDocument, ref, getSchemaResources);
         if (!output.valid) {
           const instance = schemaInstance.get("#" + ref);
           if (instance.value() === undefined) {

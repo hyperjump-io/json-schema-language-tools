@@ -2,7 +2,6 @@ import { doesDocumentExists, fetchDocument } from "./documents.js";
 import { keywordNameFor } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { getSchemaResources, workspaceUri } from "./server.js";
 import { isAbsoluteUrl } from "./util.js";
 import { workspaceSchemas } from "./workspace.js";
 import { dirname, join } from "node:path";
@@ -38,7 +37,7 @@ export const findRef = (keywordInstance, dialectUri) => {
  * @param {import("vscode-languageserver-textdocument").TextDocument} document
  * @param {string} pointer
  */
-export const validateReference = async (documents, document, pointer) => {
+export const validateReference = async (workspaceUri, documents, document, pointer, getSchemaResources) => {
   const documentJsonInstance = JsoncInstance.fromTextDocument(document);
   const valueInstance = documentJsonInstance.get("#" + pointer);
   const ref = valueInstance.value();
@@ -48,7 +47,7 @@ export const validateReference = async (documents, document, pointer) => {
    */
   let documentInstance = documentJsonInstance;
   if (!ref.startsWith("#")) {
-    documentInstance = await getReferencedInstance(documents, document, baseUrl);
+    documentInstance = await getReferencedInstance(workspaceUri, documents, document, baseUrl, getSchemaResources);
   }
   if (documentInstance === null) {
     return { valid: false, message: "Invalid external reference" };
@@ -59,7 +58,7 @@ export const validateReference = async (documents, document, pointer) => {
     }
   }
   if (anchorFragment !== null) {
-    if (!await searchAnchorFragment(documentInstance.textDocument, anchorFragment)) {
+    if (!await searchAnchorFragment(documentInstance.textDocument, anchorFragment, getSchemaResources)) {
       return { valid: false, message: `Invalid anchor fragment: ${anchorFragment}` };
     }
   }
@@ -71,7 +70,7 @@ export const validateReference = async (documents, document, pointer) => {
  * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
  * @returns {AsyncGenerator<{instance: import("./jsonc-instance.js").JsoncInstance, isEmbedded: boolean}>}
  */
-const getIdentifiers = async function* (textDocument) {
+const getIdentifiers = async function* (textDocument, getSchemaResources) {
   for (const { dialectUri, schemaInstance } of await getSchemaResources(textDocument)) {
     const idKeywordName = keywordNameFor("https://json-schema.org/keyword/id", dialectUri);
     const idInstance = schemaInstance.step(idKeywordName);
@@ -86,10 +85,10 @@ const getIdentifiers = async function* (textDocument) {
  * @param {string} identifier
  * @returns {Promise<JsoncInstance | null>}
  */
-const findInstanceForAbsoluteIdentfier = async (documents, identifier) => {
+const findInstanceForAbsoluteIdentfier = async (documents, identifier, getSchemaResources) => {
   for await (const documentUri of workspaceSchemas()) {
     const textDocument = await fetchDocument(documents, documentUri);
-    for await (const { instance, isEmbedded } of getIdentifiers(textDocument)) {
+    for await (const { instance, isEmbedded } of getIdentifiers(textDocument, getSchemaResources)) {
       if (!isEmbedded && instance.value() === identifier) {
         return instance;
       }
@@ -102,10 +101,11 @@ const findInstanceForAbsoluteIdentfier = async (documents, identifier) => {
  * @param {import("vscode-languageserver").TextDocuments} documents
  * @param {import("vscode-languageserver-textdocument").TextDocument} document
  * @param {string} refWithoutFragment
+ * @param {(textDocument: import("vscode-languageserver-textdocument").TextDocument) => void} getSchemaResources
  * @returns {Promise<JsoncInstance | null>}
 */
-const getReferencedInstance = async (documents, document, refWithoutFragment) => {
-  for await (const { instance } of getIdentifiers(document)) {
+const getReferencedInstance = async (workspaceUri, documents, document, refWithoutFragment, getSchemaResources) => {
+  for await (const { instance } of getIdentifiers(document, getSchemaResources)) {
     if (instance.value() === refWithoutFragment) {
       return instance;
     }
@@ -114,7 +114,7 @@ const getReferencedInstance = async (documents, document, refWithoutFragment) =>
     return null;
   }
   if (isAbsoluteUrl(refWithoutFragment)) {
-    return await findInstanceForAbsoluteIdentfier(documents, refWithoutFragment);
+    return await findInstanceForAbsoluteIdentfier(documents, refWithoutFragment, getSchemaResources);
   }
 
 
@@ -127,7 +127,7 @@ const getReferencedInstance = async (documents, document, refWithoutFragment) =>
   const baseUri = jsonInstance.get(`#/${idKeywordName}`).value();
   if (baseUri !== undefined) {
     fullReferenceUri = resolve(baseUri, refWithoutFragment);
-    return await findInstanceForAbsoluteIdentfier(documents, fullReferenceUri);
+    return await findInstanceForAbsoluteIdentfier(documents, fullReferenceUri, getSchemaResources);
   } else {
     fullReferenceUri = pathToFileURL(join(dirname(fileURLToPath(document.uri)), refWithoutFragment)).toString();
     if (!await doesDocumentExists(fullReferenceUri)) {
@@ -142,7 +142,7 @@ const getReferencedInstance = async (documents, document, refWithoutFragment) =>
  * @param {TextDocument} textDocument
  * @param {string} anchorValue
  */
-const searchAnchorFragment = async (textDocument, anchorValue) => {
+const searchAnchorFragment = async (textDocument, anchorValue, getSchemaResources) => {
   const schemaResources = await getSchemaResources(textDocument);
   for (const { dialectUri } of schemaResources) {
     const anchorKeywordName = keywordNameFor(
