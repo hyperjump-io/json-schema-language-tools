@@ -29,7 +29,7 @@ import { JsoncInstance } from "./jsonc-instance.js";
 import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
-import { buildDiagnostic, isSchema } from "./util.js";
+import { buildDiagnostic } from "./util.js";
 import { fetchDocument } from "./documents.js";
 import { findRef, validateReference } from "./references.js";
 
@@ -39,6 +39,7 @@ setShouldValidateSchema(false);
 
 let workspaceUri;
 
+const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -104,7 +105,7 @@ connection.onInitialized(async () => {
       ]
     });
   } else {
-    watchWorkspace(onWorkspaceChange);
+    watchWorkspace(onWorkspaceChange, isSchema);
   }
 
   if (hasWorkspaceFolderCapability) {
@@ -132,7 +133,7 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
 
   // Re/validate all schemas
-  for await (const uri of workspaceSchemas()) {
+  for await (const uri of workspaceSchemas(isSchema)) {
     const textDocument = await fetchDocument(documents, uri);
     await validateSchema(textDocument);
   }
@@ -261,7 +262,7 @@ const validateSchema = async (textDocument) => {
         }
       }
       for (const ref of references) {
-        const output = await validateReference(workspaceUri, documents, textDocument, ref, getSchemaResources);
+        const output = await validateReference(isSchema, workspaceUri, documents, textDocument, ref, getSchemaResources);
         if (!output.valid) {
           const instance = schemaInstance.get("#" + ref);
           if (instance.value() === undefined) {

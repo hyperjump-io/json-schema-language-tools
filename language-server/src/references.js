@@ -7,10 +7,7 @@ import { workspaceSchemas } from "./workspace.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL, resolve } from "node:url";
 
-/**
- * @param {JsoncInstance} keywordInstance
- * @param {string} dialectUri
- */
+
 export const findRef = (keywordInstance, dialectUri) => {
   const referenceKeywordIds = [
     "https://json-schema.org/keyword/ref",
@@ -32,22 +29,15 @@ export const findRef = (keywordInstance, dialectUri) => {
   return keywordInstance.pointer;
 };
 
-/**
- * @param {import("vscode-languageserver").TextDocuments} documents
- * @param {import("vscode-languageserver-textdocument").TextDocument} document
- * @param {string} pointer
- */
-export const validateReference = async (workspaceUri, documents, document, pointer, getSchemaResources) => {
+export const validateReference = async (isSchema, workspaceUri, documents, document, pointer, getSchemaResources) => {
   const documentJsonInstance = JsoncInstance.fromTextDocument(document);
   const valueInstance = documentJsonInstance.get("#" + pointer);
   const ref = valueInstance.value();
   const { baseUrl, jsonPointer, anchorFragment } = extractUriInfo(ref);
-  /**
-   * @type {JsoncInstance | null}
-   */
+
   let documentInstance = documentJsonInstance;
   if (!ref.startsWith("#")) {
-    documentInstance = await getReferencedInstance(workspaceUri, documents, document, baseUrl, getSchemaResources);
+    documentInstance = await getReferencedInstance(isSchema, workspaceUri, documents, document, baseUrl, getSchemaResources);
   }
   if (documentInstance === null) {
     return { valid: false, message: "Invalid external reference" };
@@ -66,10 +56,7 @@ export const validateReference = async (workspaceUri, documents, document, point
   return { valid: true };
 };
 
-/**
- * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
- * @returns {AsyncGenerator<{instance: import("./jsonc-instance.js").JsoncInstance, isEmbedded: boolean}>}
- */
+
 const getIdentifiers = async function* (textDocument, getSchemaResources) {
   for (const { dialectUri, schemaInstance } of await getSchemaResources(textDocument)) {
     const idKeywordName = keywordNameFor("https://json-schema.org/keyword/id", dialectUri);
@@ -80,13 +67,9 @@ const getIdentifiers = async function* (textDocument, getSchemaResources) {
   }
 };
 
-/**
- * @param {import("vscode-languageserver").TextDocuments} documents
- * @param {string} identifier
- * @returns {Promise<JsoncInstance | null>}
- */
-const findInstanceForAbsoluteIdentfier = async (documents, identifier, getSchemaResources) => {
-  for await (const documentUri of workspaceSchemas()) {
+
+const findInstanceForAbsoluteIdentfier = async (isSchema, documents, identifier, getSchemaResources) => {
+  for await (const documentUri of workspaceSchemas(isSchema)) {
     const textDocument = await fetchDocument(documents, documentUri);
     for await (const { instance, isEmbedded } of getIdentifiers(textDocument, getSchemaResources)) {
       if (!isEmbedded && instance.value() === identifier) {
@@ -97,14 +80,8 @@ const findInstanceForAbsoluteIdentfier = async (documents, identifier, getSchema
   return null;
 };
 
-/**
- * @param {import("vscode-languageserver").TextDocuments} documents
- * @param {import("vscode-languageserver-textdocument").TextDocument} document
- * @param {string} refWithoutFragment
- * @param {(textDocument: import("vscode-languageserver-textdocument").TextDocument) => void} getSchemaResources
- * @returns {Promise<JsoncInstance | null>}
-*/
-const getReferencedInstance = async (workspaceUri, documents, document, refWithoutFragment, getSchemaResources) => {
+
+const getReferencedInstance = async (isSchema, workspaceUri, documents, document, refWithoutFragment, getSchemaResources) => {
   for await (const { instance } of getIdentifiers(document, getSchemaResources)) {
     if (instance.value() === refWithoutFragment) {
       return instance;
@@ -114,7 +91,7 @@ const getReferencedInstance = async (workspaceUri, documents, document, refWitho
     return null;
   }
   if (isAbsoluteUrl(refWithoutFragment)) {
-    return await findInstanceForAbsoluteIdentfier(documents, refWithoutFragment, getSchemaResources);
+    return await findInstanceForAbsoluteIdentfier(isSchema, documents, refWithoutFragment, getSchemaResources);
   }
 
 
@@ -127,7 +104,7 @@ const getReferencedInstance = async (workspaceUri, documents, document, refWitho
   const baseUri = jsonInstance.get(`#/${idKeywordName}`).value();
   if (baseUri !== undefined) {
     fullReferenceUri = resolve(baseUri, refWithoutFragment);
-    return await findInstanceForAbsoluteIdentfier(documents, fullReferenceUri, getSchemaResources);
+    return await findInstanceForAbsoluteIdentfier(isSchema, documents, fullReferenceUri, getSchemaResources);
   } else {
     fullReferenceUri = pathToFileURL(join(dirname(fileURLToPath(document.uri)), refWithoutFragment)).toString();
     if (!await doesDocumentExists(fullReferenceUri)) {
@@ -137,11 +114,7 @@ const getReferencedInstance = async (workspaceUri, documents, document, refWitho
   }
 };
 
-/**
- *
- * @param {TextDocument} textDocument
- * @param {string} anchorValue
- */
+
 const searchAnchorFragment = async (textDocument, anchorValue, getSchemaResources) => {
   const schemaResources = await getSchemaResources(textDocument);
   for (const { dialectUri } of schemaResources) {
@@ -149,6 +122,7 @@ const searchAnchorFragment = async (textDocument, anchorValue, getSchemaResource
       "https://json-schema.org/keyword/anchor",
       dialectUri
     );
+    // used to search keywords in an instance.
     for (const { keywordInstance } of getSemanticTokens(schemaResources)) {
       if (keywordInstance.value() === anchorKeywordName) {
         const valueInstance = keywordInstance.get("#" + keywordInstance.pointer);
@@ -163,10 +137,7 @@ const searchAnchorFragment = async (textDocument, anchorValue, getSchemaResource
   return false;
 };
 
-/**
- * @param {string} uri
- * @returns {{baseUrl: string | null; jsonPointer: string | null; anchorFragment: string | null}}
- */
+
 const extractUriInfo = (uri) => {
   const result = { baseUrl: null, jsonPointer: null, anchorFragment: null };
   const [baseUrl, fragment] = uri.split("#");

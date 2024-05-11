@@ -6,13 +6,6 @@ import { toAbsoluteUri, uriFragment } from "./util.js";
 
 
 export class JsoncInstance {
-  /**
-   * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
-   * @param {import("jsonc-parser").Node | undefined} root
-   * @param {import("jsonc-parser").Node | undefined} node
-   * @param {string} pointer
-   * @param {*} annotations
-   */
   constructor(textDocument, root, node, pointer, annotations) {
     this.textDocument = textDocument;
     this.root = root;
@@ -21,10 +14,6 @@ export class JsoncInstance {
     this.annotations = annotations;
   }
 
-  /**
-   * @param {import("vscode-languageserver-textdocument").TextDocument} textDocument
-   * @returns {JsoncInstance}
-   */
   static fromTextDocument(textDocument) {
     const json = textDocument.getText();
     const root = parseTree(json, [], {

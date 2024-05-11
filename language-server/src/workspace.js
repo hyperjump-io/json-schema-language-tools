@@ -2,7 +2,6 @@ import { watch } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { isSchema } from "./util.js";
 
 
 const workspaceFolders = new Set();
@@ -25,7 +24,7 @@ export const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-export const watchWorkspace = (handler) => {
+export const watchWorkspace = (handler, isSchema) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -41,7 +40,7 @@ export const watchWorkspace = (handler) => {
   }
 };
 
-export const workspaceSchemas = async function* () {
+export const workspaceSchemas = async function* (isSchema) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
