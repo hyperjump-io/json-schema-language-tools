@@ -1,4 +1,4 @@
-import { doesDocumentExist, fetchDocument } from "./documents.js";
+import { doesDocumentExists, fetchDocument } from "./documents.js";
 import { keywordNameFor } from "./json-schema.js";
 import { JsoncInstance } from "./jsonc-instance.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
@@ -130,7 +130,7 @@ const getReferencedInstance = async (documents, document, refWithoutFragment) =>
     return await findInstanceForAbsoluteIdentfier(documents, fullReferenceUri);
   } else {
     fullReferenceUri = pathToFileURL(join(dirname(fileURLToPath(document.uri)), refWithoutFragment)).toString();
-    if (!doesDocumentExist(documents, fullReferenceUri)) {
+    if (!await doesDocumentExists(fullReferenceUri)) {
       return null;
     }
     return JsoncInstance.fromTextDocument(await fetchDocument(documents, fullReferenceUri));

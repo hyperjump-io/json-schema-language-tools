@@ -30,7 +30,7 @@ import { invalidNodes } from "./validation.js";
 import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWorkspace } from "./workspace.js";
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { buildDiagnostic, isSchema } from "./util.js";
-import { deleteFromInactiveDocumentStore, fetchDocument } from "./documents.js";
+import { fetchDocument } from "./documents.js";
 import { findRef, validateReference } from "./references.js";
 
 
@@ -157,10 +157,6 @@ const onWorkspaceChange = (eventType, filename) => {
 connection.onDidChangeWatchedFiles(validateWorkspace);
 
 // MANAGED INSTANCES
-
-documents.onDidOpen(({ document }) => {
-  deleteFromInactiveDocumentStore(document.uri);
-});
 
 const schemaResourceCache = new Map();
 
