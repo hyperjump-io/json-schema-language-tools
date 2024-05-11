@@ -38,6 +38,11 @@
         "jsonSchemaLanguageServer.defaultDialect": {
           "type": "string",
           "description": "The default JSON Schema dialect to use if none is specified in the schema document"
+        },
+        "jsonSchemaLanguageServer.schemaFilePatterns": {
+          "type": "array",
+          "description": "The glob pattern for identifying JSON Schema files.",
+          "default": ["**/*.schema.json", "**/schema.json"]
         }
       }
     }

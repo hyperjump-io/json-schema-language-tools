@@ -17,7 +17,8 @@
     "eslint-import-resolver-node": "*",
     "eslint-plugin-import": "*",
     "json-schema-test-suite": "github:json-schema-org/JSON-Schema-Test-Suite",
-    "vitest": "*"
+    "vitest": "*",
+    "picomatch": "*"
   },
   "dependencies": {
     "@hyperjump/browser": "^1.1.0",

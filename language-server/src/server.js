@@ -31,9 +31,25 @@ import { addWorkspaceFolders, workspaceSchemas, removeWorkspaceFolders, watchWor
 import { getSemanticTokens } from "./semantic-tokens.js";
 import { JsonSchemaDocument } from "./json-schema-document.js";
 import * as Instance from "./json-instance.js";
+import picomatch from "picomatch";
 
 
 setShouldValidateSchema(false);
+
+let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
+
+const isMatchedFile = (uri) => {
+  const matchers = schemaFilePatterns.map((pattern) => picomatch(
+    pattern,
+    { globstar: true,
+      matchBase: true,
+      dot: true,
+      nonegate: true }
+
+  ));
+
+  return matchers.some((matcher) => matcher(uri));
+};
 
 const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 
@@ -95,13 +111,10 @@ connection.onInitialized(async () => {
 
   if (hasWorkspaceWatchCapability) {
     connection.client.register(DidChangeWatchedFilesNotification.type, {
-      watchers: [
-        { globPattern: "**/*.schema.json" },
-        { globPattern: "**/schema.json" }
-      ]
+      watchers: schemaFilePatterns.map((pattern) => ({ globPattern: pattern }))
     });
   } else {
-    watchWorkspace(onWorkspaceChange, isSchema);
+    watchWorkspace(onWorkspaceChange, isMatchedFile);
   }
 
   if (hasWorkspaceFolderCapability) {
@@ -110,7 +123,7 @@ connection.onInitialized(async () => {
       removeWorkspaceFolders(removed);
 
       if (!hasWorkspaceWatchCapability) {
-        watchWorkspace(onWorkspaceChange, isSchema);
+        watchWorkspace(onWorkspaceChange, isMatchedFile);
       }
 
       await validateWorkspace({ changes: [] });
@@ -129,7 +142,7 @@ const validateWorkspace = async () => {
   reporter.begin("JSON Schema: Indexing workspace");
 
   // Re/validate all schemas
-  for await (const uri of workspaceSchemas(isSchema)) {
+  for await (const uri of workspaceSchemas(isMatchedFile)) {
     let textDocument = documents.get(uri);
     if (!textDocument) {
       const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -196,6 +209,7 @@ async function getDocumentSettings(resource) {
       scopeUri: resource,
       section: "jsonSchemaLanguageServer"
     });
+    schemaFilePatterns = result?.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
     documentSettings.set(resource, result ?? globalSettings);
   }
 
@@ -209,6 +223,7 @@ connection.onDidChangeConfiguration(async (change) => {
     globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
   }
 
+  schemaFilePatterns = globalSettings.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
   await validateWorkspace({ changes: [] });
 });
 
@@ -221,7 +236,7 @@ documents.onDidClose(({ document }) => {
 documents.onDidChangeContent(async ({ document }) => {
   connection.console.log(`Schema changed: ${document.uri}`);
 
-  if (isSchema(document.uri)) {
+  if (isMatchedFile(document.uri)) {
     await validateSchema(document);
   }
 });
