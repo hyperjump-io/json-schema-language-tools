@@ -72,23 +72,23 @@ export default {
           textDocument = TextDocument.create(uri, "json", -1, instanceJson);
         }
 
-        validateSchema(textDocument);
+        const schemaDocument = await getSchemaDocument(connection, textDocument);
+        validateSchema(schemaDocument);
       }
 
       reporter.done();
     });
 
-    const validateSchema = async (textDocument) => {
-      connection.console.log(`Schema Validation: ${textDocument.uri}`);
+    const validateSchema = async (schemaDocument) => {
+      connection.console.log(`Schema Validation: ${schemaDocument.textDocument.uri}`);
 
       const diagnostics = [];
-      const schemaDocument = await getSchemaDocument(connection, textDocument);
       await publishAsync("diagnostics", { schemaDocument, diagnostics });
 
       connection.sendDiagnostics({
-        uri: textDocument.uri,
+        uri: schemaDocument.textDocument.uri,
         diagnostics: diagnostics.map(({ instance, message, severity, tags }) => {
-          return buildDiagnostic(textDocument, instance, message, severity, tags);
+          return buildDiagnostic(schemaDocument.textDocument, instance, message, severity, tags);
         })
       });
     };
@@ -137,7 +137,8 @@ export default {
       const schemaFilePatterns = settings.schemaFilePatterns;
       const filePath = fileURLToPath(document.uri);
       if (isMatchedFile(filePath, schemaFilePatterns)) {
-        validateSchema(document);
+        const schemaDocument = await getSchemaDocument(connection, document);
+        validateSchema(schemaDocument);
       }
     });
 
