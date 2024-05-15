@@ -3,6 +3,7 @@ import * as JsonPointer from "@hyperjump/json-pointer";
 import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
 import * as Instance from "./json-instance.js";
+import { uriFragment } from "./util.js";
 
 
 export class JsonSchemaDocument {
@@ -69,14 +70,14 @@ export class JsonSchemaDocument {
     return document;
   }
 
-  #buildSchemaResources(node, uri = "", dialectUri = "", pointer = "", parent = undefined) {
+  #buildSchemaResources(node, uri = "", dialectUri = "", pointer = "", parent = undefined, anchors = {}) {
     const jsonNode = Instance.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
 
     switch (node.type) {
       case "array":
         jsonNode.children = node.children.map((child, index) => {
           const itemPointer = JsonPointer.append(index, pointer);
-          return this.#buildSchemaResources(child, uri, dialectUri, itemPointer, jsonNode);
+          return this.#buildSchemaResources(child, uri, dialectUri, itemPointer, jsonNode, anchors);
         });
         break;
 
@@ -118,9 +119,25 @@ export class JsonSchemaDocument {
           }
         }
 
+        const anchorToken = keywordNameFor("https://json-schema.org/keyword/anchor", dialectUri);
+        const $anchorNode = anchorToken && nodeStep(node, anchorToken);
+        if ($anchorNode) {
+          const anchor = getNodeValue($anchorNode);
+          anchors[anchor] = pointer;
+        }
+
+        const legacyAnchorToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", dialectUri);
+        const legacyAnchorNode = legacyAnchorToken && nodeStep(node, legacyAnchorToken);
+        if (legacyAnchorNode) {
+          const anchor = getNodeValue(legacyAnchorNode);
+          if (anchor[0] === "#") {
+            anchors[uriFragment(anchor)] = pointer;
+          }
+        }
+
         for (const child of node.children) {
           const propertyPointer = JsonPointer.append(getNodeValue(child.children[0]), pointer);
-          const propertyNode = this.#buildSchemaResources(child, uri, dialectUri, propertyPointer, jsonNode);
+          const propertyNode = this.#buildSchemaResources(child, uri, dialectUri, propertyPointer, jsonNode, anchors);
 
           if (propertyNode) {
             jsonNode.children.push(propertyNode);
@@ -134,13 +151,18 @@ export class JsonSchemaDocument {
         }
 
         jsonNode.children = node.children.map((child) => {
-          return this.#buildSchemaResources(child, uri, dialectUri, pointer, jsonNode);
+          return this.#buildSchemaResources(child, uri, dialectUri, pointer, jsonNode, anchors);
         });
         break;
     }
 
     if (jsonNode.pointer === "") {
-      this.schemaResources.push({ dialectUri, schemaResource: jsonNode });
+      this.schemaResources.push({
+        schemaResource: jsonNode,
+        dialectUri: dialectUri,
+        baseUri: uri,
+        anchors: anchors
+      });
     }
 
     return jsonNode;
