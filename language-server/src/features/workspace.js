@@ -62,7 +62,7 @@ export default {
       reporter.begin("JSON Schema: Indexing workspace");
 
       // Re/validate all schemas
-      for await (const uri of workspaceSchemas(isSchema)) {
+      for await (const uri of workspaceSchemas()) {
         let textDocument = documents.get(uri);
         if (!textDocument) {
           const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -111,7 +111,7 @@ export default {
         ]
       });
     } else {
-      watchWorkspace(onWorkspaceChange, isSchema);
+      watchWorkspace(onWorkspaceChange);
     }
 
     if (hasWorkspaceFolderCapability) {
@@ -120,7 +120,7 @@ export default {
         removeWorkspaceFolders(removed);
 
         if (!hasWorkspaceWatchCapability) {
-          watchWorkspace(onWorkspaceChange, isSchema);
+          watchWorkspace(onWorkspaceChange);
         }
 
         validateWorkspace({ changes: [] });
@@ -159,7 +159,7 @@ const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-const watchWorkspace = (handler, isSchema) => {
+const watchWorkspace = (handler) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -175,7 +175,7 @@ const watchWorkspace = (handler, isSchema) => {
   }
 };
 
-const workspaceSchemas = async function* (isSchema) {
+const workspaceSchemas = async function* () {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
