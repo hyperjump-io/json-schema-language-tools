@@ -10,7 +10,7 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publish, publishAsync, subscribe } from "../pubsub.js";
-import { getSchemaDocument } from "./schema-documents.js";
+import { allSchemaDocuments, getSchemaDocument } from "./schema-documents.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 
@@ -62,7 +62,7 @@ export default {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
 
-      // Re/validate all schemas
+      // Load all schemas
       const settings = await getDocumentSettings(connection);
       const schemaFilePatterns = settings.schemaFilePatterns;
       for await (const uri of workspaceSchemas(schemaFilePatterns)) {
@@ -72,7 +72,11 @@ export default {
           textDocument = TextDocument.create(uri, "json", -1, instanceJson);
         }
 
-        const schemaDocument = await getSchemaDocument(connection, textDocument);
+        await getSchemaDocument(connection, textDocument);
+      }
+
+      // Re/validate all schemas
+      for (const schemaDocument of allSchemaDocuments()) {
         validateSchema(schemaDocument);
       }
 
