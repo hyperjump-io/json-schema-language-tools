@@ -6,12 +6,14 @@ import picomatch from "picomatch";
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
 export const isMatchedFile = (uri, patterns) => {
-  const matchers = patterns.map((pattern) => picomatch(pattern, {
-    noglobstar: false,
-    matchBase: true,
-    dot: true,
-    nonegate: true
-  }));
+  const matchers = patterns.map((pattern) => {
+    return picomatch(pattern, {
+      noglobstar: false,
+      matchBase: false,
+      dot: true,
+      nonegate: true
+    });
+  });
   return matchers.some((matcher) => matcher(uri));
 };
 
