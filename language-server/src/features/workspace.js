@@ -11,7 +11,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publish, publishAsync, subscribe } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
-import { isSchema } from "./document-settings.js";
+import { getDocumentSettings } from "./document-settings.js";
+import picomatch from "picomatch";
 
 
 let hasWorkspaceFolderCapability = false;
@@ -62,7 +63,9 @@ export default {
       reporter.begin("JSON Schema: Indexing workspace");
 
       // Re/validate all schemas
-      for await (const uri of workspaceSchemas()) {
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      for await (const uri of workspaceSchemas(schemaFilePatterns)) {
         let textDocument = documents.get(uri);
         if (!textDocument) {
           const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -130,13 +133,29 @@ export default {
     connection.onDidChangeWatchedFiles(onWorkspaceChange);
 
     documents.onDidChangeContent(async ({ document }) => {
-      if (isSchema(document.uri)) {
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      const filePath = fileURLToPath(document.uri);
+      if (isMatchedFile(filePath, schemaFilePatterns)) {
         validateSchema(document);
       }
     });
 
     publish("workspaceChanged", { changes: [] });
   }
+};
+
+export const isMatchedFile = (uri, patterns) => {
+  patterns = patterns.map((pattern) => `**/${pattern}`);
+  const matchers = patterns.map((pattern) => {
+    return picomatch(pattern, {
+      noglobstar: false,
+      matchBase: false,
+      dot: true,
+      nonegate: true
+    });
+  });
+  return matchers.some((matcher) => matcher(uri));
 };
 
 const workspaceFolders = new Set();
@@ -159,7 +178,7 @@ const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-const watchWorkspace = (handler) => {
+const watchWorkspace = (handler, schemaFilePatterns) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -168,19 +187,19 @@ const watchWorkspace = (handler) => {
     }
 
     watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
-      if (isSchema(filename)) {
+      if (isMatchedFile(filename, schemaFilePatterns)) {
         handler(eventType, filename);
       }
     });
   }
 };
 
-const workspaceSchemas = async function* () {
+const workspaceSchemas = async function* (schemaFilePatterns) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
     for (const filename of await readdir(path, { recursive: true })) {
-      if (isSchema(filename)) {
+      if (isMatchedFile(filename, schemaFilePatterns)) {
         const schemaPath = resolve(path, filename);
 
         yield pathToFileURL(schemaPath).toString();

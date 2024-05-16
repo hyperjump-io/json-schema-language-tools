@@ -3,8 +3,6 @@ import { publish } from "../pubsub.js";
 import { clearSchemaDocuments } from "./schema-documents.js";
 
 
-export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
-
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
 
@@ -21,12 +19,10 @@ export default {
       connection.client.register(DidChangeConfigurationNotification.type);
     }
 
-    connection.onDidChangeConfiguration((change) => {
+    connection.onDidChangeConfiguration(() => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
         clearSchemaDocuments();
-      } else {
-        globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
 
       publish("workspaceChanged", { changes: [] });
@@ -39,19 +35,21 @@ export default {
 };
 
 const documentSettings = new Map();
-let globalSettings = {};
+const defaultSettings = {
+  schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
+};
 
 export const getDocumentSettings = async (connection, uri) => {
   if (!hasConfigurationCapability) {
-    return globalSettings;
+    return defaultSettings;
   }
 
   if (!documentSettings.has(uri)) {
     const result = await connection.workspace.getConfiguration({
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
-    });
-    documentSettings.set(uri, result ?? globalSettings);
+    }) ?? {};
+    documentSettings.set(uri, { ...defaultSettings, ...result });
   }
 
   return documentSettings.get(uri);
