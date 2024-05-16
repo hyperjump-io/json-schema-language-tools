@@ -1,8 +1,19 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
+import picomatch from "picomatch";
 
 
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
+export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
+export const isMatchedFile = (uri, patterns) => {
+  const matchers = patterns.map((pattern) => picomatch(pattern, {
+    noglobstar: false,
+    matchBase: true,
+    dot: true,
+    nonegate: true
+  }));
+  return matchers.some((matcher) => matcher(uri));
+};
 
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
@@ -26,6 +37,7 @@ export default {
       } else {
         globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
+      schemaFilePatterns = globalSettings.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
 
       publish("workspaceChange", { changes: [] });
     });
@@ -49,6 +61,7 @@ export const getDocumentSettings = async (connection, uri) => {
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
     });
+    schemaFilePatterns = result?.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
     documentSettings.set(uri, result ?? globalSettings);
   }
 

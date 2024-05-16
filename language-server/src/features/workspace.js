@@ -11,7 +11,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publishAsync } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
-import { isSchema } from "./document-settings.js";
+import { getDocumentSettings, isMatchedFile } from "./document-settings.js";
 
 
 let hasWorkspaceFolderCapability = false;
@@ -62,7 +62,9 @@ export default {
       reporter.begin("JSON Schema: Indexing workspace");
 
       // Re/validate all schemas
-      for await (const uri of workspaceSchemas()) {
+      const result = await getDocumentSettings(connection);
+      const schemaFilePatterns = result.schemaFilePatterns;
+      for await (const uri of workspaceSchemas((filename) => isMatchedFile(filename, schemaFilePatterns))) {
         let textDocument = documents.get(uri);
         if (!textDocument) {
           const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -111,7 +113,7 @@ export default {
         ]
       });
     } else {
-      watchWorkspace(onWorkspaceChange);
+      watchWorkspace(onWorkspaceChange, isMatchedFile);
     }
 
     if (hasWorkspaceFolderCapability) {
@@ -120,7 +122,7 @@ export default {
         removeWorkspaceFolders(removed);
 
         if (!hasWorkspaceWatchCapability) {
-          watchWorkspace(onWorkspaceChange);
+          watchWorkspace(onWorkspaceChange, isMatchedFile);
         }
 
         validateWorkspace({ changes: [] });
@@ -130,7 +132,9 @@ export default {
     connection.onDidChangeWatchedFiles(onWorkspaceChange);
 
     documents.onDidChangeContent(async ({ document }) => {
-      if (isSchema(document.uri)) {
+      const result = await getDocumentSettings(connection);
+      const schemaFilePatterns = result.schemaFilePatterns;
+      if (isMatchedFile(document.uri, schemaFilePatterns)) {
         validateSchema(document);
       }
     });
@@ -159,7 +163,7 @@ const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-const watchWorkspace = (handler) => {
+const watchWorkspace = (handler, isSchema) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -175,7 +179,7 @@ const watchWorkspace = (handler) => {
   }
 };
 
-const workspaceSchemas = async function* () {
+const workspaceSchemas = async function* (isSchema) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
