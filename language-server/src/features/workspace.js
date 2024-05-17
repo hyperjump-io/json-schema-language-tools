@@ -15,7 +15,7 @@ import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 
 
-const isMatchedFile = (uri, patterns) => {
+export const isMatchedFile = (uri, patterns) => {
   const matchers = patterns.map((pattern) => {
     return picomatch(pattern, {
       noglobstar: false,

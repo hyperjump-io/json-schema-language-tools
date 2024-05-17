@@ -2,7 +2,6 @@ import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
 
 
-export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
 
 let hasConfigurationCapability = false;
