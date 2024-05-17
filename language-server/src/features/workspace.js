@@ -11,8 +11,21 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publishAsync } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
-import { getDocumentSettings, isMatchedFile } from "./document-settings.js";
+import { getDocumentSettings } from "./document-settings.js";
+import picomatch from "picomatch";
 
+
+const isMatchedFile = (uri, patterns) => {
+  const matchers = patterns.map((pattern) => {
+    return picomatch(pattern, {
+      noglobstar: false,
+      matchBase: false,
+      dot: true,
+      nonegate: true
+    });
+  });
+  return matchers.some((matcher) => matcher(uri));
+};
 
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;

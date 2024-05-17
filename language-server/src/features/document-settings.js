@@ -1,21 +1,9 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
-import picomatch from "picomatch";
 
 
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
 export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
-export const isMatchedFile = (uri, patterns) => {
-  const matchers = patterns.map((pattern) => {
-    return picomatch(pattern, {
-      noglobstar: false,
-      matchBase: false,
-      dot: true,
-      nonegate: true
-    });
-  });
-  return matchers.some((matcher) => matcher(uri));
-};
 
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
@@ -39,7 +27,7 @@ export default {
       } else {
         globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
-      schemaFilePatterns = globalSettings.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
+      schemaFilePatterns = globalSettings.schemaFilePatterns ?? defaultFilePatterns;
 
       publish("workspaceChange", { changes: [] });
     });
@@ -51,6 +39,7 @@ export default {
 };
 
 const documentSettings = new Map();
+const defaultFilePatterns = ["**/*.schema.json", "**/schema.json"];
 let globalSettings = {};
 
 export const getDocumentSettings = async (connection, uri) => {
@@ -63,7 +52,7 @@ export const getDocumentSettings = async (connection, uri) => {
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
     });
-    schemaFilePatterns = result?.schemaFilePatterns ?? ["**/*.schema.json", "**/schema.json"];
+    schemaFilePatterns = result?.schemaFilePatterns ?? defaultFilePatterns;
     documentSettings.set(uri, result ?? globalSettings);
   }
 
