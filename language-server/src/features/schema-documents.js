@@ -30,3 +30,5 @@ export const getSchemaDocument = async (connection, textDocument) => {
 
   return schemaDocument;
 };
+
+export const clearSchemaDocuments = () => schemaDocuments.clear();

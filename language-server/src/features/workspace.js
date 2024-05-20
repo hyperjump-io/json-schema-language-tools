@@ -9,7 +9,7 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { publishAsync } from "../pubsub.js";
+import { publish, publishAsync, subscribe } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
@@ -60,7 +60,7 @@ export default {
       // eventType === "rename" means file added or deleted (on most platforms?)
       // eventType === "change" means file saved
       // filename is not always available (when is it not available?)
-      validateWorkspace({
+      publish("workspaceChanged", {
         changes: [
           {
             uri: filename,
@@ -70,7 +70,7 @@ export default {
       });
     };
 
-    const validateWorkspace = async (_changes) => {
+    subscribe("workspaceChanged", async (_message, _changes) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
 
@@ -88,7 +88,7 @@ export default {
       }
 
       reporter.done();
-    };
+    });
 
     const validateSchema = async (textDocument) => {
       connection.console.log(`Schema Validation: ${textDocument.uri}`);
@@ -138,7 +138,7 @@ export default {
           watchWorkspace(onWorkspaceChange, isMatchedFile);
         }
 
-        validateWorkspace({ changes: [] });
+        publish("workspaceChanged", { changes: [] });
       });
     }
 
@@ -152,7 +152,7 @@ export default {
       }
     });
 
-    validateWorkspace({ changes: [] });
+    publish("workspaceChanged", { changes: [] });
   }
 };
 

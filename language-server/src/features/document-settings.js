@@ -1,5 +1,6 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
+import { clearSchemaDocuments } from "./schema-documents.js";
 
 
 export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
@@ -23,12 +24,13 @@ export default {
     connection.onDidChangeConfiguration((change) => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
+        clearSchemaDocuments();
       } else {
         globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
       schemaFilePatterns = globalSettings.schemaFilePatterns ?? defaultFilePatterns;
 
-      publish("workspaceChange", { changes: [] });
+      publish("workspaceChanged", { changes: [] });
     });
 
     documents.onDidClose(({ document }) => {
