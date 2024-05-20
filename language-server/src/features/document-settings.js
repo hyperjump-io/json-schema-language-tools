@@ -1,5 +1,6 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
+import { clearSchemaDocuments } from "./schema-documents.js";
 
 
 export const isSchema = RegExp.prototype.test.bind(/(?:\.|\/|^)schema\.json$/);
@@ -23,11 +24,12 @@ export default {
     connection.onDidChangeConfiguration((change) => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
+        clearSchemaDocuments();
       } else {
         globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
 
-      publish("workspaceChange", { changes: [] });
+      publish("workspaceChanged", { changes: [] });
     });
 
     documents.onDidClose(({ document }) => {
