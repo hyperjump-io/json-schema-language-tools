@@ -5,6 +5,7 @@ import { getSchemaDocument } from "./schema-documents.js";
 import { toAbsoluteUri } from "../util.js";
 import { schemaFilePatterns } from "./document-settings.js";
 import { isMatchedFile } from "./workspace.js";
+import { fileURLToPath } from "node:url";
 
 
 export default {
@@ -52,7 +53,8 @@ export default {
     };
 
     connection.languages.semanticTokens.on(async ({ textDocument }) => {
-      if (!isMatchedFile(textDocument.uri, schemaFilePatterns)) {
+      const filePath = fileURLToPath(textDocument.uri);
+      if (!isMatchedFile(filePath, schemaFilePatterns)) {
         return { data: [] };
       }
 

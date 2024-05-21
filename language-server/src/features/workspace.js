@@ -11,11 +11,12 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publish, publishAsync, subscribe } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
-import { getDocumentSettings } from "./document-settings.js";
+import { getDocumentSettings, schemaFilePatterns } from "./document-settings.js";
 import picomatch from "picomatch";
 
 
 export const isMatchedFile = (uri, patterns) => {
+  patterns = patterns.map((pattern) => `**/${pattern}`);
   const matchers = patterns.map((pattern) => {
     return picomatch(pattern, {
       noglobstar: false,
@@ -126,7 +127,7 @@ export default {
         ]
       });
     } else {
-      watchWorkspace(onWorkspaceChange, isMatchedFile);
+      watchWorkspace(onWorkspaceChange);
     }
 
     if (hasWorkspaceFolderCapability) {
@@ -135,7 +136,7 @@ export default {
         removeWorkspaceFolders(removed);
 
         if (!hasWorkspaceWatchCapability) {
-          watchWorkspace(onWorkspaceChange, isMatchedFile);
+          watchWorkspace(onWorkspaceChange, schemaFilePatterns);
         }
 
         publish("workspaceChanged", { changes: [] });
@@ -176,7 +177,7 @@ const removeWorkspaceFolders = (folders) => {
 
 const watchers = {};
 
-const watchWorkspace = (handler, isSchema) => {
+const watchWorkspace = (handler, schemaFilePatterns) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
@@ -185,7 +186,7 @@ const watchWorkspace = (handler, isSchema) => {
     }
 
     watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
-      if (isSchema(filename)) {
+      if (isMatchedFile(filename, schemaFilePatterns)) {
         handler(eventType, filename);
       }
     });
