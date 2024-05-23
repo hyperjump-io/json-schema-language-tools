@@ -19,12 +19,10 @@ export default {
       connection.client.register(DidChangeConfigurationNotification.type);
     }
 
-    connection.onDidChangeConfiguration((change) => {
+    connection.onDidChangeConfiguration(() => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
         clearSchemaDocuments();
-      } else {
-        globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
 
       publish("workspaceChanged", { changes: [] });
@@ -37,11 +35,13 @@ export default {
 };
 
 const documentSettings = new Map();
-let globalSettings = {};
+const defaultSettings = {
+  schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
+};
 
 export const getDocumentSettings = async (connection, uri) => {
   if (!hasConfigurationCapability) {
-    return globalSettings;
+    return defaultSettings;
   }
 
   if (!documentSettings.has(uri)) {
@@ -49,7 +49,7 @@ export const getDocumentSettings = async (connection, uri) => {
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
     });
-    documentSettings.set(uri, result ?? globalSettings);
+    documentSettings.set(uri, result ?? defaultSettings);
   }
 
   return documentSettings.get(uri);
