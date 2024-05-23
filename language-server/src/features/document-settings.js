@@ -3,8 +3,6 @@ import { publish } from "../pubsub.js";
 import { clearSchemaDocuments } from "./schema-documents.js";
 
 
-export let schemaFilePatterns = ["**/*.schema.json", "**/schema.json"];
-
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
 
@@ -28,7 +26,6 @@ export default {
       } else {
         globalSettings = change.settings.jsonSchemaLanguageServer ?? globalSettings;
       }
-      schemaFilePatterns = globalSettings.schemaFilePatterns ?? defaultFilePatterns;
 
       publish("workspaceChanged", { changes: [] });
     });
@@ -40,7 +37,6 @@ export default {
 };
 
 const documentSettings = new Map();
-const defaultFilePatterns = ["**/*.schema.json", "**/schema.json"];
 let globalSettings = {};
 
 export const getDocumentSettings = async (connection, uri) => {
@@ -53,7 +49,6 @@ export const getDocumentSettings = async (connection, uri) => {
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
     });
-    schemaFilePatterns = result?.schemaFilePatterns ?? defaultFilePatterns;
     documentSettings.set(uri, result ?? globalSettings);
   }
 

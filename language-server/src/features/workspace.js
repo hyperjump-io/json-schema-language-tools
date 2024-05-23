@@ -11,22 +11,9 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publish, publishAsync, subscribe } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-documents.js";
-import { getDocumentSettings, schemaFilePatterns } from "./document-settings.js";
+import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 
-
-export const isMatchedFile = (uri, patterns) => {
-  patterns = patterns.map((pattern) => `**/${pattern}`);
-  const matchers = patterns.map((pattern) => {
-    return picomatch(pattern, {
-      noglobstar: false,
-      matchBase: false,
-      dot: true,
-      nonegate: true
-    });
-  });
-  return matchers.some((matcher) => matcher(uri));
-};
 
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
@@ -76,9 +63,9 @@ export default {
       reporter.begin("JSON Schema: Indexing workspace");
 
       // Re/validate all schemas
-      const result = await getDocumentSettings(connection);
-      const schemaFilePatterns = result.schemaFilePatterns;
-      for await (const uri of workspaceSchemas((filename) => isMatchedFile(filename, schemaFilePatterns))) {
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      for await (const uri of workspaceSchemas(schemaFilePatterns)) {
         let textDocument = documents.get(uri);
         if (!textDocument) {
           const instanceJson = await readFile(fileURLToPath(uri), "utf8");
@@ -136,7 +123,7 @@ export default {
         removeWorkspaceFolders(removed);
 
         if (!hasWorkspaceWatchCapability) {
-          watchWorkspace(onWorkspaceChange, schemaFilePatterns);
+          watchWorkspace(onWorkspaceChange);
         }
 
         publish("workspaceChanged", { changes: [] });
@@ -146,15 +133,29 @@ export default {
     connection.onDidChangeWatchedFiles(onWorkspaceChange);
 
     documents.onDidChangeContent(async ({ document }) => {
-      const result = await getDocumentSettings(connection);
-      const schemaFilePatterns = result.schemaFilePatterns;
-      if (isMatchedFile(document.uri, schemaFilePatterns)) {
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      const filePath = fileURLToPath(document.uri);
+      if (isMatchedFile(filePath, schemaFilePatterns)) {
         validateSchema(document);
       }
     });
 
     publish("workspaceChanged", { changes: [] });
   }
+};
+
+export const isMatchedFile = (uri, patterns) => {
+  patterns = patterns.map((pattern) => `**/${pattern}`);
+  const matchers = patterns.map((pattern) => {
+    return picomatch(pattern, {
+      noglobstar: false,
+      matchBase: false,
+      dot: true,
+      nonegate: true
+    });
+  });
+  return matchers.some((matcher) => matcher(uri));
 };
 
 const workspaceFolders = new Set();
@@ -193,12 +194,12 @@ const watchWorkspace = (handler, schemaFilePatterns) => {
   }
 };
 
-const workspaceSchemas = async function* (isSchema) {
+const workspaceSchemas = async function* (schemaFilePatterns) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
 
     for (const filename of await readdir(path, { recursive: true })) {
-      if (isSchema(filename)) {
+      if (isMatchedFile(filename, schemaFilePatterns)) {
         const schemaPath = resolve(path, filename);
 
         yield pathToFileURL(schemaPath).toString();
