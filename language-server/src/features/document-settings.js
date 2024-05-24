@@ -48,8 +48,8 @@ export const getDocumentSettings = async (connection, uri) => {
     const result = await connection.workspace.getConfiguration({
       scopeUri: uri,
       section: "jsonSchemaLanguageServer"
-    });
-    documentSettings.set(uri, result ?? defaultSettings);
+    }) ?? {};
+    documentSettings.set(uri, { ...defaultSettings, ...result });
   }
 
   return documentSettings.get(uri);
