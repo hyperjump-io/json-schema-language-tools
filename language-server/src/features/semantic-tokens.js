@@ -3,7 +3,9 @@ import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import * as Instance from "../json-instance.js";
 import { getSchemaDocument } from "./schema-documents.js";
 import { toAbsoluteUri } from "../util.js";
-import { isSchema } from "./document-settings.js";
+import { isMatchedFile } from "./workspace.js";
+import { fileURLToPath } from "node:url";
+import { getDocumentSettings } from "./document-settings.js";
 
 
 export default {
@@ -51,7 +53,10 @@ export default {
     };
 
     connection.languages.semanticTokens.on(async ({ textDocument }) => {
-      if (!isSchema(textDocument.uri)) {
+      const filePath = fileURLToPath(textDocument.uri);
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      if (!isMatchedFile(filePath, schemaFilePatterns)) {
         return { data: [] };
       }
 
