@@ -18,6 +18,7 @@ import validationErrorsFeature from "./features/validation-errors.js";
 import validateReferencesFeature from "./features/validate-references.js";
 import deprecatedFeature from "./features/deprecated.js";
 import completionFeature from "./features/completion.js";
+import ifThenCompletionFeature from "./features/if-then-completion.js";
 import schemaCompletion from "./features/schema-completion.js";
 import hoverFeature from "./features/hover.js";
 
@@ -36,6 +37,7 @@ const features = [
   deprecatedFeature,
   completionFeature,
   schemaCompletion,
+  ifThenCompletionFeature,
   hoverFeature,
   workspaceFeature // Workspace must be last
 ];
