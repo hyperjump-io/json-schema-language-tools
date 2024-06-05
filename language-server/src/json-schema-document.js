@@ -129,9 +129,9 @@ export class JsonSchemaDocument {
         break;
 
       case "property":
-        if (node.children.length !== 2) {
-          return;
-        }
+        // if (node.children.length !== 2) {
+        //   return;
+        // }
 
         jsonNode.children = node.children.map((child) => {
           return this.#buildSchemaResources(child, uri, dialectUri, pointer, jsonNode);
