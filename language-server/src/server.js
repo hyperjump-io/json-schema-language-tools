@@ -14,6 +14,7 @@ import deprecatedFeature from "./features/deprecated.js";
 import completionFeature from "./features/completion.js";
 import ifThenCompletionFeature from "./features/if-then-completion.js";
 import schemaCompletion from "./features/schema-completion.js";
+import keywordsCompletion from "./features/keywords-completion.js";
 import hoverFeature from "./features/hover.js";
 import referencesFeature from "./features/references.js";
 import definitionFeature from "./features/definition.js";
@@ -29,6 +30,7 @@ const features = [
   completionFeature,
   schemaCompletion,
   ifThenCompletionFeature,
+  keywordsCompletion,
   hoverFeature,
   definitionFeature,
   referencesFeature,
