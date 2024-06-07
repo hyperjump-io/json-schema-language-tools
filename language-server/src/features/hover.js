@@ -1,6 +1,6 @@
 import { MarkupKind } from "vscode-languageserver";
 import * as Instance from "../json-instance.js";
-import { getSchemaDocument } from "./schema-documents.js";
+import { getSchemaDocument } from "./schema-registry.js";
 
 
 export default {

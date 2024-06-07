@@ -1,6 +1,6 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
-import { clearSchemaDocuments } from "./schema-documents.js";
+import { clearSchemaDocuments } from "./schema-registry.js";
 
 
 let hasConfigurationCapability = false;

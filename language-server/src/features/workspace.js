@@ -10,7 +10,7 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { publish, publishAsync, subscribe } from "../pubsub.js";
-import { allSchemaDocuments, getSchemaDocument } from "./schema-documents.js";
+import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 

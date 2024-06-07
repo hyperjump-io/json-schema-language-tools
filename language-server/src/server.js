@@ -11,7 +11,7 @@ import "@hyperjump/json-schema/draft-04";
 
 // Features
 import documentSettingFeature from "./features/document-settings.js";
-import schemaDocumentsFeature from "./features/schema-documents.js";
+import schemaRegistryFeature from "./features/schema-registry.js";
 import workspaceFeature from "./features/workspace.js";
 import semanticTokensFeature from "./features/semantic-tokens.js";
 import validationErrorsFeature from "./features/validation-errors.js";
@@ -28,7 +28,7 @@ const documents = new TextDocuments(TextDocument);
 
 const features = [
   documentSettingFeature,
-  schemaDocumentsFeature,
+  schemaRegistryFeature,
   semanticTokensFeature,
   validationErrorsFeature,
   deprecatedFeature,

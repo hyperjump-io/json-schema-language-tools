@@ -1,7 +1,7 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import * as Instance from "../json-instance.js";
-import { getSchemaDocument } from "./schema-documents.js";
+import { getSchemaDocument } from "./schema-registry.js";
 import { toAbsoluteUri } from "../util.js";
 import { isMatchedFile } from "./workspace.js";
 import { fileURLToPath } from "node:url";

@@ -1,5 +1,5 @@
 import { publishAsync } from "../pubsub.js";
-import { getSchemaDocument } from "./schema-documents.js";
+import { getSchemaDocument } from "./schema-registry.js";
 
 
 export default {
