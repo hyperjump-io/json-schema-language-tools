@@ -45,23 +45,5 @@ export const annotation = (node, keyword, dialect = "https://json-schema.org/dra
   return Instance.annotation(node, keyword, dialect);
 };
 
-export const findNodeAtOffset = (node, offset, includeRightBound = false) => {
-  if (contains(node, offset, includeRightBound)) {
-    for (let i = 0; i < node.children.length && node.children[i].offset <= offset; i++) {
-      const item = findNodeAtOffset(node.children[i], offset, includeRightBound);
-      if (item) {
-        return item;
-      }
-    }
-
-    return node;
-  }
-};
-
-const contains = (node, offset, includeRightBound = false) => {
-  return (offset >= node.offset && offset < (node.offset + node.textLength))
-    || includeRightBound && (offset === (node.offset + node.textLength));
-};
-
 // eslint-disable-next-line import/export
 export * from "@hyperjump/json-schema/annotated-instance/experimental";

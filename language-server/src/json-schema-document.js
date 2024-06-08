@@ -180,7 +180,7 @@ export class JsonSchemaDocument {
 
   findNodeAtOffset(offset) {
     for (const { schemaResource } of this.schemaResources) {
-      const node = JsonNode.findNodeAtOffset(schemaResource, offset);
+      const node = _findNodeAtOffset(schemaResource, offset);
       if (node) {
         return node;
       }
@@ -210,6 +210,24 @@ const getEmbeddedDialectUri = (node, dialectUri) => {
   if (legacy$idNode?.type === "string" && getNodeValue(legacy$idNode)[0] !== "#") {
     return dialectUri;
   }
+};
+
+const _findNodeAtOffset = (node, offset, includeRightBound = false) => {
+  if (contains(node, offset, includeRightBound)) {
+    for (let i = 0; i < node.children.length && node.children[i].offset <= offset; i++) {
+      const item = _findNodeAtOffset(node.children[i], offset, includeRightBound);
+      if (item) {
+        return item;
+      }
+    }
+
+    return node;
+  }
+};
+
+const contains = (node, offset, includeRightBound = false) => {
+  return (offset >= node.offset && offset < (node.offset + node.textLength))
+    || includeRightBound && (offset === (node.offset + node.textLength));
 };
 
 const nodeStep = (node, key) => {
