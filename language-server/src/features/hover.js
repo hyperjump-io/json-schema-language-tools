@@ -1,6 +1,7 @@
 import { MarkupKind } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
 import { getSchemaDocument } from "./schema-registry.js";
+import { isPropertyNode } from "../util.js";
 
 /**
  * @import { Feature } from "../build-server.js"
@@ -47,11 +48,6 @@ export default {
 
   onShutdown() {
   }
-};
-
-/** @type (node: SchemaNodeType) => boolean */
-const isPropertyNode = (node) => {
-  return node.parent?.type === "property" && node.parent.children[0] === node;
 };
 
 /** @type Record<string, string> */

@@ -2,6 +2,10 @@ import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimenta
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
 import { URI } from "vscode-uri";
 
+/**
+ * @import { SchemaNode as SchemaNodeType } from "./schema-node.js"
+ */
+
 
 /** @type (uri: string) => string */
 export const toAbsoluteUri = (uri) => {
@@ -44,4 +48,9 @@ export const resolveIri = (uri, baseUri) => {
 /** @type (uri: string) => string */
 export const normalizeUri = (uri) => {
   return URI.parse(uri).toString();
+};
+
+/** @type (node: SchemaNodeType) => boolean */
+export const isPropertyNode = (node) => {
+  return node.parent?.type === "property" && node.parent.children[0] === node;
 };
