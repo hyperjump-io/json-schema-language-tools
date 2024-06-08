@@ -41,9 +41,4 @@ export const cons = (uri, pointer, value, type, children, parent, offset, textLe
 };
 
 // eslint-disable-next-line import/export
-export const annotation = (node, keyword, dialect = "https://json-schema.org/draft/2020-12/schema") => {
-  return Instance.annotation(node, keyword, dialect);
-};
-
-// eslint-disable-next-line import/export
 export * from "@hyperjump/json-schema/annotated-instance/experimental";

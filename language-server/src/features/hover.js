@@ -3,6 +3,8 @@ import * as JsonNode from "../json-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 
 
+const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
+
 export default {
   onInitialize() {
     return {
@@ -23,7 +25,7 @@ export default {
         return {
           contents: {
             kind: MarkupKind.Markdown,
-            value: JsonNode.annotation(keyword.parent.children[1], "description").join("\n")
+            value: JsonNode.annotation(keyword.parent.children[1], "description", annotationDialectUri).join("\n")
           },
           range: {
             start: document.positionAt(keyword.offset),
