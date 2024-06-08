@@ -1,9 +1,10 @@
 import { getSchema, compile, interpret, getKeywordName, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
+import { reduce } from "@hyperjump/pact";
 import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
-import { uriFragment } from "./util.js";
+import { toAbsoluteUri, uriFragment } from "./util.js";
 
 
 const cons = (textDocument) => {
@@ -61,7 +62,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
           document.errors.push({
             keyword: error.keyword,
             keywordNode: await getSchema(error.absoluteKeywordLocation),
-            instanceNode: SchemaNode.get(error.instanceLocation, schemaResource)
+            instanceNode: fromInstanceLocation(document, error.instanceLocation)
           });
         }
       }
@@ -186,6 +187,22 @@ const getEmbeddedDialectUri = (node, dialectUri) => {
   const legacy$idNode = legacyIdToken && nodeStep(node, legacyIdToken);
   if (legacy$idNode?.type === "string" && getNodeValue(legacy$idNode)[0] !== "#") {
     return dialectUri;
+  }
+};
+
+// This largely duplicates SchemaNode.get, but we can't use that because the
+// schema document isn't registered yet when we need to call this function.
+const fromInstanceLocation = (document, instanceLocation) => {
+  const schemaUri = toAbsoluteUri(instanceLocation);
+  for (const schemaResource of document.schemaResources) {
+    if (schemaUri === schemaResource.baseUri) {
+      const pointer = uriFragment(instanceLocation);
+
+      return reduce((node, segment) => {
+        segment = segment === "-" && SchemaNode.typeOf(node) === "array" ? SchemaNode.length(node) : segment;
+        return SchemaNode.step(segment, node);
+      }, schemaResource, JsonPointer.pointerSegments(pointer));
+    }
   }
 };
 

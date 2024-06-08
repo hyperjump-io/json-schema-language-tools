@@ -15,6 +15,7 @@ import schemaRegistryFeature from "./features/schema-registry.js";
 import workspaceFeature from "./features/workspace.js";
 import semanticTokensFeature from "./features/semantic-tokens.js";
 import validationErrorsFeature from "./features/validation-errors.js";
+import validateReferencesFeature from "./features/validate-references.js";
 import deprecatedFeature from "./features/deprecated.js";
 import completionFeature from "./features/completion.js";
 import schemaCompletion from "./features/schema-completion.js";
@@ -31,6 +32,7 @@ const features = [
   schemaRegistryFeature,
   semanticTokensFeature,
   validationErrorsFeature,
+  validateReferencesFeature,
   deprecatedFeature,
   completionFeature,
   schemaCompletion,
