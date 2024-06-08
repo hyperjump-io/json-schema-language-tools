@@ -5,7 +5,7 @@ import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
 import { getSchema, compile, interpret } from "@hyperjump/json-schema/experimental";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { parseTree } from "jsonc-parser";
-import * as Instance from "./json-instance.js";
+import * as JsonNode from "./json-node.js";
 
 
 const shouldSkip = (skip, path) => {
@@ -83,7 +83,7 @@ export const runTestSuite = (draft, dialectId, skip) => {
                       allowTrailingComma: true,
                       allowEmptyContent: true
                     });
-                    const instance = Instance.fromJsonc(root);
+                    const instance = JsonNode.fromJsonc(root);
                     const output = interpret(compiled, instance);
                     expect(output.valid).to.equal(test.valid);
                   });

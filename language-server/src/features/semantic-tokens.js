@@ -1,6 +1,6 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
-import * as Instance from "../json-instance.js";
+import * as JsonNode from "../json-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 import { toAbsoluteUri } from "../util.js";
 import { isMatchedFile } from "./workspace.js";
@@ -133,8 +133,8 @@ const getSemanticTokens = function* (schemaDocument) {
 };
 
 const schemaHandler = function* (schemaResource, dialectUri) {
-  for (const [keyNode, valueNode] of Instance.entries(schemaResource)) {
-    const keywordName = Instance.value(keyNode);
+  for (const [keyNode, valueNode] of JsonNode.entries(schemaResource)) {
+    const keywordName = JsonNode.value(keyNode);
     const keywordId = keywordIdFor(keywordName, dialectUri);
 
     if (keywordId) {
@@ -159,13 +159,13 @@ const keywordIdFor = (keywordName, dialectUri) => {
 };
 
 const schemaMapHandler = function* (schemaResource, dialectUri) {
-  for (const schemaNode of Instance.values(schemaResource)) {
+  for (const schemaNode of JsonNode.values(schemaResource)) {
     yield* schemaHandler(schemaNode, dialectUri);
   }
 };
 
 const schemaArrayHandler = function* (schemaResource, dialectUri) {
-  for (const schemaNode of Instance.iter(schemaResource)) {
+  for (const schemaNode of JsonNode.iter(schemaResource)) {
     yield* schemaHandler(schemaNode, dialectUri);
   }
 };

@@ -2,7 +2,7 @@ import { getSchema, compile, interpret, getKeywordName, hasDialect, BASIC } from
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
-import * as Instance from "./json-instance.js";
+import * as JsonNode from "./json-node.js";
 import { uriFragment } from "./util.js";
 
 
@@ -28,8 +28,8 @@ export class JsonSchemaDocument {
 
       for (const { dialectUri, schemaResource } of document.schemaResources) {
         if (!hasDialect(dialectUri)) {
-          const $schema = Instance.get("#/$schema", schemaResource);
-          if ($schema && Instance.typeOf($schema) === "string") {
+          const $schema = JsonNode.get("#/$schema", schemaResource);
+          if ($schema && JsonNode.typeOf($schema) === "string") {
             document.errors.push({
               keyword: "https://json-schema.org/keyword/schema",
               instanceNode: $schema,
@@ -60,7 +60,7 @@ export class JsonSchemaDocument {
             document.errors.push({
               keyword: error.keyword,
               keywordNode: await getSchema(error.absoluteKeywordLocation),
-              instanceNode: Instance.get(error.instanceLocation, schemaResource)
+              instanceNode: JsonNode.get(error.instanceLocation, schemaResource)
             });
           }
         }
@@ -71,7 +71,7 @@ export class JsonSchemaDocument {
   }
 
   #buildSchemaResources(node, uri = "", dialectUri = "", pointer = "", parent = undefined, anchors = {}) {
-    const jsonNode = Instance.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
+    const jsonNode = JsonNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
 
     switch (node.type) {
       case "array":
@@ -115,7 +115,7 @@ export class JsonSchemaDocument {
           if (embeddedDialectUri) {
             this.#buildSchemaResources(node, uri, embeddedDialectUri);
 
-            return Instance.cons(uri, pointer, true, "boolean", [], parent, node.offset, node.length);
+            return JsonNode.cons(uri, pointer, true, "boolean", [], parent, node.offset, node.length);
           }
         }
 
@@ -170,8 +170,8 @@ export class JsonSchemaDocument {
 
   * annotatedWith(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
     for (const { schemaResource } of this.schemaResources) {
-      for (const node of Instance.allNodes(schemaResource)) {
-        if (Instance.annotation(node, keyword, dialectId).length > 0) {
+      for (const node of JsonNode.allNodes(schemaResource)) {
+        if (JsonNode.annotation(node, keyword, dialectId).length > 0) {
           yield node;
         }
       }
@@ -180,7 +180,7 @@ export class JsonSchemaDocument {
 
   findNodeAtOffset(offset) {
     for (const { schemaResource } of this.schemaResources) {
-      const node = Instance.findNodeAtOffset(schemaResource, offset);
+      const node = JsonNode.findNodeAtOffset(schemaResource, offset);
       if (node) {
         return node;
       }

@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { getSchema, compile, interpret } from "@hyperjump/json-schema/experimental";
-import * as Instance from "./json-instance.js";
+import * as JsonNode from "./json-node.js";
 import { toAbsoluteUri } from "./util.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { parseTree } from "jsonc-parser";
@@ -55,15 +55,15 @@ describe("Annotations", () => {
                   allowTrailingComma: true,
                   allowEmptyContent: true
                 });
-                instance = Instance.fromJsonc(root);
+                instance = JsonNode.fromJsonc(root);
                 interpret(compiled, instance);
               });
 
               subject.assertions.forEach((assertion) => {
                 it(`${assertion.keyword} annotations at '${assertion.location}' should be ${JSON.stringify(assertion.expected)}`, () => {
                   const dialect = suite.schema.$schema ? toAbsoluteUri(suite.schema.$schema) : dialectId;
-                  const subject = Instance.get(assertion.location, instance);
-                  const annotations = subject ? Instance.annotation(subject, assertion.keyword, dialect) : [];
+                  const subject = JsonNode.get(assertion.location, instance);
+                  const annotations = subject ? JsonNode.annotation(subject, assertion.keyword, dialect) : [];
                   expect(annotations).to.eql(assertion.expected);
                 });
               });
