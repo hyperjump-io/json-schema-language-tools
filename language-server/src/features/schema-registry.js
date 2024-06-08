@@ -36,3 +36,13 @@ export const allSchemaDocuments = function* () {
     yield schemaDocument;
   }
 };
+
+export const getSchemaResource = (schemaUri) => {
+  for (const schemaDocument of allSchemaDocuments()) {
+    for (const schemaResource of schemaDocument.schemaResources) {
+      if (schemaResource.baseUri === schemaUri) {
+        return schemaResource;
+      }
+    }
+  }
+};

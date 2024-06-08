@@ -3,10 +3,11 @@
 A Language Server for JSON Schema development.
 
 Features:
+* Full support for draft-04/06/07/2019-09/2020-12
 * Inline diagnostics for invalid schemas
 * Semantic highlighting of JSON Schema keywords
 * Semantic highlighting of deprecated keywords
-* Full support for draft-04/06/07/2019-09/2020-12
+* Inline diagnostics for invalid references
 
 ## Settings
 
