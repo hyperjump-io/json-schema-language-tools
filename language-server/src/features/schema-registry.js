@@ -1,5 +1,5 @@
 import { getDocumentSettings } from "./document-settings.js";
-import * as SchemaDocument from "../json-schema-document.js";
+import * as SchemaDocument from "../schema-document.js";
 
 
 export default {

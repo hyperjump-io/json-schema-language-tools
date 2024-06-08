@@ -1,6 +1,6 @@
 import { CompletionItemKind } from "vscode-languageserver";
 import { getDialectIds } from "@hyperjump/json-schema/experimental";
-import * as SchemaDocument from "../json-schema-document.js";
+import * as SchemaDocument from "../schema-document.js";
 import { subscribe } from "../pubsub.js";
 
 

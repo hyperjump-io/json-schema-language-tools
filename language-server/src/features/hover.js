@@ -1,5 +1,5 @@
 import { MarkupKind } from "vscode-languageserver";
-import * as SchemaDocument from "../json-schema-document.js";
+import * as SchemaDocument from "../schema-document.js";
 import * as JsonNode from "../json-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 
