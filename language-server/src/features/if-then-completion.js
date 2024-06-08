@@ -1,4 +1,4 @@
-import { CompletionItemKind } from "vscode-languageserver";
+import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
 import { subscribe } from "../pubsub.js";
 
@@ -14,13 +14,6 @@ export default {
       if (currentProperty && currentProperty.pointer.endsWith("/if")) {
         completions.push(...ifThenPatternCompletion);
       }
-
-      // const text = document.getText();
-      // const startOfLine = text.lastIndexOf("\n", offset - 1) + 1;
-      // const textBeforePosition = text.slice(startOfLine, offset);
-      // if (textBeforePosition.trim().endsWith("\"if\":")) {
-      //   completions.push(...ifThenPatternCompletion());
-      // }
     });
   }
 };
@@ -30,30 +23,29 @@ const ifThenPatternCompletion = [
     label: "if/then",
     kind: CompletionItemKind.Snippet,
     insertText: `{
-      "type": "object",
-      "properties": {
-        "{varName}": { "const": "{value}" }
-      },
-      "required": ["{varName}"]
-    },
-    "then": {
-    }`,
+  "type": "object",
+  "properties": {
+    "\${1:propertyName}": { "const": \${2:value} }
+  },
+  "required": ["\${1:propertyName}"]
+},
+"then": \${3:{}}`,
+    insertTextFormat: InsertTextFormat.Snippet,
     documentation: "Basic if/then pattern with a single condition and corresponding schema."
   },
   {
     label: "If/then/else",
     kind: CompletionItemKind.Snippet,
     insertText: `{
-      "type": "object",
-      "properties": {
-        "{varName}": { "const": "{value}" }
-      },
-      "required": ["{varName}"]
-    },
-    "then": {
-    },
-    "else": {
-    }`,
+  "type": "object",
+  "properties": {
+    "\${1:varName}": { "const": \${2:value} }
+  },
+  "required": ["\${1:varName}"]
+},
+"then": \${3:{}},
+"else": \${4:{}}`,
+    insertTextFormat: InsertTextFormat.Snippet,
     documentation: "Conditional object structure with if/then/else logic"
   },
   {
