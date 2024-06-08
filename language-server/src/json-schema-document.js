@@ -168,16 +168,6 @@ export class JsonSchemaDocument {
     return jsonNode;
   }
 
-  * annotatedWith(keyword, dialectId = "https://json-schema.org/draft/2020-12/schema") {
-    for (const { schemaResource } of this.schemaResources) {
-      for (const node of JsonNode.allNodes(schemaResource)) {
-        if (JsonNode.annotation(node, keyword, dialectId).length > 0) {
-          yield node;
-        }
-      }
-    }
-  }
-
   findNodeAtOffset(offset) {
     for (const { schemaResource } of this.schemaResources) {
       const node = _findNodeAtOffset(schemaResource, offset);
