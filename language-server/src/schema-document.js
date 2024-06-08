@@ -2,7 +2,7 @@ import { getSchema, compile, interpret, getKeywordName, hasDialect, BASIC } from
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
-import * as JsonNode from "./json-node.js";
+import * as SchemaNode from "./schema-node.js";
 import { uriFragment } from "./util.js";
 
 
@@ -27,16 +27,16 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
 
     buildSchemaResources(document, root, textDocument.uri, contextDialectUri);
 
-    for (const { dialectUri, schemaResource } of document.schemaResources) {
-      if (!hasDialect(dialectUri)) {
-        const $schema = JsonNode.get("#/$schema", schemaResource);
-        if ($schema && JsonNode.typeOf($schema) === "string") {
+    for (const schemaResource of document.schemaResources) {
+      if (!hasDialect(schemaResource.dialectUri)) {
+        const $schema = SchemaNode.get("#/$schema", schemaResource);
+        if ($schema && SchemaNode.typeOf($schema) === "string") {
           document.errors.push({
             keyword: "https://json-schema.org/keyword/schema",
             instanceNode: $schema,
             message: "Unknown dialect"
           });
-        } else if (dialectUri) {
+        } else if (schemaResource.dialectUri) {
           document.errors.push({
             keyword: "https://json-schema.org/keyword/schema",
             instanceNode: schemaResource,
@@ -53,7 +53,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
         continue;
       }
 
-      const schema = await getSchema(dialectUri);
+      const schema = await getSchema(schemaResource.dialectUri);
       const compiled = await compile(schema);
       const output = interpret(compiled, schemaResource, BASIC);
       if (!output.valid) {
@@ -61,7 +61,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
           document.errors.push({
             keyword: error.keyword,
             keywordNode: await getSchema(error.absoluteKeywordLocation),
-            instanceNode: JsonNode.get(error.instanceLocation, schemaResource)
+            instanceNode: SchemaNode.get(error.instanceLocation, schemaResource)
           });
         }
       }
@@ -72,13 +72,13 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
 };
 
 const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer = "", parent = undefined, anchors = {}) => {
-  const jsonNode = JsonNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
+  const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length, dialectUri, anchors);
 
   switch (node.type) {
     case "array":
-      jsonNode.children = node.children.map((child, index) => {
+      schemaNode.children = node.children.map((child, index) => {
         const itemPointer = JsonPointer.append(index, pointer);
-        return buildSchemaResources(document, child, uri, dialectUri, itemPointer, jsonNode, anchors);
+        return buildSchemaResources(document, child, uri, dialectUri, itemPointer, schemaNode, anchors);
       });
       break;
 
@@ -89,6 +89,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
         if ($schema?.type === "string") {
           try {
             dialectUri = toAbsoluteIri(getNodeValue($schema));
+            schemaNode.dialectUri = dialectUri;
           } catch (error) {
             // Ignore
           }
@@ -98,7 +99,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
         const $idNode = idToken && nodeStep(node, idToken);
         if ($idNode) {
           uri = toAbsoluteIri(resolveIri(getNodeValue($idNode), uri));
-          jsonNode.baseUri = uri;
+          schemaNode.baseUri = uri;
         }
 
         const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", dialectUri);
@@ -107,7 +108,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
           const legacy$id = getNodeValue(legacy$idNode);
           if (legacy$id[0] !== "#") {
             uri = toAbsoluteIri(resolveIri(legacy$id, uri));
-            jsonNode.baseUri = uri;
+            schemaNode.baseUri = uri;
           }
         }
       } else {
@@ -116,7 +117,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
         if (embeddedDialectUri) {
           buildSchemaResources(document, node, uri, embeddedDialectUri);
 
-          return JsonNode.cons(uri, pointer, true, "boolean", [], parent, node.offset, node.length);
+          return SchemaNode.cons(uri, pointer, true, "boolean", [], parent, node.offset, node.length, dialectUri, anchors);
         }
       }
 
@@ -138,10 +139,10 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
 
       for (const child of node.children) {
         const propertyPointer = JsonPointer.append(getNodeValue(child.children[0]), pointer);
-        const propertyNode = buildSchemaResources(document, child, uri, dialectUri, propertyPointer, jsonNode, anchors);
+        const propertyNode = buildSchemaResources(document, child, uri, dialectUri, propertyPointer, schemaNode, anchors);
 
         if (propertyNode) {
-          jsonNode.children.push(propertyNode);
+          schemaNode.children.push(propertyNode);
         }
       }
       break;
@@ -151,22 +152,17 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
         return;
       }
 
-      jsonNode.children = node.children.map((child) => {
-        return buildSchemaResources(document, child, uri, dialectUri, pointer, jsonNode, anchors);
+      schemaNode.children = node.children.map((child) => {
+        return buildSchemaResources(document, child, uri, dialectUri, pointer, schemaNode, anchors);
       });
       break;
   }
 
-  if (jsonNode.pointer === "") {
-    document.schemaResources.push({
-      schemaResource: jsonNode,
-      dialectUri: dialectUri,
-      baseUri: uri,
-      anchors: anchors
-    });
+  if (schemaNode.pointer === "") {
+    document.schemaResources.push(schemaNode);
   }
 
-  return jsonNode;
+  return schemaNode;
 };
 
 const getEmbeddedDialectUri = (node, dialectUri) => {
@@ -194,7 +190,7 @@ const getEmbeddedDialectUri = (node, dialectUri) => {
 };
 
 export const findNodeAtOffset = (document, offset) => {
-  for (const { schemaResource } of document.schemaResources) {
+  for (const schemaResource of document.schemaResources) {
     const node = _findNodeAtOffset(schemaResource, offset);
     if (node) {
       return node;

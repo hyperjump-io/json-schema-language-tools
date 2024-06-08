@@ -1,6 +1,6 @@
 import { MarkupKind } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
-import * as JsonNode from "../json-node.js";
+import * as SchemaNode from "../schema-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 
 
@@ -22,11 +22,11 @@ export default {
 
       // This is a little wierd because we want the hover to be on the keyword, but
       // the annotation is actually on the value not the keyword.
-      if (keyword.parent && JsonNode.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
+      if (keyword.parent && SchemaNode.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
         return {
           contents: {
             kind: MarkupKind.Markdown,
-            value: JsonNode.annotation(keyword.parent.children[1], "description", annotationDialectUri).join("\n")
+            value: SchemaNode.annotation(keyword.parent.children[1], "description", annotationDialectUri).join("\n")
           },
           range: {
             start: document.positionAt(keyword.offset),

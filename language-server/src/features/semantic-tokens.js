@@ -1,6 +1,6 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
 import { getKeywordId } from "@hyperjump/json-schema/experimental";
-import * as JsonNode from "../json-node.js";
+import * as SchemaNode from "../schema-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 import { toAbsoluteUri } from "../util.js";
 import { isMatchedFile } from "./workspace.js";
@@ -127,22 +127,22 @@ const sortSemanticTokens = (semanticTokens, textDocument) => {
 };
 
 const getSemanticTokens = function* (schemaDocument) {
-  for (const { schemaResource, dialectUri } of schemaDocument.schemaResources) {
-    yield* schemaHandler(schemaResource, dialectUri);
+  for (const schemaResource of schemaDocument.schemaResources) {
+    yield* schemaHandler(schemaResource);
   }
 };
 
-const schemaHandler = function* (schemaResource, dialectUri) {
-  for (const [keyNode, valueNode] of JsonNode.entries(schemaResource)) {
-    const keywordName = JsonNode.value(keyNode);
-    const keywordId = keywordIdFor(keywordName, dialectUri);
+const schemaHandler = function* (schemaResource) {
+  for (const [keyNode, valueNode] of SchemaNode.entries(schemaResource)) {
+    const keywordName = SchemaNode.value(keyNode);
+    const keywordId = keywordIdFor(keywordName, schemaResource.dialectUri);
 
     if (keywordId) {
       if (keywordId === "https://json-schema.org/keyword/comment") {
         yield { keywordInstance: keyNode.parent, tokenType: "comment" };
       } else if (toAbsoluteUri(keywordId) !== "https://json-schema.org/keyword/unknown") {
         yield { keywordInstance: keyNode, tokenType: "keyword" };
-        yield* getKeywordHandler(keywordId)(valueNode, dialectUri);
+        yield* getKeywordHandler(keywordId)(valueNode);
       }
     }
   }
@@ -158,15 +158,15 @@ const keywordIdFor = (keywordName, dialectUri) => {
   }
 };
 
-const schemaMapHandler = function* (schemaResource, dialectUri) {
-  for (const schemaNode of JsonNode.values(schemaResource)) {
-    yield* schemaHandler(schemaNode, dialectUri);
+const schemaMapHandler = function* (schemaResource) {
+  for (const schemaNode of SchemaNode.values(schemaResource)) {
+    yield* schemaHandler(schemaNode);
   }
 };
 
-const schemaArrayHandler = function* (schemaResource, dialectUri) {
-  for (const schemaNode of JsonNode.iter(schemaResource)) {
-    yield* schemaHandler(schemaNode, dialectUri);
+const schemaArrayHandler = function* (schemaResource) {
+  for (const schemaNode of SchemaNode.iter(schemaResource)) {
+    yield* schemaHandler(schemaNode);
   }
 };
 
