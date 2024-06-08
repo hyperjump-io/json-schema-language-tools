@@ -1,9 +1,8 @@
 import { CompletionItemKind } from "vscode-languageserver";
 import { getDialect } from "@hyperjump/json-schema/experimental";
-import { toAbsoluteUri } from "@hyperjump/uri";
-import { getNodeValue } from "jsonc-parser";
 import { subscribe } from "../pubsub.js";
 import * as SchemaDocument from "../schema-document.js";
+import * as SchemaNode from "../schema-node.js";
 
 
 export default {
@@ -14,9 +13,8 @@ export default {
   onInitialized() {
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
-      const schemaValue = getNodeValue(currentProperty)?.$schema;
-      if (schemaValue) {
-        const dialect = getDialect(toAbsoluteUri(schemaValue));
+      if (SchemaNode.typeOf(currentProperty) === "object") {
+        const dialect = getDialect(currentProperty.dialectUri);
         const keywords = Object.keys(dialect);
         completions.push(...keywords.map((keyword) => ({
           label: keyword,
