@@ -1,4 +1,5 @@
 import { MarkupKind } from "vscode-languageserver";
+import * as SchemaDocument from "../json-schema-document.js";
 import * as JsonNode from "../json-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
 
@@ -17,7 +18,7 @@ export default {
       const document = documents.get(textDocument.uri);
       const schemaDocument = await getSchemaDocument(connection, document);
       const offset = document.offsetAt(position);
-      const keyword = schemaDocument.findNodeAtOffset(offset);
+      const keyword = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
 
       // This is a little wierd because we want the hover to be on the keyword, but
       // the annotation is actually on the value not the keyword.

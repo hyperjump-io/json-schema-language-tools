@@ -1,5 +1,6 @@
-import { getDialectIds } from "@hyperjump/json-schema/experimental";
 import { CompletionItemKind } from "vscode-languageserver";
+import { getDialectIds } from "@hyperjump/json-schema/experimental";
+import * as SchemaDocument from "../json-schema-document.js";
 import { subscribe } from "../pubsub.js";
 
 
@@ -17,7 +18,7 @@ export default {
     const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
 
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
-      const currentProperty = schemaDocument.findNodeAtOffset(offset);
+      const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/$schema")) {
         completions.push(...getDialectIds().map((uri) => ({
           label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,

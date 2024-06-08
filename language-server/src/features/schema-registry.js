@@ -1,5 +1,5 @@
 import { getDocumentSettings } from "./document-settings.js";
-import { JsonSchemaDocument } from "../json-schema-document.js";
+import * as SchemaDocument from "../json-schema-document.js";
 
 
 export default {
@@ -21,7 +21,7 @@ export const getSchemaDocument = async (connection, textDocument) => {
 
   if (version === -1 || version !== textDocument.version) {
     const settings = await getDocumentSettings(connection, textDocument.uri);
-    schemaDocument = await JsonSchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
+    schemaDocument = await SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
 
     schemaDocuments.set(textDocument.uri, { version: textDocument.version, schemaDocument });
   }
