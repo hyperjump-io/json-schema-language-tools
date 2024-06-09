@@ -47,17 +47,5 @@ const ifThenPatternCompletion = [
 "else": \${4:{}}`,
     insertTextFormat: InsertTextFormat.Snippet,
     documentation: "Conditional object structure with if/then/else logic"
-  },
-  {
-    label: "true",
-    kind: CompletionItemKind.Snippet,
-    insertText: `true`,
-    documentation: "if true"
-  },
-  {
-    label: "false",
-    kind: CompletionItemKind.Snippet,
-    insertText: `false`,
-    documentation: "if false"
   }
 ];
