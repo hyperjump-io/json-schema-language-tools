@@ -1,13 +1,6 @@
 // Language Server
-import { createConnection, ProposedFeatures, TextDocuments } from "vscode-languageserver/node.js";
-import { TextDocument } from "vscode-languageserver-textdocument";
-
-// Hyperjump
-import "@hyperjump/json-schema/draft-2020-12";
-import "@hyperjump/json-schema/draft-2019-09";
-import "@hyperjump/json-schema/draft-07";
-import "@hyperjump/json-schema/draft-06";
-import "@hyperjump/json-schema/draft-04";
+import { createConnection, ProposedFeatures } from "vscode-languageserver/node.js";
+import { buildServer } from "./build-server.js";
 
 // Features
 import documentSettingFeature from "./features/document-settings.js";
@@ -23,11 +16,6 @@ import schemaCompletion from "./features/schema-completion.js";
 import hoverFeature from "./features/hover.js";
 
 
-const connection = createConnection(ProposedFeatures.all);
-connection.console.log("Starting JSON Schema service ...");
-
-const documents = new TextDocuments(TextDocument);
-
 const features = [
   documentSettingFeature,
   schemaRegistryFeature,
@@ -42,21 +30,7 @@ const features = [
   workspaceFeature // Workspace must be last
 ];
 
-connection.onInitialize((params) => {
-  connection.console.log("Initializing JSON Schema service ...");
+const connection = createConnection(ProposedFeatures.all);
+connection.console.log("Starting JSON Schema service ...");
 
-  return {
-    capabilities: features.reduce((serverCapabilities, feature) => {
-      return { ...serverCapabilities, ...feature.onInitialize(params) };
-    }, {})
-  };
-});
-
-connection.onInitialized(async () => {
-  for (const feature of features) {
-    feature.onInitialized(connection, documents);
-  }
-});
-
-connection.listen();
-documents.listen(connection);
+buildServer(connection, features);
