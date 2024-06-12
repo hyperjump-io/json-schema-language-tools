@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { CompletionItemKind, InsertTextFormat, CompletionRequest, InitializeRequest, InitializedNotification } from "vscode-languageserver/node.js";
+import { CompletionRequest, InitializeRequest, InitializedNotification } from "vscode-languageserver/node.js";
 import completion from "./completion.js";
-import ifThenCompletionFeature from "./if-then-completion.js";
+import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
 import { clientCapabilities, getTestClient, openDocument } from "../test-utils.js";
 
 
@@ -37,25 +37,7 @@ describe("Feature - if/then completion", () => {
 
     const response = await client.sendRequest(CompletionRequest.type, params);
 
-    expect(response).to.eql([
-      {
-        label: "if/then",
-        kind: CompletionItemKind.Snippet,
-        // eslint-disable-next-line no-template-curly-in-string
-        insertText: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"${1:propertyName}\": { \"const\": ${2:value} }\n  },\n  \"required\": [\"${1:propertyName}\"]\n},\n\"then\": ${3:{}}",
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: "Basic if/then pattern with a single condition and corresponding schema."
-      },
-      {
-        label: "If/then/else",
-        kind: CompletionItemKind.Snippet,
-        // eslint-disable-next-line no-template-curly-in-string
-        insertText: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"${1:varName}\": { \"const\": ${2:value} }\n  },\n  \"required\": [\"${1:varName}\"]\n},\n\"then\": ${3:{}},\n\"else\": ${4:{}}",
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: "Conditional object structure with if/then/else logic"
-      }
-
-    ]);
+    expect(response).to.eql(ifThenPatternCompletion);
   });
 
   test("if/then completion with space", async () => {
@@ -77,25 +59,7 @@ describe("Feature - if/then completion", () => {
 
     const response = await client.sendRequest(CompletionRequest.type, params);
 
-    expect(response).to.eql([
-      {
-        label: "if/then",
-        kind: CompletionItemKind.Snippet,
-        // eslint-disable-next-line no-template-curly-in-string
-        insertText: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"${1:propertyName}\": { \"const\": ${2:value} }\n  },\n  \"required\": [\"${1:propertyName}\"]\n},\n\"then\": ${3:{}}",
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: "Basic if/then pattern with a single condition and corresponding schema."
-      },
-      {
-        label: "If/then/else",
-        kind: CompletionItemKind.Snippet,
-        // eslint-disable-next-line no-template-curly-in-string
-        insertText: "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"${1:varName}\": { \"const\": ${2:value} }\n  },\n  \"required\": [\"${1:varName}\"]\n},\n\"then\": ${3:{}},\n\"else\": ${4:{}}",
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: "Conditional object structure with if/then/else logic"
-      }
-
-    ]);
+    expect(response).to.eql(ifThenPatternCompletion);
   });
 
   test("if/then completion on property key", async () => {

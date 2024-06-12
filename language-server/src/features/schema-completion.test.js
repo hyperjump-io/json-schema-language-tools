@@ -36,28 +36,7 @@ describe("Feature - $schema completion", () => {
     };
 
     const response = await client.sendRequest(CompletionRequest.type, params);
-    expect(response).to.eql([
-      {
-        kind: CompletionItemKind.Value,
-        label: "https://json-schema.org/draft/2020-12/schema"
-      },
-      {
-        kind: CompletionItemKind.Value,
-        label: "https://json-schema.org/draft/2019-09/schema"
-      },
-      {
-        kind: CompletionItemKind.Value,
-        label: "http://json-schema.org/draft-07/schema#"
-      },
-      {
-        kind: CompletionItemKind.Value,
-        label: "http://json-schema.org/draft-06/schema#"
-      },
-      {
-        kind: CompletionItemKind.Value,
-        label: "http://json-schema.org/draft-04/schema#"
-      }
-    ]);
+    expect(response).to.eql(expectedCompletions);
   });
 
   test("$schema completion with colon", async () => {
@@ -123,3 +102,26 @@ describe("Feature - $schema completion", () => {
     expect(response).to.eql([]);
   });
 });
+
+const expectedCompletions = [
+  {
+    kind: CompletionItemKind.Value,
+    label: "https://json-schema.org/draft/2020-12/schema"
+  },
+  {
+    kind: CompletionItemKind.Value,
+    label: "https://json-schema.org/draft/2019-09/schema"
+  },
+  {
+    kind: CompletionItemKind.Value,
+    label: "http://json-schema.org/draft-07/schema#"
+  },
+  {
+    kind: CompletionItemKind.Value,
+    label: "http://json-schema.org/draft-06/schema#"
+  },
+  {
+    kind: CompletionItemKind.Value,
+    label: "http://json-schema.org/draft-04/schema#"
+  }
+];

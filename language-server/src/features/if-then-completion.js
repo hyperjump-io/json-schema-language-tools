@@ -18,7 +18,7 @@ export default {
   }
 };
 
-const ifThenPatternCompletion = [
+export const ifThenPatternCompletion = [
   {
     label: "if/then",
     kind: CompletionItemKind.Snippet,
