@@ -11,7 +11,7 @@ export default {
   onInitialized() {
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
-      if (currentProperty && currentProperty.pointer.endsWith("/if")) {
+      if (currentProperty && currentProperty.pointer.endsWith("/if") && currentProperty.type === "property") {
         completions.push(...ifThenPatternCompletion);
       }
     });
