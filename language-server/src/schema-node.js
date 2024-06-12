@@ -28,6 +28,10 @@ export const get = (uri, node) => {
   }
 
   return reduce((node, segment) => {
+    if (!node) {
+      return;
+    }
+
     segment = segment === "-" && JsonNode.typeOf(node) === "array" ? JsonNode.length(node) : segment;
     return JsonNode.step(segment, node);
   }, schemaResource, JsonPointer.pointerSegments(pointer));

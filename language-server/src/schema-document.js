@@ -1,10 +1,10 @@
-import { getSchema, compile, interpret, getKeywordName, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
+import { getSchema, compile, interpret, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
 import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
-import { toAbsoluteUri, uriFragment } from "./util.js";
+import { keywordNameFor, toAbsoluteUri, uriFragment } from "./util.js";
 
 
 const cons = (textDocument) => {
@@ -236,12 +236,4 @@ const contains = (node, offset, includeRightBound = false) => {
 const nodeStep = (node, key) => {
   const property = node.children.find((property) => getNodeValue(property.children[0]) === key);
   return property?.children[1];
-};
-
-const keywordNameFor = (keywordUri, dialectUri) => {
-  try {
-    return getKeywordName(dialectUri, keywordUri);
-  } catch (error) {
-    return undefined;
-  }
 };

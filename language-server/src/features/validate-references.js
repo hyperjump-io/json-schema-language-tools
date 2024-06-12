@@ -1,6 +1,6 @@
-import { getKeywordName } from "@hyperjump/json-schema/experimental";
 import * as SchemaNode from "../schema-node.js";
 import { subscribe } from "../pubsub.js";
+import { keywordNameFor } from "../util.js";
 
 
 export default {
@@ -24,8 +24,8 @@ export default {
 };
 
 const references = function* (schemaResource) {
-  const refToken = getKeywordName(schemaResource.dialectUri, "https://json-schema.org/keyword/ref");
-  const legacyRefToken = getKeywordName(schemaResource.dialectUri, "https://json-schema.org/keyword/draft-04/ref");
+  const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri);
+  const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri);
 
   for (const node of SchemaNode.allNodes(schemaResource)) {
     if (node.parent && SchemaNode.typeOf(node.parent) === "property") {
