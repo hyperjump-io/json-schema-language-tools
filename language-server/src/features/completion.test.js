@@ -12,6 +12,9 @@ describe("Feature - Completion", () => {
   });
 
   test("completion provider capabilities", async () => {
+    /**
+     * @type {import("vscode-languageserver/node.js").InitializeParams}
+     */
     const init = {
       capabilities: clientCapabilities,
       workspaceFolders: []

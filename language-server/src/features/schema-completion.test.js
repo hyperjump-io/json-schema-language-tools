@@ -20,7 +20,7 @@ describe("Feature - $schema completion", () => {
 
   test("$schema completion", async () => {
     /**
-     * @type CompletionParams
+     * @type {import("vscode-languageserver/node.js").CompletionParams}
      */
     const params = {
       textDocument: { uri: "./src/test-workspace/test.schema.json" },
