@@ -18,8 +18,8 @@ describe("Feature - $schema completion", () => {
     await client.sendNotification(InitializedNotification);
   });
 
-  test("$schema completion", async () => {
-    const documentUri = "file://path/to/workspace/subject.schema.json";
+  test("$schema completion with string", async () => {
+    const documentUri = "file://path/to/workspace/subject1.schema.json";
     await openDocument(client, documentUri, `{
   "$schema": ""
 }`);
@@ -58,5 +58,68 @@ describe("Feature - $schema completion", () => {
         label: "http://json-schema.org/draft-04/schema#"
       }
     ]);
+  });
+
+  test("$schema completion with colon", async () => {
+    const documentUri = "file://path/to/workspace/subject2.schema.json";
+    await openDocument(client, documentUri, `{
+  "$schema":
+}`);
+
+    /**
+     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     */
+    const params = {
+      textDocument: { uri: documentUri },
+      position: {
+        line: 1,
+        character: 12
+      }
+    };
+
+    const response = await client.sendRequest(CompletionRequest.type, params);
+    expect(response).to.eql([]);
+  });
+
+  test("$schema completion with colon and space", async () => {
+    const documentUri = "file://path/to/workspace/subject3.schema.json";
+    await openDocument(client, documentUri, `{
+  "$schema": 
+}`);
+
+    /**
+     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     */
+    const params = {
+      textDocument: { uri: documentUri },
+      position: {
+        line: 1,
+        character: 13
+      }
+    };
+
+    const response = await client.sendRequest(CompletionRequest.type, params);
+    expect(response).to.eql([]);
+  });
+
+  test("$schema completion without colon", async () => {
+    const documentUri = "file://path/to/workspace/subject4.schema.json";
+    await openDocument(client, documentUri, `{
+  "$schema"
+}`);
+
+    /**
+     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     */
+    const params = {
+      textDocument: { uri: documentUri },
+      position: {
+        line: 1,
+        character: 11
+      }
+    };
+
+    const response = await client.sendRequest(CompletionRequest.type, params);
+    expect(response).to.eql([]);
   });
 });

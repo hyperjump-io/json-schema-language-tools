@@ -19,7 +19,7 @@ export default {
 
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
-      if (currentProperty && currentProperty.pointer.endsWith("/$schema")) {
+      if (currentProperty && currentProperty.pointer.endsWith("/$schema") && currentProperty.type === "string") {
         completions.push(...getDialectIds().map((uri) => ({
           label: shouldHaveTrailingHash(uri) ? `${uri}#` : uri,
           kind: CompletionItemKind.Value
