@@ -149,10 +149,6 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer
       break;
 
     case "property":
-      if (node.children.length !== 2) {
-        return;
-      }
-
       schemaNode.children = node.children.map((child) => {
         return buildSchemaResources(document, child, uri, dialectUri, pointer, schemaNode, anchors);
       });
