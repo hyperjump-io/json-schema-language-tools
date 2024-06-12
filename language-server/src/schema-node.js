@@ -6,7 +6,6 @@ import { getSchemaResource } from "./features/schema-registry.js";
 import { toAbsoluteUri, uriFragment } from "./util.js";
 
 
-// eslint-disable-next-line import/export
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength, dialectUri, anchors) => {
   const node = JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength);
   node.dialectUri = dialectUri;
@@ -15,7 +14,6 @@ export const cons = (uri, pointer, value, type, children, parent, offset, textLe
   return node;
 };
 
-// eslint-disable-next-line import/export
 export const get = (uri, node) => {
   const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
   const schemaResource = getSchemaResource(schemaId);
@@ -35,5 +33,9 @@ export const get = (uri, node) => {
   }, schemaResource, JsonPointer.pointerSegments(pointer));
 };
 
-// eslint-disable-next-line import/export
-export * from "./json-node.js";
+export {
+  uri, value, typeOf, has, length,
+  step, iter, keys, values, entries,
+  allNodes,
+  setAnnotation, annotation, annotatedWith
+} from "./json-node.js";

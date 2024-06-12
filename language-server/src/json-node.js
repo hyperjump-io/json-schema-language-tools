@@ -31,7 +31,6 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
   return jsonNode;
 };
 
-// eslint-disable-next-line import/export
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength) => {
   const node = Instance.cons(uri, pointer, value, type, children, parent);
   node.offset = offset;
@@ -40,5 +39,10 @@ export const cons = (uri, pointer, value, type, children, parent, offset, textLe
   return node;
 };
 
-// eslint-disable-next-line import/export
-export * from "@hyperjump/json-schema/annotated-instance/experimental";
+export {
+  get, uri, value, typeOf, has, length,
+  step, iter, keys, values, entries,
+  allNodes,
+  setAnnotation, annotation, annotatedWith
+} from "@hyperjump/json-schema/annotated-instance/experimental";
+
