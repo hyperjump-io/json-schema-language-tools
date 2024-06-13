@@ -15,10 +15,9 @@ describe("JSON Schema Language Server", () => {
      * @type {import("vscode-languageserver/node.js").InitializeParams}
      */
     const init = {
-      capabilities: {},
-      workspaceFolders: []
+      capabilities: {}
     };
-    const response = await client.sendRequest(InitializeRequest.type, init);
+    const response = await client.sendRequest(InitializeRequest, init);
 
     expect(response.capabilities.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
   });

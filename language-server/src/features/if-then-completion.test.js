@@ -11,10 +11,9 @@ describe("Feature - if/then completion", () => {
   beforeAll(async () => {
     client = getTestClient([completion, ifThenCompletionFeature]);
     const init = {
-      capabilities: {},
-      workspaceFolders: []
+      capabilities: {}
     };
-    await client.sendRequest(InitializeRequest.type, init);
+    await client.sendRequest(InitializeRequest, init);
     await client.sendNotification(InitializedNotification);
   });
 

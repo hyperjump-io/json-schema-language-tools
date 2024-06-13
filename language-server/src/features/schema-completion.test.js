@@ -11,10 +11,9 @@ describe("Feature - $schema completion", () => {
   beforeAll(async () => {
     client = getTestClient([completion, schemaCompletion]);
     const init = {
-      capabilities: {},
-      workspaceFolders: []
+      capabilities: {}
     };
-    await client.sendRequest(InitializeRequest.type, init);
+    await client.sendRequest(InitializeRequest, init);
     await client.sendNotification(InitializedNotification);
   });
 
