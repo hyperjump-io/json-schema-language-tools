@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll } from "vitest";
 import { InitializeRequest, TextDocumentSyncKind } from "vscode-languageserver/node";
-import { clientCapabilities, getTestClient } from "./test-utils.js";
+import { getTestClient } from "./test-utils.js";
 
 
 describe("JSON Schema Language Server", () => {
@@ -15,7 +15,7 @@ describe("JSON Schema Language Server", () => {
      * @type {import("vscode-languageserver/node.js").InitializeParams}
      */
     const init = {
-      capabilities: clientCapabilities,
+      capabilities: {},
       workspaceFolders: []
     };
     const response = await client.sendRequest(InitializeRequest.type, init);

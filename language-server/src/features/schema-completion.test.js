@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { CompletionItemKind, CompletionRequest, InitializeRequest, InitializedNotification } from "vscode-languageserver/node.js";
 import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
-import { clientCapabilities, getTestClient, openDocument } from "../test-utils.js";
+import { getTestClient, openDocument } from "../test-utils.js";
 
 
 describe("Feature - $schema completion", () => {
@@ -11,7 +11,7 @@ describe("Feature - $schema completion", () => {
   beforeAll(async () => {
     client = getTestClient([completion, schemaCompletion]);
     const init = {
-      capabilities: clientCapabilities,
+      capabilities: {},
       workspaceFolders: []
     };
     await client.sendRequest(InitializeRequest.type, init);

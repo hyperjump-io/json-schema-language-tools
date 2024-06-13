@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { CompletionRequest, InitializeRequest, InitializedNotification } from "vscode-languageserver/node.js";
 import completion from "./completion.js";
 import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
-import { clientCapabilities, getTestClient, openDocument } from "../test-utils.js";
+import { getTestClient, openDocument } from "../test-utils.js";
 
 
 describe("Feature - if/then completion", () => {
@@ -11,7 +11,7 @@ describe("Feature - if/then completion", () => {
   beforeAll(async () => {
     client = getTestClient([completion, ifThenCompletionFeature]);
     const init = {
-      capabilities: clientCapabilities,
+      capabilities: {},
       workspaceFolders: []
     };
     await client.sendRequest(InitializeRequest.type, init);

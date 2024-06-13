@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "vitest";
 import { InitializeRequest } from "vscode-languageserver/node";
-import { clientCapabilities, getTestClient } from "../test-utils.js";
+import { getTestClient } from "../test-utils.js";
 import completion from "./completion.js";
 
 
@@ -16,7 +16,7 @@ describe("Feature - Completion", () => {
      * @type {import("vscode-languageserver/node.js").InitializeParams}
      */
     const init = {
-      capabilities: clientCapabilities,
+      capabilities: {},
       workspaceFolders: []
     };
     const response = await client.sendRequest(InitializeRequest.type, init);
