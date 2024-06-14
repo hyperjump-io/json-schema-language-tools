@@ -9,6 +9,9 @@ First checkout this repo locally and run `npm install`. Then you can configure
 Neovim to use that checkout to run the server. The following is my
 configuration, yours may vary slightly depending on your environment.
 
+**WARNING**: Node.js v20.13.0 or higher is required because of a bug in node.js
+that was fixed in that version.
+
 `~/.config/nvim/ftplugin/json.lua`
 ```lua
 local root_files = { ".git", "package.json" }
