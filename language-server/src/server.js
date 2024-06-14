@@ -27,7 +27,7 @@ const features = [
   schemaCompletion,
   ifThenCompletionFeature,
   hoverFeature,
-  workspaceFeature // Workspace must be last
+  workspaceFeature
 ];
 
 const connection = createConnection(ProposedFeatures.all);

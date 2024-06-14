@@ -43,7 +43,7 @@ export default {
     return serverCapabilities;
   },
 
-  onInitialized(connection, documents) {
+  async onInitialized(connection, documents) {
     const onWorkspaceChange = (eventType, filename) => {
       // eventType === "rename" means file added or deleted (on most platforms?)
       // eventType === "change" means file saved
@@ -110,15 +110,16 @@ export default {
       };
     };
 
+    const settings = await getDocumentSettings(connection);
+
     if (hasWorkspaceWatchCapability) {
-      connection.client.register(DidChangeWatchedFilesNotification.type, {
-        watchers: [
-          { globPattern: "**/*.schema.json" },
-          { globPattern: "**/schema.json" }
-        ]
+      connection.client.register(DidChangeWatchedFilesNotification, {
+        watchers: settings.schemaFilePatterns.map((pattern) => {
+          return { globPattern: pattern };
+        })
       });
     } else {
-      watchWorkspace(onWorkspaceChange);
+      watchWorkspace(onWorkspaceChange, settings.schemaFilePatterns);
     }
 
     if (hasWorkspaceFolderCapability) {
@@ -127,7 +128,8 @@ export default {
         removeWorkspaceFolders(removed);
 
         if (!hasWorkspaceWatchCapability) {
-          watchWorkspace(onWorkspaceChange);
+          const settings = await getDocumentSettings(connection);
+          watchWorkspace(onWorkspaceChange, settings.schemaFilePattern);
         }
 
         publish("workspaceChanged", { changes: [] });
@@ -145,8 +147,6 @@ export default {
         validateSchema(schemaDocument);
       }
     });
-
-    publish("workspaceChanged", { changes: [] });
   }
 };
 
