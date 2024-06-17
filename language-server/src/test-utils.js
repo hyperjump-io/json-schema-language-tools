@@ -1,5 +1,9 @@
+import { DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, createConnection } from "vscode-languageserver/node";
 import { Duplex } from "node:stream";
-import { DidOpenTextDocumentNotification, createConnection } from "vscode-languageserver/node";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { join } from "node:path";
 import { buildServer } from "./build-server.js";
 
 
@@ -35,8 +39,34 @@ export const openDocument = async (client, uri, text) => {
       uri: uri,
       languageId: "json",
       version: 0,
-      text: text
+      text: text ?? await readFile(fileURLToPath(uri), "utf-8")
     }
   };
   await client.sendNotification(DidOpenTextDocumentNotification.type, openParams);
+};
+
+export const closeDocument = async (client, uri) => {
+  /**
+   * @type {import("vscode-languageserver/node.js").DidCloseTextDocumentParams}
+   */
+  const closeParams = {
+    textDocument: {
+      uri: uri
+    }
+  };
+  await client.sendNotification(DidCloseTextDocumentNotification.type, closeParams);
+};
+
+export const setupWorkspace = async (files) => {
+  const workspaceFolder = await mkdtemp(join(tmpdir(), "test-workspace-"));
+
+  for (const path in files) {
+    await writeFile(join(workspaceFolder, path), files[path], "utf-8");
+  }
+
+  return pathToFileURL(workspaceFolder).toString();
+};
+
+export const tearDownWorkspace = async (workspaceFolder) => {
+  await rm(fileURLToPath(workspaceFolder), { recursive: true });
 };

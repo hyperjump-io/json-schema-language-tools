@@ -60,7 +60,7 @@ export default {
 
     subscribe("workspaceChanged", async (_message, _changes) => {
       const reporter = await connection.window.createWorkDoneProgress();
-      reporter.begin("JSON Schema: Indexing workspace");
+      await reporter.begin("JSON Schema: Indexing workspace");
 
       // Load all schemas
       const settings = await getDocumentSettings(connection);
@@ -76,11 +76,9 @@ export default {
       }
 
       // Re/validate all schemas
-      for (const schemaDocument of allSchemaDocuments()) {
-        validateSchema(schemaDocument);
-      }
+      await Promise.all([...allSchemaDocuments()].map(validateSchema));
 
-      reporter.done();
+      await reporter.done();
     });
 
     const validateSchema = async (schemaDocument) => {
@@ -89,7 +87,7 @@ export default {
       const diagnostics = [];
       await publishAsync("diagnostics", { schemaDocument, diagnostics });
 
-      connection.sendDiagnostics({
+      await connection.sendDiagnostics({
         uri: schemaDocument.textDocument.uri,
         diagnostics: diagnostics.map(({ instance, message, severity, tags }) => {
           return buildDiagnostic(schemaDocument.textDocument, instance, message, severity, tags);
@@ -132,7 +130,7 @@ export default {
           watchWorkspace(onWorkspaceChange, settings.schemaFilePattern);
         }
 
-        publish("workspaceChanged", { changes: [] });
+        await publishAsync("workspaceChanged", { changes: [] });
       });
     }
 
@@ -144,7 +142,7 @@ export default {
       const filePath = fileURLToPath(document.uri);
       if (isMatchedFile(filePath, schemaFilePatterns)) {
         const schemaDocument = await getSchemaDocument(connection, document);
-        validateSchema(schemaDocument);
+        await validateSchema(schemaDocument);
       }
     });
   }
