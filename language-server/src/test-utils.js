@@ -1,6 +1,5 @@
 import {
   ConfigurationRequest,
-  DidChangeConfigurationNotification,
   DidCloseTextDocumentNotification,
   DidOpenTextDocumentNotification,
   InitializeRequest,
@@ -82,7 +81,6 @@ export const initializeServer = async (client, initParams = {}, settings = null)
   const response = await client.sendRequest(InitializeRequest, init);
 
   await client.sendNotification(InitializedNotification);
-  await client.sendNotification(DidChangeConfigurationNotification, { settings });
 
   return response.capabilities;
 };
