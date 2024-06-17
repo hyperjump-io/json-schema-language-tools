@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { CompletionItemKind, CompletionRequest, InitializeRequest, InitializedNotification } from "vscode-languageserver/node.js";
+import { CompletionItemKind, CompletionRequest } from "vscode-languageserver/node.js";
 import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
-import { getTestClient, openDocument } from "../test-utils.js";
+import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
 
 
 describe("Feature - $schema completion", () => {
@@ -10,11 +10,7 @@ describe("Feature - $schema completion", () => {
 
   beforeAll(async () => {
     client = getTestClient([completion, schemaCompletion]);
-    const init = {
-      capabilities: {}
-    };
-    await client.sendRequest(InitializeRequest, init);
-    await client.sendNotification(InitializedNotification);
+    await initializeServer(client);
   });
 
   test("$schema completion with string", async () => {
@@ -34,7 +30,7 @@ describe("Feature - $schema completion", () => {
       }
     };
 
-    const response = await client.sendRequest(CompletionRequest.type, params);
+    const response = await client.sendRequest(CompletionRequest, params);
     expect(response).to.eql(expectedCompletions);
   });
 
@@ -55,7 +51,7 @@ describe("Feature - $schema completion", () => {
       }
     };
 
-    const response = await client.sendRequest(CompletionRequest.type, params);
+    const response = await client.sendRequest(CompletionRequest, params);
     expect(response).to.eql([]);
   });
 
@@ -76,7 +72,7 @@ describe("Feature - $schema completion", () => {
       }
     };
 
-    const response = await client.sendRequest(CompletionRequest.type, params);
+    const response = await client.sendRequest(CompletionRequest, params);
     expect(response).to.eql([]);
   });
 
@@ -97,7 +93,7 @@ describe("Feature - $schema completion", () => {
       }
     };
 
-    const response = await client.sendRequest(CompletionRequest.type, params);
+    const response = await client.sendRequest(CompletionRequest, params);
     expect(response).to.eql([]);
   });
 });

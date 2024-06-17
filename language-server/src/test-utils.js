@@ -1,9 +1,21 @@
-import { DidCloseTextDocumentNotification, DidOpenTextDocumentNotification, createConnection } from "vscode-languageserver/node";
+import {
+  ConfigurationRequest,
+  DidChangeConfigurationNotification,
+  DidCloseTextDocumentNotification,
+  DidOpenTextDocumentNotification,
+  InitializeRequest,
+  InitializedNotification,
+  RegistrationRequest,
+  SemanticTokensRefreshRequest,
+  WorkDoneProgressCreateRequest,
+  createConnection
+} from "vscode-languageserver/node.js";
 import { Duplex } from "node:stream";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { join } from "node:path";
+import { merge } from "merge-anything";
 import { buildServer } from "./build-server.js";
 
 
@@ -30,6 +42,51 @@ export const getTestClient = (features) => {
   return client;
 };
 
+export const initializeServer = async (client, initParams = {}, settings = null) => {
+  client.onRequest(RegistrationRequest, () => {
+    // Ignore client/registerCapability request for now
+  });
+
+  client.onRequest(SemanticTokensRefreshRequest.method, () => {
+    // Ignore workspace/semanticTokens/refresh request for now
+  });
+
+  client.onRequest(WorkDoneProgressCreateRequest, () => {
+    // Ignore window/workDoneProgress/create for now
+  });
+
+  client.onRequest(ConfigurationRequest, () => {
+    return [settings];
+  });
+
+  /**
+   * @type {import("vscode-languageserver/node.js").InitializeParams}
+   */
+  const init = merge({
+    capabilities: {
+      workspace: {
+        workspaceFolders: true,
+        didChangeWatchedFiles: {
+          dynamicRegistration: true
+        },
+        configuration: true,
+        didChangeConfiguration: {
+          dynamicRegistration: true
+        }
+      },
+      window: {
+        workDoneProgress: true
+      }
+    }
+  }, initParams);
+  const response = await client.sendRequest(InitializeRequest, init);
+
+  await client.sendNotification(InitializedNotification);
+  await client.sendNotification(DidChangeConfigurationNotification, { settings });
+
+  return response.capabilities;
+};
+
 export const openDocument = async (client, uri, text) => {
   /**
    * @type {import("vscode-languageserver/node.js").DidOpenTextDocumentParams}
@@ -42,7 +99,7 @@ export const openDocument = async (client, uri, text) => {
       text: text ?? await readFile(fileURLToPath(uri), "utf-8")
     }
   };
-  await client.sendNotification(DidOpenTextDocumentNotification.type, openParams);
+  await client.sendNotification(DidOpenTextDocumentNotification, openParams);
 };
 
 export const closeDocument = async (client, uri) => {
@@ -54,7 +111,7 @@ export const closeDocument = async (client, uri) => {
       uri: uri
     }
   };
-  await client.sendNotification(DidCloseTextDocumentNotification.type, closeParams);
+  await client.sendNotification(DidCloseTextDocumentNotification, closeParams);
 };
 
 export const setupWorkspace = async (files) => {

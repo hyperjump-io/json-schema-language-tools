@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
   closeDocument,
   getTestClient,
+  initializeServer,
   openDocument,
   setupWorkspace,
   tearDownWorkspace
@@ -9,13 +10,9 @@ import {
 import {
   DidChangeTextDocumentNotification,
   DidChangeWatchedFilesNotification,
-  InitializeRequest,
-  InitializedNotification,
   PublishDiagnosticsNotification,
-  RegistrationRequest,
   WorkDoneProgress,
-  WorkDoneProgressCreateRequest,
-  SemanticTokensRefreshRequest
+  WorkDoneProgressCreateRequest
 } from "vscode-languageserver/node.js";
 import { resolveIri } from "@hyperjump/uri";
 import documentSettings from "./document-settings.js";
@@ -31,10 +28,6 @@ describe("Feature - workspace", () => {
   beforeAll(async () => {
     client = getTestClient([workspace, documentSettings, schemaRegistry]);
 
-    client.onRequest(RegistrationRequest, () => {
-      // Ignore client/registerCapability request for now
-    });
-
     workspaceFolder = await setupWorkspace({
       "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`
     });
@@ -43,25 +36,11 @@ describe("Feature - workspace", () => {
      * @type {import("vscode-languageserver/node.js").InitializeParams}
      */
     const init = {
-      capabilities: {
-        workspace: {
-          workspaceFolders: true,
-          didChangeWatchedFiles: {
-            dynamicRegistration: true
-          }
-        },
-        window: {
-          workDoneProgress: true
-        }
-      },
       workspaceFolders: [
         { uri: workspaceFolder }
       ]
     };
-    const response = await client.sendRequest(InitializeRequest, init);
-    capabilities = response.capabilities;
-
-    await client.sendNotification(InitializedNotification);
+    capabilities = await initializeServer(client, init);
   });
 
   afterAll(async () => {
@@ -110,10 +89,6 @@ describe("Feature - workspace", () => {
   });
 
   test("a change to a watched file should validate the workspace", async () => {
-    client.onRequest(SemanticTokensRefreshRequest.method, () => {
-      // Ignore semantic token refresh for now
-    });
-
     const validatedSchemas = new Promise((resolve) => {
       let schemaUris;
 
