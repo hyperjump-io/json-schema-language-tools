@@ -13,6 +13,7 @@ import { publish, publishAsync, subscribe } from "../pubsub.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
+import { SemanticTokensRefreshRequest } from "vscode-languageserver/node.js";
 
 
 let hasWorkspaceFolderCapability = false;
@@ -77,6 +78,8 @@ export default {
 
       // Re/validate all schemas
       await Promise.all([...allSchemaDocuments()].map(validateSchema));
+
+      await connection.sendRequest(SemanticTokensRefreshRequest.method);
 
       await reporter.done();
     });

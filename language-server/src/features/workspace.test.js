@@ -14,7 +14,8 @@ import {
   PublishDiagnosticsNotification,
   RegistrationRequest,
   WorkDoneProgress,
-  WorkDoneProgressCreateRequest
+  WorkDoneProgressCreateRequest,
+  SemanticTokensRefreshRequest
 } from "vscode-languageserver/node.js";
 import { resolveIri } from "@hyperjump/uri";
 import documentSettings from "./document-settings.js";
@@ -109,6 +110,10 @@ describe("Feature - workspace", () => {
   });
 
   test("a change to a watched file should validate the workspace", async () => {
+    client.onRequest(SemanticTokensRefreshRequest.method, () => {
+      // Ignore semantic token refresh for now
+    });
+
     const validatedSchemas = new Promise((resolve) => {
       let schemaUris;
 
