@@ -29,7 +29,7 @@ describe("Feature - workspace", () => {
     client = getTestClient([workspace, documentSettings, schemaRegistry]);
 
     workspaceFolder = await setupWorkspace({
-      "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`
+      "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`
     });
 
     /**

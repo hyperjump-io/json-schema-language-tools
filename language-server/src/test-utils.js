@@ -85,7 +85,7 @@ export const initializeServer = async (client, initParams = {}, settings = null)
   // TODO: This is a hack. Find a way to know when initialized is finished
   // Block for a while to allow InitializedNotification time to finish
   await new Promise((resolve) => {
-    setTimeout(resolve, 10);
+    setTimeout(resolve, 15);
   });
 
   return response.capabilities;

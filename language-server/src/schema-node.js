@@ -16,7 +16,7 @@ export const cons = (uri, pointer, value, type, children, parent, offset, textLe
 
 export const get = (uri, node) => {
   const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
-  const schemaResource = getSchemaResource(schemaId);
+  const schemaResource = node.baseUri === schemaId ? node : getSchemaResource(schemaId);
   if (!schemaResource) {
     return;
   }
