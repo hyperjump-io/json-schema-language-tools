@@ -37,7 +37,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
             instanceNode: $schema,
             message: "Unknown dialect"
           });
-        } else if (schemaResource.dialectUri) {
+        } else if (schemaResource.dialectUri !== undefined) {
           document.errors.push({
             keyword: "https://json-schema.org/keyword/schema",
             instanceNode: schemaResource,
@@ -72,7 +72,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
   return document;
 };
 
-const buildSchemaResources = (document, node, uri = "", dialectUri = "", pointer = "", parent = undefined, anchors = {}) => {
+const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, pointer = "", parent = undefined, anchors = {}) => {
   const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length, dialectUri, anchors);
 
   switch (node.type) {
