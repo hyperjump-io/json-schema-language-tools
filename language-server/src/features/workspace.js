@@ -9,7 +9,7 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { publish, publishAsync, subscribe } from "../pubsub.js";
+import { publishAsync, subscribe } from "../pubsub.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
@@ -45,11 +45,11 @@ export default {
   },
 
   async onInitialized(connection, documents) {
-    const onWorkspaceChange = (eventType, filename) => {
+    const onWorkspaceChange = async (eventType, filename) => {
       // eventType === "rename" means file added or deleted (on most platforms?)
       // eventType === "change" means file saved
       // filename is not always available (when is it not available?)
-      publish("workspaceChanged", {
+      await publishAsync("workspaceChanged", {
         changes: [
           {
             uri: filename,
