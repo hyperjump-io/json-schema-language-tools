@@ -3,14 +3,17 @@ import * as SchemaDocument from "../schema-document.js";
 
 
 export default {
+  load(_connection, documents) {
+    documents.onDidClose(({ document }) => {
+      schemaDocuments.delete(document.uri);
+    });
+  },
+
   onInitialize() {
     return {};
   },
 
-  onInitialized(_connection, documents) {
-    documents.onDidClose(({ document }) => {
-      schemaDocuments.delete(document.uri);
-    });
+  onInitialized() {
   }
 };
 

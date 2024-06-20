@@ -3,16 +3,7 @@ import { getSchemaDocument } from "./schema-registry.js";
 
 
 export default {
-  onInitialize() {
-    return {
-      completionProvider: {
-        resolveProvider: false,
-        triggerCharacters: ["\"", ":", " "]
-      }
-    };
-  },
-
-  onInitialized(connection, documents) {
+  load(connection, documents) {
     connection.onCompletion(async ({ textDocument, position }) => {
       const document = documents.get(textDocument.uri);
       const schemaDocument = await getSchemaDocument(connection, document);
@@ -22,5 +13,17 @@ export default {
       await publishAsync("completions", { schemaDocument, offset, completions });
       return completions;
     });
+  },
+
+  onInitialize() {
+    return {
+      completionProvider: {
+        resolveProvider: false,
+        triggerCharacters: ["\"", ":", " "]
+      }
+    };
+  },
+
+  onInitialized() {
   }
 };

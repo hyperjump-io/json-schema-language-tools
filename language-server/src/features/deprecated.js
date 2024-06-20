@@ -6,11 +6,7 @@ import { subscribe } from "../pubsub.js";
 const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
 
 export default {
-  onInitialize() {
-    return {};
-  },
-
-  onInitialized() {
+  load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const deprecated of SchemaNode.annotatedWith(schemaResource, "deprecated", annotationDialectUri)) {
@@ -25,5 +21,12 @@ export default {
         }
       }
     });
+  },
+
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
   }
 };

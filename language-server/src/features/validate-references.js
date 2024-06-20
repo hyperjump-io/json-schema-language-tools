@@ -4,11 +4,7 @@ import { keywordNameFor } from "../util.js";
 
 
 export default {
-  onInitialize() {
-    return {};
-  },
-
-  onInitialized() {
+  load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const node of references(schemaResource)) {
@@ -20,6 +16,13 @@ export default {
         }
       }
     });
+  },
+
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
   }
 };
 

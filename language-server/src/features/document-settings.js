@@ -7,18 +7,7 @@ let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
 
 export default {
-  onInitialize: ({ capabilities }) => {
-    hasConfigurationCapability = !!capabilities.workspace?.configuration;
-    hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
-
-    return {};
-  },
-
-  onInitialized: (connection, documents) => {
-    if (hasDidChangeConfigurationCapability) {
-      connection.client.register(DidChangeConfigurationNotification.type);
-    }
-
+  load(connection, documents) {
     connection.onDidChangeConfiguration(() => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
@@ -31,6 +20,19 @@ export default {
     documents.onDidClose(({ document }) => {
       documentSettings.delete(document.uri);
     });
+  },
+
+  onInitialize({ capabilities }) {
+    hasConfigurationCapability = !!capabilities.workspace?.configuration;
+    hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
+
+    return {};
+  },
+
+  onInitialized(connection) {
+    if (hasDidChangeConfigurationCapability) {
+      connection.client.register(DidChangeConfigurationNotification.type);
+    }
   }
 };
 

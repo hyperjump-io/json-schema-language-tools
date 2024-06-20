@@ -12,6 +12,10 @@ import "@hyperjump/json-schema/draft-04";
 export const buildServer = (connection, features) => {
   const documents = new TextDocuments(TextDocument);
 
+  for (const feature of features) {
+    feature.load(connection, documents);
+  }
+
   connection.onInitialize((params) => {
     connection.console.log("Initializing JSON Schema service ...");
 
@@ -24,7 +28,7 @@ export const buildServer = (connection, features) => {
 
   connection.onInitialized(async () => {
     for (const feature of features) {
-      feature.onInitialized(connection, documents);
+      await feature.onInitialized(connection, documents);
     }
   });
 

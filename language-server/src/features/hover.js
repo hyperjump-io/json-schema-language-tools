@@ -7,13 +7,7 @@ import { getSchemaDocument } from "./schema-registry.js";
 const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
 
 export default {
-  onInitialize() {
-    return {
-      hoverProvider: true
-    };
-  },
-
-  onInitialized(connection, documents) {
+  load(connection, documents) {
     connection.onHover(async ({ textDocument, position }) => {
       const document = documents.get(textDocument.uri);
       const schemaDocument = await getSchemaDocument(connection, document);
@@ -35,5 +29,14 @@ export default {
         };
       }
     });
+  },
+
+  onInitialize() {
+    return {
+      hoverProvider: true
+    };
+  },
+
+  onInitialized() {
   }
 };

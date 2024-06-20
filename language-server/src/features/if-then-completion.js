@@ -4,17 +4,20 @@ import { subscribe } from "../pubsub.js";
 
 
 export default {
-  onInitialize() {
-    return {};
-  },
-
-  onInitialized() {
+  load() {
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/if") && currentProperty.type === "property") {
         completions.push(...ifThenPatternCompletion);
       }
     });
+  },
+
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
   }
 };
 

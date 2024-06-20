@@ -3,16 +3,19 @@ import { subscribe } from "../pubsub.js";
 
 
 export default {
-  onInitialize() {
-    return {};
-  },
-
-  onInitialized() {
+  load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for await (const [instance, message] of invalidNodes(schemaDocument.errors)) {
         diagnostics.push({ instance, message });
       }
     });
+  },
+
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
   }
 };
 

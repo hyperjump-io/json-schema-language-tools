@@ -9,19 +9,7 @@ import { getDocumentSettings } from "./document-settings.js";
 
 
 export default {
-  onInitialize({ capabilities }) {
-    return {
-      semanticTokensProvider: {
-        legend: buildSemanticTokensLegend(capabilities.textDocument?.semanticTokens),
-        range: false,
-        full: {
-          delta: true
-        }
-      }
-    };
-  },
-
-  onInitialized(connection, documents) {
+  load(connection, documents) {
     const tokenBuilders = new Map();
 
     documents.onDidClose(({ document }) => {
@@ -73,6 +61,21 @@ export default {
 
       return builder.buildEdits();
     });
+  },
+
+  onInitialize({ capabilities }) {
+    return {
+      semanticTokensProvider: {
+        legend: buildSemanticTokensLegend(capabilities.textDocument?.semanticTokens),
+        range: false,
+        full: {
+          delta: true
+        }
+      }
+    };
+  },
+
+  onInitialized() {
   }
 };
 

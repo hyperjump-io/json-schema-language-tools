@@ -41,6 +41,10 @@ describe("Feature - workspace (neovim)", () => {
       ]
     };
     capabilities = await initializeServer(client, init);
+
+    // Block for a while to allow InitializedNotification time to finish. This
+    // is only needed for the node-based workspace watching used for neovim
+    await wait(10);
   });
 
   afterAll(async () => {
@@ -86,6 +90,12 @@ describe("Feature - workspace (neovim)", () => {
     // DidChangeWorkspaceFoldersNotification
   });
 });
+
+const wait = async (delay) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delay);
+  });
+};
 
 const touch = (path) => {
   const time = new Date();

@@ -5,11 +5,7 @@ import { subscribe } from "../pubsub.js";
 
 
 export default {
-  onInitialize() {
-    return {};
-  },
-
-  onInitialized() {
+  load() {
     const trailingHashDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -26,5 +22,12 @@ export default {
         })));
       }
     });
+  },
+
+  onInitialize() {
+    return {};
+  },
+
+  onInitialized() {
   }
 };

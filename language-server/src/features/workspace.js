@@ -20,45 +20,7 @@ let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 
 export default {
-  onInitialize({ capabilities, workspaceFolders }) {
-    if (workspaceFolders) {
-      addWorkspaceFolders(workspaceFolders);
-    }
-
-    hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
-    hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
-
-    const serverCapabilities = {
-      textDocumentSync: TextDocumentSyncKind.Incremental
-    };
-
-    if (hasWorkspaceFolderCapability) {
-      serverCapabilities.workspace = {
-        workspaceFolders: {
-          supported: true,
-          changeNotifications: true
-        }
-      };
-    }
-
-    return serverCapabilities;
-  },
-
-  async onInitialized(connection, documents) {
-    const onWorkspaceChange = async (eventType, filename) => {
-      // eventType === "rename" means file added or deleted (on most platforms?)
-      // eventType === "change" means file saved
-      // filename is not always available (when is it not available?)
-      await publishAsync("workspaceChanged", {
-        changes: [
-          {
-            uri: filename,
-            type: eventType === "change" ? FileChangeType.Changed : FileChangeType.Deleted
-          }
-        ]
-      });
-    };
-
+  load(connection, documents) {
     subscribe("workspaceChanged", async (_message, _changes) => {
       const reporter = await connection.window.createWorkDoneProgress();
       await reporter.begin("JSON Schema: Indexing workspace");
@@ -111,6 +73,44 @@ export default {
       };
     };
 
+    connection.onDidChangeWatchedFiles(onWorkspaceChange);
+
+    documents.onDidChangeContent(async ({ document }) => {
+      const settings = await getDocumentSettings(connection);
+      const schemaFilePatterns = settings.schemaFilePatterns;
+      const filePath = fileURLToPath(document.uri);
+      if (isMatchedFile(filePath, schemaFilePatterns)) {
+        const schemaDocument = await getSchemaDocument(connection, document);
+        await validateSchema(schemaDocument);
+      }
+    });
+  },
+
+  onInitialize({ capabilities, workspaceFolders }) {
+    if (workspaceFolders) {
+      addWorkspaceFolders(workspaceFolders);
+    }
+
+    hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
+    hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
+
+    const serverCapabilities = {
+      textDocumentSync: TextDocumentSyncKind.Incremental
+    };
+
+    if (hasWorkspaceFolderCapability) {
+      serverCapabilities.workspace = {
+        workspaceFolders: {
+          supported: true,
+          changeNotifications: true
+        }
+      };
+    }
+
+    return serverCapabilities;
+  },
+
+  async onInitialized(connection) {
     const settings = await getDocumentSettings(connection);
 
     if (hasWorkspaceWatchCapability) {
@@ -136,19 +136,21 @@ export default {
         await publishAsync("workspaceChanged", { changes: [] });
       });
     }
-
-    connection.onDidChangeWatchedFiles(onWorkspaceChange);
-
-    documents.onDidChangeContent(async ({ document }) => {
-      const settings = await getDocumentSettings(connection);
-      const schemaFilePatterns = settings.schemaFilePatterns;
-      const filePath = fileURLToPath(document.uri);
-      if (isMatchedFile(filePath, schemaFilePatterns)) {
-        const schemaDocument = await getSchemaDocument(connection, document);
-        await validateSchema(schemaDocument);
-      }
-    });
   }
+};
+
+const onWorkspaceChange = async (eventType, filename) => {
+  // eventType === "rename" means file added or deleted (on most platforms?)
+  // eventType === "change" means file saved
+  // filename is not always available (when is it not available?)
+  await publishAsync("workspaceChanged", {
+    changes: [
+      {
+        uri: filename,
+        type: eventType === "change" ? FileChangeType.Changed : FileChangeType.Deleted
+      }
+    ]
+  });
 };
 
 export const isMatchedFile = (uri, patterns) => {
