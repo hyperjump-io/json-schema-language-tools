@@ -4,7 +4,7 @@ import {
   PublishDiagnosticsNotification,
   WorkDoneProgress,
   WorkDoneProgressCreateRequest
-} from "vscode-languageserver/node.js";
+} from "vscode-languageserver";
 import { utimes } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { resolveIri } from "@hyperjump/uri";
@@ -26,7 +26,7 @@ describe("Feature - workspace (neovim)", () => {
     });
 
     /**
-     * @type {import("vscode-languageserver/node.js").InitializeParams}
+     * @type {import("vscode-languageserver").InitializeParams}
      */
     const init = {
       capabilities: {

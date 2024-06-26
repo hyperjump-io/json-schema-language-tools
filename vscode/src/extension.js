@@ -1,6 +1,6 @@
 "use strict";
 const path = require("node:path");
-const { LanguageClient, TransportKind, MarkupKind } = require("vscode-languageclient/node.js");
+const { LanguageClient, TransportKind, MarkupKind } = require("vscode-languageclient");
 
 
 let client;

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { ConfigurationRequest, DidChangeTextDocumentNotification, PublishDiagnosticsNotification } from "vscode-languageserver/node";
+import { ConfigurationRequest, DidChangeTextDocumentNotification, PublishDiagnosticsNotification } from "vscode-languageserver";
 import {
   getTestClient,
   closeDocument,

@@ -6,6 +6,7 @@ import {
   DiagnosticSeverity,
   DidChangeWatchedFilesNotification,
   FileChangeType,
+  SemanticTokensRefreshRequest,
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -13,7 +14,6 @@ import { publishAsync, subscribe } from "../pubsub.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
-import { SemanticTokensRefreshRequest } from "vscode-languageserver/node.js";
 
 
 let hasWorkspaceFolderCapability = false;

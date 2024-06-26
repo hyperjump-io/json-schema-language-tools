@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { InitializeRequest } from "vscode-languageserver/node";
+import { InitializeRequest } from "vscode-languageserver";
 import { getTestClient } from "../test-utils.js";
 import completion from "./completion.js";
 
@@ -13,7 +13,7 @@ describe("Feature - Completion", () => {
 
   test("completion provider capabilities", async () => {
     /**
-     * @type {import("vscode-languageserver/node.js").InitializeParams}
+     * @type {import("vscode-languageserver").InitializeParams}
      */
     const init = {
       capabilities: {}

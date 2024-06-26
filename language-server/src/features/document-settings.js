@@ -32,7 +32,7 @@ export default {
   onInitialized(connection) {
     if (hasDidChangeConfigurationCapability) {
       /**
-       * @type {import("vscode-languageserver/node.js").DidChangeConfigurationRegistrationOptions}
+       * @type {import("vscode-languageserver").DidChangeConfigurationRegistrationOptions}
        */
       const params = {
         section: "jsonSchemaLanguageServer"

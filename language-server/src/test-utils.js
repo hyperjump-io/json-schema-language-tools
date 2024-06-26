@@ -8,7 +8,7 @@ import {
   SemanticTokensRefreshRequest,
   WorkDoneProgressCreateRequest,
   createConnection
-} from "vscode-languageserver/node.js";
+} from "vscode-languageserver";
 import { Duplex } from "node:stream";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -59,7 +59,7 @@ export const initializeServer = async (client, initParams = {}, settings = null)
   });
 
   /**
-   * @type {import("vscode-languageserver/node.js").InitializeParams}
+   * @type {import("vscode-languageserver").InitializeParams}
    */
   const init = merge({
     capabilities: {
@@ -87,7 +87,7 @@ export const initializeServer = async (client, initParams = {}, settings = null)
 
 export const openDocument = async (client, uri, text) => {
   /**
-   * @type {import("vscode-languageserver/node.js").DidOpenTextDocumentParams}
+   * @type {import("vscode-languageserver").DidOpenTextDocumentParams}
    */
   const openParams = {
     textDocument: {
@@ -102,7 +102,7 @@ export const openDocument = async (client, uri, text) => {
 
 export const closeDocument = async (client, uri) => {
   /**
-   * @type {import("vscode-languageserver/node.js").DidCloseTextDocumentParams}
+   * @type {import("vscode-languageserver").DidCloseTextDocumentParams}
    */
   const closeParams = {
     textDocument: {

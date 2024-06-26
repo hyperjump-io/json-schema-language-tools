@@ -1,4 +1,4 @@
-import { TextDocuments } from "vscode-languageserver/node.js";
+import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 // Hyperjump

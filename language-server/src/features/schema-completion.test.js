@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { CompletionItemKind, CompletionRequest } from "vscode-languageserver/node.js";
+import { CompletionItemKind, CompletionRequest } from "vscode-languageserver";
 import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
 import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
@@ -20,7 +20,7 @@ describe("Feature - $schema completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver).CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -41,7 +41,7 @@ describe("Feature - $schema completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -62,7 +62,7 @@ describe("Feature - $schema completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -83,7 +83,7 @@ describe("Feature - $schema completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },

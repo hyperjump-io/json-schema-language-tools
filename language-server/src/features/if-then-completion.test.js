@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "vitest";
-import { CompletionRequest } from "vscode-languageserver/node.js";
+import { CompletionRequest } from "vscode-languageserver";
 import completion from "./completion.js";
 import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
 import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
@@ -20,7 +20,7 @@ describe("Feature - if/then completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -42,7 +42,7 @@ describe("Feature - if/then completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -64,7 +64,7 @@ describe("Feature - if/then completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -86,7 +86,7 @@ describe("Feature - if/then completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },
@@ -108,7 +108,7 @@ describe("Feature - if/then completion", () => {
 }`);
 
     /**
-     * @type {import("vscode-languageserver/node.js").CompletionParams}
+     * @type {import("vscode-languageserver").CompletionParams}
      */
     const params = {
       textDocument: { uri: documentUri },

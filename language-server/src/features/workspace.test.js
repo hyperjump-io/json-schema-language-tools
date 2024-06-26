@@ -13,7 +13,7 @@ import {
   PublishDiagnosticsNotification,
   WorkDoneProgress,
   WorkDoneProgressCreateRequest
-} from "vscode-languageserver/node.js";
+} from "vscode-languageserver";
 import { resolveIri } from "@hyperjump/uri";
 import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
@@ -33,7 +33,7 @@ describe("Feature - workspace", () => {
     });
 
     /**
-     * @type {import("vscode-languageserver/node.js").InitializeParams}
+     * @type {import("vscode-languageserver").InitializeParams}
      */
     const init = {
       workspaceFolders: [
@@ -76,7 +76,7 @@ describe("Feature - workspace", () => {
       });
 
       /**
-       * @type {import("vscode-languageserver/node.js").DidChangeTextDocumentParams}
+       * @type {import("vscode-languageserver").DidChangeTextDocumentParams}
        */
       const params = {
         textDocument: { uri: documentUri },
@@ -108,7 +108,7 @@ describe("Feature - workspace", () => {
     });
 
     /**
-     * @type {import("vscode-languageserver/node.js").DidChangeWatchedFilesParams}
+     * @type {import("vscode-languageserver").DidChangeWatchedFilesParams}
      */
     const params = { changes: [] };
     await client.sendNotification(DidChangeWatchedFilesNotification, params);
