@@ -9,11 +9,13 @@ import {
   WorkDoneProgressCreateRequest,
   createConnection
 } from "vscode-languageserver";
+import { randomUUID } from "node:crypto";
 import { Duplex } from "node:stream";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { join } from "node:path";
+import { resolveIri } from "@hyperjump/uri";
 import { merge } from "merge-anything";
 import { buildServer } from "./build-server.js";
 
@@ -86,18 +88,23 @@ export const initializeServer = async (client, initParams = {}, settings = null)
 };
 
 export const openDocument = async (client, uri, text) => {
+  const baseUri = `file:///${randomUUID()}/`;
+  const documentUri = resolveIri(uri, baseUri);
+
   /**
    * @type {import("vscode-languageserver").DidOpenTextDocumentParams}
    */
   const openParams = {
     textDocument: {
-      uri: uri,
+      uri: documentUri,
       languageId: "json",
       version: 0,
       text: text ?? await readFile(fileURLToPath(uri), "utf-8")
     }
   };
   await client.sendNotification(DidOpenTextDocumentNotification, openParams);
+
+  return documentUri;
 };
 
 export const closeDocument = async (client, uri) => {

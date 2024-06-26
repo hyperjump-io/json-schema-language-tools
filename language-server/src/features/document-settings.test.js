@@ -33,8 +33,7 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test default dialect", async () => {
-    documentUri = "file:///path/to/workspace/subjectA.schema.json";
-    await openDocument(client, documentUri, `{}`);
+    documentUri = await openDocument(client, "subject.schema.json", `{}`);
 
     const diagnosticsPromise = new Promise((resolve) => {
       client.onNotification(PublishDiagnosticsNotification, (params) => {
@@ -54,8 +53,7 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test no dialect", async () => {
-    documentUri = "file:///path/to/workspace/subjectB.schema.json";
-    await openDocument(client, documentUri, `{}`);
+    documentUri = await openDocument(client, "subject.schema.json", `{}`);
 
     await client.onRequest(ConfigurationRequest, () => {
       return [{}];
@@ -79,8 +77,7 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test unknown dialect", async () => {
-    documentUri = "file:///path/to/workspace/subjectC.schema.json";
-    await openDocument(client, documentUri, `{"$schema":""}`);
+    documentUri = await openDocument(client, "subject.schema.json", `{"$schema":""}`);
 
     await client.onRequest(ConfigurationRequest, () => {
       return [{}];
@@ -104,8 +101,7 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test unknown dialect when default dialect is unknown", async () => {
-    documentUri = "file:///path/to/workspace/subjectD.schema.json";
-    await openDocument(client, documentUri, `{}`);
+    documentUri = await openDocument(client, "subject.schema.json", `{}`);
 
     await client.onRequest(ConfigurationRequest, () => {
       return [{ "defaultDialect": "" }];

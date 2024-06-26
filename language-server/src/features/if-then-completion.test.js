@@ -14,8 +14,7 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion with colon", async () => {
-    const documentUri = "file:///path/to/workspace/subject1.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "if":
 }`);
 
@@ -36,8 +35,7 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion with space", async () => {
-    const documentUri = "file:///path/to/workspace/subject2.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "if": 
 }`);
 
@@ -58,8 +56,7 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion on property key", async () => {
-    const documentUri = "file:///path/to/workspace/subject3.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "if":
 }`);
 
@@ -80,8 +77,7 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion on property value", async () => {
-    const documentUri = "file:///path/to/workspace/subject4.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "if": ""
 }`);
 
@@ -102,8 +98,7 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion without colon", async () => {
-    const documentUri = "file:///path/to/workspace/subject5.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "if"
 }`);
 

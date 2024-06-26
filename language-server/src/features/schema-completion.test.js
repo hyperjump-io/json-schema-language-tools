@@ -14,8 +14,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion with string", async () => {
-    const documentUri = "file:///path/to/workspace/subject1.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "$schema": ""
 }`);
 
@@ -35,8 +34,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion with colon", async () => {
-    const documentUri = "file:///path/to/workspace/subject2.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "$schema":
 }`);
 
@@ -56,8 +54,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion with colon and space", async () => {
-    const documentUri = "file:///path/to/workspace/subject3.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "$schema": 
 }`);
 
@@ -77,8 +74,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion without colon", async () => {
-    const documentUri = "file:///path/to/workspace/subject4.schema.json";
-    await openDocument(client, documentUri, `{
+    const documentUri = await openDocument(client, "subject.schema.json", `{
   "$schema"
 }`);
 
