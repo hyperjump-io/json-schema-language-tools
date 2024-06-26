@@ -23,8 +23,7 @@ const activate = (context) => {
 
   const clientOptions = {
     documentSelector: [
-      { language: "json", pattern: "**/*.schema.json" },
-      { language: "json", pattern: "**/schema.json" }
+      { scheme: "file", language: "json" }
     ],
     capabilities: {
       textDocument: {
