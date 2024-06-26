@@ -17,16 +17,19 @@ export default {
       // This is a little wierd because we want the hover to be on the keyword, but
       // the annotation is actually on the value not the keyword.
       if (keyword.parent && SchemaNode.typeOf(keyword.parent) === "property" && keyword.parent.children[0] === keyword) {
-        return {
-          contents: {
-            kind: MarkupKind.Markdown,
-            value: SchemaNode.annotation(keyword.parent.children[1], "description", annotationDialectUri).join("\n")
-          },
-          range: {
-            start: document.positionAt(keyword.offset),
-            end: document.positionAt(keyword.offset + keyword.textLength)
-          }
-        };
+        const description = SchemaNode.annotation(keyword.parent.children[1], "description", annotationDialectUri);
+        if (description.length > 0) {
+          return {
+            contents: {
+              kind: MarkupKind.Markdown,
+              value: description.join("\n")
+            },
+            range: {
+              start: document.positionAt(keyword.offset),
+              end: document.positionAt(keyword.offset + keyword.textLength - 1)
+            }
+          };
+        }
       }
     });
   },
