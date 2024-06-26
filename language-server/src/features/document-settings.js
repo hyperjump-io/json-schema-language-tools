@@ -31,7 +31,13 @@ export default {
 
   onInitialized(connection) {
     if (hasDidChangeConfigurationCapability) {
-      connection.client.register(DidChangeConfigurationNotification.type);
+      /**
+       * @type {import("vscode-languageserver/node.js").DidChangeConfigurationRegistrationOptions}
+       */
+      const params = {
+        section: "jsonSchemaLanguageServer"
+      };
+      connection.client.register(DidChangeConfigurationNotification.type, params);
     }
   }
 };
