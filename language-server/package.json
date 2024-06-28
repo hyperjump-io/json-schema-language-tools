@@ -7,7 +7,8 @@
   "scripts": {
     "lint": "eslint src",
     "test": "vitest --watch=false",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit"
   },
   "author": "Jason Desrosiers <jdesrosi@gmail.com>",
   "license": "MIT",
