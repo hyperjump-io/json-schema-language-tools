@@ -12,11 +12,13 @@ import workspace from "./workspace.js";
 import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
 
+import type { Connection, ServerCapabilities } from "vscode-languageserver";
+
 
 describe("Feature - workspace (neovim)", () => {
-  let client;
-  let capabilities;
-  let workspaceFolder;
+  let client: Connection;
+  let capabilities: ServerCapabilities;
+  let workspaceFolder: string;
 
   beforeAll(async () => {
     client = getTestClient([workspace, documentSettings, schemaRegistry]);
@@ -25,10 +27,7 @@ describe("Feature - workspace (neovim)", () => {
       "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`
     });
 
-    /**
-     * @type {import("vscode-languageserver").InitializeParams}
-     */
-    const init = {
+    capabilities = await initializeServer(client, {
       capabilities: {
         workspace: {
           didChangeWatchedFiles: {
@@ -37,10 +36,12 @@ describe("Feature - workspace (neovim)", () => {
         }
       },
       workspaceFolders: [
-        { uri: workspaceFolder }
+        {
+          name: "root",
+          uri: workspaceFolder
+        }
       ]
-    };
-    capabilities = await initializeServer(client, init);
+    });
 
     // Block for a while to allow InitializedNotification time to finish. This
     // is only needed for the node-based workspace watching used for neovim
@@ -48,7 +49,7 @@ describe("Feature - workspace (neovim)", () => {
   });
 
   afterAll(async () => {
-    await client.dispose();
+    client.dispose();
     await tearDownWorkspace(workspaceFolder);
   });
 
@@ -63,10 +64,10 @@ describe("Feature - workspace (neovim)", () => {
 
   test("a change to a watched file should validate the workspace", async () => {
     const validatedSchemas = new Promise((resolve) => {
-      let schemaUris;
+      let schemaUris: string[];
 
-      client.onRequest(WorkDoneProgressCreateRequest, ({ token }) => {
-        client.onProgress(WorkDoneProgress, token, ({ kind }) => {
+      client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {
+        client.onProgress(WorkDoneProgress.type, token, ({ kind }) => {
           if (kind === "begin") {
             schemaUris = [];
           } else if (kind === "end") {
@@ -75,7 +76,7 @@ describe("Feature - workspace (neovim)", () => {
         });
       });
 
-      client.onNotification(PublishDiagnosticsNotification, (params) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         schemaUris.push(params.uri);
       });
     });
@@ -91,13 +92,13 @@ describe("Feature - workspace (neovim)", () => {
   });
 });
 
-const wait = async (delay) => {
+const wait = async (delay: number) => {
   return new Promise((resolve) => {
     setTimeout(resolve, delay);
   });
 };
 
-const touch = (path) => {
+const touch = (path: string) => {
   const time = new Date();
   return utimes(path, time, time);
 };

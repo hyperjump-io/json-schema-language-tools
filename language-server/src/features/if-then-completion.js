@@ -2,7 +2,10 @@ import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
 import { subscribe } from "../pubsub.js";
 
+/** @import { Feature } from "../build-server.js" */
 
+
+/** @type Feature */
 export default {
   load() {
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
@@ -17,7 +20,7 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };
 

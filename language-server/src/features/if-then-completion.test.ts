@@ -4,9 +4,11 @@ import completion from "./completion.js";
 import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
 import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
 
+import type { Connection } from "vscode-languageserver";
+
 
 describe("Feature - if/then completion", () => {
-  let client;
+  let client: Connection;
 
   beforeAll(async () => {
     client = getTestClient([completion, ifThenCompletionFeature]);
@@ -18,18 +20,13 @@ describe("Feature - if/then completion", () => {
   "if":
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 7
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
 
     expect(response).to.eql(ifThenPatternCompletion);
   });
@@ -39,18 +36,13 @@ describe("Feature - if/then completion", () => {
   "if": 
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 8
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
 
     expect(response).to.eql(ifThenPatternCompletion);
   });
@@ -60,18 +52,13 @@ describe("Feature - if/then completion", () => {
   "if":
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 3
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
 
     expect(response).to.eql([]);
   });
@@ -81,18 +68,13 @@ describe("Feature - if/then completion", () => {
   "if": ""
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 9
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
 
     expect(response).to.eql([]);
   });
@@ -102,18 +84,13 @@ describe("Feature - if/then completion", () => {
   "if"
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 5
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
 
     expect(response).to.eql([]);
   });

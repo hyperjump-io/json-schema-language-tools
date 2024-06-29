@@ -1,5 +1,6 @@
 // Language Server
-import { createConnection, ProposedFeatures } from "vscode-languageserver";
+import { ProposedFeatures } from "vscode-languageserver";
+import { createConnection } from "vscode-languageserver/node.js";
 import { buildServer } from "./build-server.js";
 
 // Features

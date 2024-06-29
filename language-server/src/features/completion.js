@@ -1,16 +1,26 @@
 import { publishAsync } from "../pubsub.js";
 import { getSchemaDocument } from "./schema-registry.js";
 
+/**
+ * @import { CompletionItem } from "vscode-languageserver"
+ * @import { Feature } from "../build-server.js"
+ */
 
+
+/** @type Feature */
 export default {
   load(connection, documents) {
     connection.onCompletion(async ({ textDocument, position }) => {
-      const document = documents.get(textDocument.uri);
-      const schemaDocument = await getSchemaDocument(connection, document);
-      const offset = schemaDocument.textDocument.offsetAt(position);
-
+      /** @type CompletionItem[] */
       const completions = [];
-      await publishAsync("completions", { schemaDocument, offset, completions });
+
+      const document = documents.get(textDocument.uri);
+      if (document) {
+        const schemaDocument = await getSchemaDocument(connection, document);
+        const offset = schemaDocument.textDocument.offsetAt(position);
+        await publishAsync("completions", { schemaDocument, offset, completions });
+      }
+
       return completions;
     });
   },
@@ -24,6 +34,6 @@ export default {
     };
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };

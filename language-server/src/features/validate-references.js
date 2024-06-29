@@ -2,7 +2,13 @@ import * as SchemaNode from "../schema-node.js";
 import { subscribe } from "../pubsub.js";
 import { keywordNameFor } from "../util.js";
 
+/**
+ * @import * as Type from "./validation-references.js"
+ * @import { Feature } from "../build-server.js"
+ */
 
+
+/** @type Feature */
 export default {
   load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
@@ -22,10 +28,11 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };
 
+/** @type Type.references */
 const references = function* (schemaResource) {
   const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri);
   const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri);

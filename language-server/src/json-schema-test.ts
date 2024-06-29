@@ -1,14 +1,30 @@
 import fs from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { toAbsoluteIri } from "@hyperjump/uri";
-import { registerSchema, unregisterSchema } from "@hyperjump/json-schema";
+import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { getSchema, compile, interpret } from "@hyperjump/json-schema/experimental";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { parseTree } from "jsonc-parser";
 import * as JsonNode from "./json-node.js";
 
+import type { SchemaObject } from "@hyperjump/json-schema/draft-2020-12";
+import type { CompiledSchema } from "@hyperjump/json-schema/experimental";
+import type { Json } from "@hyperjump/json-pointer";
 
-const shouldSkip = (skip, path) => {
+
+type Suite = {
+  description: string;
+  schema: SchemaObject;
+  tests: Test[];
+};
+
+type Test = {
+  description: string;
+  data: Json;
+  valid: boolean;
+};
+
+const shouldSkip = (skip: Set<string>, path: string[]) => {
   let key = "";
   for (const segment of path) {
     key = `${key}|${segment}`;
@@ -21,12 +37,12 @@ const shouldSkip = (skip, path) => {
 
 const testSuitePath = `${import.meta.dirname}/../../node_modules/json-schema-test-suite`;
 
-const addRemotes = (dialectId, filePath = `${testSuitePath}/remotes`, url = "") => {
+const addRemotes = (dialectId: string, filePath = `${testSuitePath}/remotes`, url = "") => {
   fs.readdirSync(filePath, { withFileTypes: true })
     .forEach((entry) => {
       if (entry.isFile() && entry.name.endsWith(".json")) {
-        const remote = JSON.parse(fs.readFileSync(`${filePath}/${entry.name}`, "utf8"));
-        if (!remote.$schema || toAbsoluteIri(remote.$schema) === dialectId) {
+        const remote = JSON.parse(fs.readFileSync(`${filePath}/${entry.name}`, "utf8")) as SchemaObject;
+        if (!remote.$schema || toAbsoluteIri(remote.$schema as string) === dialectId) {
           registerSchema(remote, `http://localhost:1234${url}/${entry.name}`, dialectId);
         }
       } else if (entry.isDirectory()) {
@@ -35,7 +51,7 @@ const addRemotes = (dialectId, filePath = `${testSuitePath}/remotes`, url = "") 
     });
 };
 
-export const runTestSuite = (draft, dialectId, skip) => {
+export const runTestSuite = (draft: string, dialectId: string, skip: Set<string>) => {
   const testSuiteFilePath = `${testSuitePath}/tests/${draft}`;
 
   describe(`${draft} ${dialectId}`, () => {
@@ -49,12 +65,12 @@ export const runTestSuite = (draft, dialectId, skip) => {
         const file = `${testSuiteFilePath}/${entry.name}`;
 
         describe(entry.name, () => {
-          const suites = JSON.parse(fs.readFileSync(file, "utf8"));
+          const suites = JSON.parse(fs.readFileSync(file, "utf8")) as Suite[];
 
           suites.forEach((suite) => {
             describe(suite.description, () => {
-              let url;
-              let compiled;
+              let url: string;
+              let compiled: CompiledSchema;
 
               beforeAll(async () => {
                 if (shouldSkip(skip, [draft, entry.name, suite.description])) {
@@ -83,9 +99,13 @@ export const runTestSuite = (draft, dialectId, skip) => {
                       allowTrailingComma: true,
                       allowEmptyContent: true
                     });
-                    const instance = JsonNode.fromJsonc(root);
-                    const output = interpret(compiled, instance);
-                    expect(output.valid).to.equal(test.valid);
+                    if (root) {
+                      const instance = JsonNode.fromJsonc(root);
+                      const output = interpret(compiled, instance);
+                      expect(output.valid).to.equal(test.valid);
+                    } else {
+                      expect.fail("Failed to parse JSON instance");
+                    }
                   });
                 }
               });

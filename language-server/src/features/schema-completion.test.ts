@@ -4,9 +4,11 @@ import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
 import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
 
+import type { Connection } from "vscode-languageserver";
+
 
 describe("Feature - $schema completion", () => {
-  let client;
+  let client: Connection;
 
   beforeAll(async () => {
     client = getTestClient([completion, schemaCompletion]);
@@ -18,18 +20,13 @@ describe("Feature - $schema completion", () => {
   "$schema": ""
 }`);
 
-    /**
-     * @type {import("vscode-languageserver).CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 14
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
     expect(response).to.eql(expectedCompletions);
   });
 
@@ -38,18 +35,13 @@ describe("Feature - $schema completion", () => {
   "$schema":
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 12
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
     expect(response).to.eql([]);
   });
 
@@ -58,18 +50,13 @@ describe("Feature - $schema completion", () => {
   "$schema": 
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 13
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
     expect(response).to.eql([]);
   });
 
@@ -78,18 +65,13 @@ describe("Feature - $schema completion", () => {
   "$schema"
 }`);
 
-    /**
-     * @type {import("vscode-languageserver").CompletionParams}
-     */
-    const params = {
+    const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 1,
         character: 11
       }
-    };
-
-    const response = await client.sendRequest(CompletionRequest, params);
+    });
     expect(response).to.eql([]);
   });
 });

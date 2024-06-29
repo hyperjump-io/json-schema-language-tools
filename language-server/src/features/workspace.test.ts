@@ -19,11 +19,13 @@ import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 
+import type { Connection, ServerCapabilities } from "vscode-languageserver";
+
 
 describe("Feature - workspace", () => {
-  let client;
-  let capabilities;
-  let workspaceFolder;
+  let client: Connection;
+  let capabilities: ServerCapabilities;
+  let workspaceFolder: string;
 
   beforeAll(async () => {
     client = getTestClient([workspace, documentSettings, schemaRegistry]);
@@ -32,15 +34,14 @@ describe("Feature - workspace", () => {
       "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`
     });
 
-    /**
-     * @type {import("vscode-languageserver").InitializeParams}
-     */
-    const init = {
+    capabilities = await initializeServer(client, {
       workspaceFolders: [
-        { uri: workspaceFolder }
+        {
+          name: "root",
+          uri: workspaceFolder
+        }
       ]
-    };
-    capabilities = await initializeServer(client, init);
+    });
   });
 
   afterAll(async () => {
@@ -57,7 +58,7 @@ describe("Feature - workspace", () => {
   });
 
   describe("changing an open schema", () => {
-    let documentUri;
+    let documentUri: string;
 
     beforeAll(async () => {
       documentUri = resolveIri("./subject.schema.json", `${workspaceFolder}/`);
@@ -70,19 +71,15 @@ describe("Feature - workspace", () => {
 
     test("should validate it", async () => {
       const diagnostics = new Promise((resolve) => {
-        client.onNotification(PublishDiagnosticsNotification, (params) => {
+        client.onNotification(PublishDiagnosticsNotification.type, (params) => {
           resolve(params.uri);
         });
       });
 
-      /**
-       * @type {import("vscode-languageserver").DidChangeTextDocumentParams}
-       */
-      const params = {
-        textDocument: { uri: documentUri },
+      await client.sendNotification(DidChangeTextDocumentNotification.type, {
+        textDocument: { uri: documentUri, version: 1 },
         contentChanges: []
-      };
-      await client.sendNotification(DidChangeTextDocumentNotification, params);
+      });
 
       expect(await diagnostics).to.equal(documentUri);
     });
@@ -90,10 +87,10 @@ describe("Feature - workspace", () => {
 
   test("a change to a watched file should validate the workspace", async () => {
     const validatedSchemas = new Promise((resolve) => {
-      let schemaUris;
+      let schemaUris: string[];
 
-      client.onRequest(WorkDoneProgressCreateRequest, ({ token }) => {
-        client.onProgress(WorkDoneProgress, token, ({ kind }) => {
+      client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {
+        client.onProgress(WorkDoneProgress.type, token, ({ kind }) => {
           if (kind === "begin") {
             schemaUris = [];
           } else if (kind === "end") {
@@ -102,16 +99,12 @@ describe("Feature - workspace", () => {
         });
       });
 
-      client.onNotification(PublishDiagnosticsNotification, (params) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         schemaUris.push(params.uri);
       });
     });
 
-    /**
-     * @type {import("vscode-languageserver").DidChangeWatchedFilesParams}
-     */
-    const params = { changes: [] };
-    await client.sendNotification(DidChangeWatchedFilesNotification, params);
+    await client.sendNotification(DidChangeWatchedFilesNotification.type, { changes: [] });
 
     expect(await validatedSchemas).to.eql([
       resolveIri("./subject.schema.json", `${workspaceFolder}/`)

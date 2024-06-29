@@ -1,7 +1,12 @@
 import { getDocumentSettings } from "./document-settings.js";
 import * as SchemaDocument from "../schema-document.js";
 
+/**
+  * @import * as Type from "./schema-registry.js"
+  * @import { Feature } from "../build-server.js"
+  */
 
+/** @type Feature */
 export default {
   load(_connection, documents) {
     documents.onDidClose(({ document }) => {
@@ -13,12 +18,13 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };
 
 const schemaDocuments = new Map();
 
+/** @type Type.getSchemaDocument */
 export const getSchemaDocument = async (connection, textDocument) => {
   let { version, schemaDocument } = schemaDocuments.get(textDocument.uri) ?? {};
 
@@ -32,14 +38,17 @@ export const getSchemaDocument = async (connection, textDocument) => {
   return schemaDocument;
 };
 
+/** @type Type.clearSchemaDocuments */
 export const clearSchemaDocuments = () => schemaDocuments.clear();
 
+/** @type Type.allSchemaDocuments */
 export const allSchemaDocuments = function* () {
   for (const { schemaDocument } of schemaDocuments.values()) {
     yield schemaDocument;
   }
 };
 
+/** @type Type.getSchemaResource */
 export const getSchemaResource = (schemaUri) => {
   for (const schemaDocument of allSchemaDocuments()) {
     for (const schemaResource of schemaDocument.schemaResources) {

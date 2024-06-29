@@ -8,7 +8,10 @@ import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
+/** @import * as Type from "./build-server.js" */
 
+
+/** @type Type.buildServer */
 export const buildServer = (connection, features) => {
   const documents = new TextDocuments(TextDocument);
 

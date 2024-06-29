@@ -2,9 +2,12 @@ import { DiagnosticSeverity, DiagnosticTag } from "vscode-languageserver";
 import * as SchemaNode from "../schema-node.js";
 import { subscribe } from "../pubsub.js";
 
+/** @import { Feature } from "../build-server.js" */
+
 
 const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
 
+/** @type Feature */
 export default {
   load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
@@ -27,6 +30,6 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };

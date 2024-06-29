@@ -5,15 +5,19 @@ import * as JsonNode from "./json-node.js";
 import { getSchemaResource } from "./features/schema-registry.js";
 import { toAbsoluteUri, uriFragment } from "./util.js";
 
+/** @import * as Type from "./schema-node.js" */
 
+
+/** @type Type.cons */
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength, dialectUri, anchors) => {
-  const node = JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength);
+  const node = /** @type Type.SchemaNode */ (JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength));
   node.dialectUri = dialectUri;
   node.anchors = anchors;
 
   return node;
 };
 
+/** @type Type.get */
 export const get = (uri, node) => {
   const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
   const schemaResource = node.baseUri === schemaId ? node : getSchemaResource(schemaId);
@@ -32,7 +36,7 @@ export const get = (uri, node) => {
       return;
     }
 
-    segment = segment === "-" && JsonNode.typeOf(node) === "array" ? JsonNode.length(node) : segment;
+    segment = segment === "-" && JsonNode.typeOf(node) === "array" ? `${JsonNode.length(node)}` : segment;
     return JsonNode.step(segment, node);
   }, schemaResource, JsonPointer.pointerSegments(pointer));
 };

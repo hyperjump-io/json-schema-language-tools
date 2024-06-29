@@ -15,15 +15,23 @@ import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 
+/**
+ * @import * as Type from "./workspace.d.ts"
+ * @import { FSWatcher } from "node:fs"
+ * @import { WorkspaceFolder } from "vscode-languageserver";
+ * @import { Feature } from "../build-server.js"
+ */
+
 
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 
+/** @type Feature */
 export default {
   load(connection, documents) {
     subscribe("workspaceChanged", async (_message, _changes) => {
       const reporter = await connection.window.createWorkDoneProgress();
-      await reporter.begin("JSON Schema: Indexing workspace");
+      reporter.begin("JSON Schema: Indexing workspace");
 
       // Load all schemas
       const settings = await getDocumentSettings(connection);
@@ -41,14 +49,16 @@ export default {
       // Re/validate all schemas
       await Promise.all([...allSchemaDocuments()].map(validateSchema));
 
-      await connection.sendRequest(SemanticTokensRefreshRequest.method);
+      await connection.sendRequest(SemanticTokensRefreshRequest.type);
 
-      await reporter.done();
+      reporter.done();
     });
 
+    /** @type Type.validateSchema */
     const validateSchema = async (schemaDocument) => {
       connection.console.log(`Schema Validation: ${schemaDocument.textDocument.uri}`);
 
+      /** @type Type.ValidationDiagnostic[] */
       const diagnostics = [];
       await publishAsync("diagnostics", { schemaDocument, diagnostics });
 
@@ -60,6 +70,7 @@ export default {
       });
     };
 
+    /** @type Type.buildDiagnostic */
     const buildDiagnostic = (textDocument, node, message, severity = DiagnosticSeverity.Error, tags = []) => {
       return {
         severity: severity,
@@ -73,7 +84,9 @@ export default {
       };
     };
 
-    connection.onDidChangeWatchedFiles(onWorkspaceChange);
+    connection.onDidChangeWatchedFiles(async (params) => {
+      await publishAsync("workspaceChanged", params);
+    });
 
     documents.onDidChangeContent(async ({ document }) => {
       const settings = await getDocumentSettings(connection);
@@ -94,6 +107,7 @@ export default {
     hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
     hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
 
+    /** @type import("vscode-languageserver").ServerCapabilities */
     const serverCapabilities = {
       textDocumentSync: TextDocumentSyncKind.Incremental
     };
@@ -114,7 +128,7 @@ export default {
     const settings = await getDocumentSettings(connection);
 
     if (hasWorkspaceWatchCapability) {
-      connection.client.register(DidChangeWatchedFilesNotification, {
+      connection.client.register(DidChangeWatchedFilesNotification.type, {
         watchers: settings.schemaFilePatterns.map((pattern) => {
           return { globPattern: pattern };
         })
@@ -130,7 +144,7 @@ export default {
 
         if (!hasWorkspaceWatchCapability) {
           const settings = await getDocumentSettings(connection);
-          watchWorkspace(onWorkspaceChange, settings.schemaFilePattern);
+          watchWorkspace(onWorkspaceChange, settings.schemaFilePatterns);
         }
 
         await publishAsync("workspaceChanged", { changes: [] });
@@ -139,6 +153,7 @@ export default {
   }
 };
 
+/** @type Type.onWorkspaceChange */
 const onWorkspaceChange = async (eventType, filename) => {
   // eventType === "rename" means file added or deleted (on most platforms?)
   // eventType === "change" means file saved
@@ -153,6 +168,7 @@ const onWorkspaceChange = async (eventType, filename) => {
   });
 };
 
+/** @type Type.isMatchedFile */
 export const isMatchedFile = (uri, patterns) => {
   patterns = patterns.map((pattern) => `**/${pattern}`);
   const matchers = patterns.map((pattern) => {
@@ -166,14 +182,20 @@ export const isMatchedFile = (uri, patterns) => {
   return matchers.some((matcher) => matcher(uri));
 };
 
+/** @type Set<WorkspaceFolder> */
 const workspaceFolders = new Set();
 
+/** @type Record<string, FSWatcher> */
+const watchers = {};
+
+/** @type Type.addWorkspaceFolders */
 const addWorkspaceFolders = (folders) => {
   for (const folder of folders) {
     workspaceFolders.add(folder);
   }
 };
 
+/** @type Type.removeWorkspaceFolders */
 const removeWorkspaceFolders = (folders) => {
   for (const folder of folders) {
     if (watchers[folder.uri]) {
@@ -184,8 +206,7 @@ const removeWorkspaceFolders = (folders) => {
   }
 };
 
-const watchers = {};
-
+/** @type Type.watchWorkspace */
 const watchWorkspace = (handler, schemaFilePatterns) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
@@ -195,13 +216,14 @@ const watchWorkspace = (handler, schemaFilePatterns) => {
     }
 
     watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
-      if (isMatchedFile(filename, schemaFilePatterns)) {
+      if (filename && isMatchedFile(filename, schemaFilePatterns)) {
         handler(eventType, filename);
       }
     });
   }
 };
 
+/** @type Type.workspaceSchemas */
 const workspaceSchemas = async function* (schemaFilePatterns) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);

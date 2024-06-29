@@ -1,7 +1,13 @@
 import * as Browser from "@hyperjump/browser";
+import * as SchemaNode from "../schema-node.js";
 import { subscribe } from "../pubsub.js";
 
+/**
+ * @import * as Type from "./validation-errors.js"
+ * @import { Feature } from "../build-server.js"
+ */
 
+/** @type Feature */
 export default {
   load() {
     subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
@@ -15,11 +21,12 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };
 
-export const invalidNodes = async function* (errors) {
+/** @type Type.invalidNodes */
+const invalidNodes = async function* (errors) {
   for (const error of errors) {
     for await (const message of toErrorMessage(error)) {
       yield [error.instanceNode, message];
@@ -27,8 +34,9 @@ export const invalidNodes = async function* (errors) {
   }
 };
 
+/** @type Type.toErrorMessage */
 const toErrorMessage = async function* (error) {
-  if (error.keyword === "https://json-schema.org/keyword/schema") {
+  if (error.message) {
     yield error.message;
   } else if (error.keyword === "https://json-schema.org/keyword/additionalProperties") {
     // Skip
@@ -44,7 +52,7 @@ const toErrorMessage = async function* (error) {
   } else if (error.keyword === "https://json-schema.org/keyword/dependentRequired") {
     const dependentRequired = Browser.value(error.keywordNode);
 
-    const object = error.instanceNode.value();
+    const object = SchemaNode.value(error.instanceNode);
     for (const propertyName in dependentRequired) {
       if (propertyName in object) {
         for (const required of dependentRequired[propertyName]) {
@@ -59,6 +67,7 @@ const toErrorMessage = async function* (error) {
   } else if (error.keyword === "https://json-schema.org/keyword/draft-2020-12/dynamicRef") {
     // Skip
   } else if (error.keyword === "https://json-schema.org/keyword/enum") {
+    /** @type unknown[] */
     const enumValue = Browser.value(error.keywordNode);
     yield `Expected one of: ${enumValue.map((value) => JSON.stringify(value, null, "  ")).join(", ")}`;
   } else if (error.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
@@ -110,7 +119,7 @@ const toErrorMessage = async function* (error) {
   } else if (error.keyword === "https://json-schema.org/keyword/required") {
     const required = Browser.value(error.keywordNode);
 
-    const object = error.instanceNode.value();
+    const object = SchemaNode.value(error.instanceNode);
     for (const propertyName of required) {
       if (!(propertyName in object)) {
         yield `Property ${propertyName} is required.`;

@@ -3,10 +3,12 @@ import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import hover from "./hover.js";
 import { closeDocument, getTestClient, initializeServer, openDocument } from "../test-utils.js";
 
+import type { Connection, Hover, MarkupContent, ServerCapabilities } from "vscode-languageserver";
+
 
 describe("Feature - Hover", () => {
-  let client;
-  let capabilities;
+  let client: Connection;
+  let capabilities: ServerCapabilities;
 
   beforeAll(async () => {
     client = getTestClient([hover]);
@@ -18,25 +20,21 @@ describe("Feature - Hover", () => {
   });
 
   describe("match response", () => {
-    let response;
-    let documentUri;
+    let response: Hover | null;
+    let documentUri: string;
 
     beforeAll(async () => {
       documentUri = await openDocument(client, "./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema"
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 1,
           character: 3
         }
-      };
-      response = await client.sendRequest(HoverRequest, params);
+      });
     });
 
     afterAll(async () => {
@@ -44,11 +42,12 @@ describe("Feature - Hover", () => {
     });
 
     test("kind", async () => {
-      expect(response.contents.kind).to.eql(MarkupKind.Markdown);
+      const contents = response?.contents as MarkupContent;
+      expect(contents.kind).to.eql(MarkupKind.Markdown);
     });
 
     test("range", () => {
-      expect(response.range).to.eql({
+      expect(response?.range).to.eql({
         start: { line: 1, character: 2 },
         end: { line: 1, character: 10 }
       });
@@ -56,8 +55,8 @@ describe("Feature - Hover", () => {
   });
 
   describe("hover on keyword value", () => {
-    let response;
-    let documentUri;
+    let response: Hover | null;
+    let documentUri: string;
 
     beforeAll(async () => {
       documentUri = await openDocument(client, "./subject.schema.json", `{
@@ -65,17 +64,13 @@ describe("Feature - Hover", () => {
   "title": "Foo"
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 12
         }
-      };
-      response = await client.sendRequest(HoverRequest, params);
+      });
     });
 
     afterAll(async () => {
@@ -88,8 +83,8 @@ describe("Feature - Hover", () => {
   });
 
   describe("hover on a key with a keyword name, but not in a schema", () => {
-    let response;
-    let documentUri;
+    let response: Hover | null;
+    let documentUri: string;
 
     beforeAll(async () => {
       documentUri = await openDocument(client, "./subject.schema.json", `{
@@ -99,17 +94,13 @@ describe("Feature - Hover", () => {
   }
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 3,
           character: 6
         }
-      };
-      response = await client.sendRequest(HoverRequest, params);
+      });
     });
 
     afterAll(async () => {
@@ -122,7 +113,7 @@ describe("Feature - Hover", () => {
   });
 
   describe("2020-12", () => {
-    let documentUri;
+    let documentUri: string;
 
     afterAll(async () => {
       await closeDocument(client, documentUri);
@@ -204,19 +195,16 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
-      expect(response?.contents.value).to.not.be.empty;
+      const contents = response?.contents as MarkupContent;
+      expect(contents.value).to.not.be.empty;
     });
 
     test.each([
@@ -235,24 +223,20 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
       expect(response).to.equal(null);
     });
   });
 
   describe("2019-09", () => {
-    let documentUri;
+    let documentUri: string;
 
     afterAll(async () => {
       await closeDocument(client, documentUri);
@@ -332,19 +316,16 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
-      expect(response?.contents.value).to.not.be.empty;
+      const contents = response?.contents as MarkupContent;
+      expect(contents.value).to.not.be.empty;
     });
 
     test.each([
@@ -363,24 +344,20 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
       expect(response).to.equal(null);
     });
   });
 
   describe("draft-07", () => {
-    let documentUri;
+    let documentUri: string;
 
     afterAll(async () => {
       await closeDocument(client, documentUri);
@@ -438,19 +415,16 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
-      expect(response?.contents.value).to.not.be.empty;
+      const contents = response?.contents as MarkupContent;
+      expect(contents.value).to.not.be.empty;
     });
 
     test.each([
@@ -473,24 +447,20 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
       expect(response).to.equal(null);
     });
   });
 
   describe("draft-06", () => {
-    let documentUri;
+    let documentUri: string;
 
     afterAll(async () => {
       await closeDocument(client, documentUri);
@@ -540,19 +510,16 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
-      expect(response?.contents.value).to.not.be.empty;
+      const contents = response?.contents as MarkupContent;
+      expect(contents.value).to.not.be.empty;
     });
 
     test.each([
@@ -578,24 +545,20 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
       expect(response).to.equal(null);
     });
   });
 
   describe("draft-04", () => {
-    let documentUri;
+    let documentUri: string;
 
     afterAll(async () => {
       await closeDocument(client, documentUri);
@@ -640,19 +603,16 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
-      expect(response?.contents.value).to.not.be.empty;
+      const contents = response?.contents as MarkupContent;
+      expect(contents.value).to.not.be.empty;
     });
 
     test.each([
@@ -679,17 +639,13 @@ describe("Feature - Hover", () => {
   "${keyword}": ${value}
 }`);
 
-      /**
-       * @type {import("vscode-languageserver").HoverParams}
-       */
-      const params = {
+      const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
         position: {
           line: 2,
           character: 2
         }
-      };
-      const response = await client.sendRequest(HoverRequest, params);
+      });
 
       expect(response).to.equal(null);
     });

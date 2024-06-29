@@ -2,10 +2,16 @@ import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import { publish } from "../pubsub.js";
 import { clearSchemaDocuments } from "./schema-registry.js";
 
+/**
+ * @import * as Type from "./document-settings.js"
+ * @import { Feature } from "../build-server.js"
+ */
+
 
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
 
+/** @type Feature */
 export default {
   load(connection, documents) {
     connection.onDidChangeConfiguration(() => {
@@ -29,15 +35,11 @@ export default {
     return {};
   },
 
-  onInitialized(connection) {
+  async onInitialized(connection) {
     if (hasDidChangeConfigurationCapability) {
-      /**
-       * @type {import("vscode-languageserver").DidChangeConfigurationRegistrationOptions}
-       */
-      const params = {
+      connection.client.register(DidChangeConfigurationNotification.type, {
         section: "jsonSchemaLanguageServer"
-      };
-      connection.client.register(DidChangeConfigurationNotification.type, params);
+      });
     }
   }
 };
@@ -47,6 +49,7 @@ const defaultSettings = {
   schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
 };
 
+/** @type Type.getDocumentSettings */
 export const getDocumentSettings = async (connection, uri) => {
   if (!hasConfigurationCapability) {
     return defaultSettings;

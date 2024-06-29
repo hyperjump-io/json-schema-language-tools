@@ -1,6 +1,11 @@
+/** @import * as Type from "./pubsub.js" */
+
+
+/** @type Record<string, Record<string, Type.SubscriptionFn<any>>> */
 const subscriptions = {};
 let uid = 0;
 
+/** @type Type.subscribe */
 export const subscribe = (message, fn) => {
   if (!(message in subscriptions)) {
     subscriptions[message] = {};
@@ -12,10 +17,12 @@ export const subscribe = (message, fn) => {
   return subscriptionId;
 };
 
+/** @type Type.unsubscribe */
 export const unsubscribe = (message, token) => {
   delete subscriptions[message][token];
 };
 
+/** @type Type.publish */
 export const publish = (message, data) => {
   for (const subscribedMessage in subscriptions) {
     if (subscribedMessage === message || message.startsWith(`${subscribedMessage}.`)) {
@@ -26,6 +33,7 @@ export const publish = (message, data) => {
   }
 };
 
+/** @type Type.publishAsync */
 export const publishAsync = async (message, data) => {
   const promises = [];
   for (const subscribedMessage in subscriptions) {

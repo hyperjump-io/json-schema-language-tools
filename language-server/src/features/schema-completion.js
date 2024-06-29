@@ -3,7 +3,10 @@ import { getDialectIds } from "@hyperjump/json-schema/experimental";
 import * as SchemaDocument from "../schema-document.js";
 import { subscribe } from "../pubsub.js";
 
+/** @import { Feature } from "../build-server.js"; */
 
+
+/** @type Feature */
 export default {
   load() {
     const trailingHashDialects = new Set([
@@ -11,7 +14,7 @@ export default {
       "http://json-schema.org/draft-06/schema",
       "http://json-schema.org/draft-07/schema"
     ]);
-    const shouldHaveTrailingHash = (uri) => trailingHashDialects.has(uri);
+    const shouldHaveTrailingHash = (/** @type string */ uri) => trailingHashDialects.has(uri);
 
     subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
@@ -28,6 +31,6 @@ export default {
     return {};
   },
 
-  onInitialized() {
+  async onInitialized() {
   }
 };

@@ -6,9 +6,9 @@ import {
   InitializedNotification,
   RegistrationRequest,
   SemanticTokensRefreshRequest,
-  WorkDoneProgressCreateRequest,
-  createConnection
+  WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
+import { createConnection } from "vscode-languageserver/node.js";
 import { randomUUID } from "node:crypto";
 import { Duplex } from "node:stream";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -19,18 +19,22 @@ import { resolveIri } from "@hyperjump/uri";
 import { merge } from "merge-anything";
 import { buildServer } from "./build-server.js";
 
+import type { Connection, InitializeParams } from "vscode-languageserver";
+import type { Feature } from "./build-server.js";
+import type { DocumentSettings } from "./features/document-settings.js";
+
 
 export class TestStream extends Duplex {
-  _write(chunk, _encoding, done) {
+  _write(chunk: string, _encoding: string, done: () => void) {
     this.emit("data", chunk);
     done();
   }
 
-  _read(_size) {
+  _read(_size: number) {
   }
 }
 
-export const getTestClient = (features) => {
+export const getTestClient = (features: Feature[]) => {
   const up = new TestStream();
   const down = new TestStream();
 
@@ -43,27 +47,26 @@ export const getTestClient = (features) => {
   return client;
 };
 
-export const initializeServer = async (client, initParams = {}, settings = null) => {
-  client.onRequest(RegistrationRequest, () => {
+export const initializeServer = async (client: Connection, initParams: Partial<InitializeParams> = {}, settings: Partial<DocumentSettings> | null = null) => {
+  client.onRequest(RegistrationRequest.type, () => {
     // Ignore client/registerCapability request for now
   });
 
-  client.onRequest(SemanticTokensRefreshRequest.method, () => {
+  client.onRequest(SemanticTokensRefreshRequest.type, () => {
     // Ignore workspace/semanticTokens/refresh request for now
   });
 
-  client.onRequest(WorkDoneProgressCreateRequest, () => {
+  client.onRequest(WorkDoneProgressCreateRequest.type, () => {
     // Ignore window/workDoneProgress/create for now
   });
 
-  client.onRequest(ConfigurationRequest, () => {
+  client.onRequest(ConfigurationRequest.type, () => {
     return [settings];
   });
 
-  /**
-   * @type {import("vscode-languageserver").InitializeParams}
-   */
-  const init = merge({
+  const defaultInitParams: InitializeParams = {
+    processId: null,
+    rootUri: null,
     capabilities: {
       workspace: {
         workspaceFolders: true,
@@ -79,47 +82,39 @@ export const initializeServer = async (client, initParams = {}, settings = null)
         workDoneProgress: true
       }
     }
-  }, initParams);
-  const response = await client.sendRequest(InitializeRequest, init);
+  };
+  const response = await client.sendRequest(InitializeRequest.type, merge(defaultInitParams, initParams));
 
-  await client.sendNotification(InitializedNotification);
+  await client.sendNotification(InitializedNotification.type, {});
 
   return response.capabilities;
 };
 
-export const openDocument = async (client, uri, text) => {
+export const openDocument = async (client: Connection, uri: string, text?: string) => {
   const baseUri = `file:///${randomUUID()}/`;
   const documentUri = resolveIri(uri, baseUri);
 
-  /**
-   * @type {import("vscode-languageserver").DidOpenTextDocumentParams}
-   */
-  const openParams = {
+  await client.sendNotification(DidOpenTextDocumentNotification.type, {
     textDocument: {
       uri: documentUri,
       languageId: "json",
       version: 0,
       text: text ?? await readFile(fileURLToPath(uri), "utf-8")
     }
-  };
-  await client.sendNotification(DidOpenTextDocumentNotification, openParams);
+  });
 
   return documentUri;
 };
 
-export const closeDocument = async (client, uri) => {
-  /**
-   * @type {import("vscode-languageserver").DidCloseTextDocumentParams}
-   */
-  const closeParams = {
+export const closeDocument = async (client: Connection, uri: string) => {
+  await client.sendNotification(DidCloseTextDocumentNotification.type, {
     textDocument: {
       uri: uri
     }
-  };
-  await client.sendNotification(DidCloseTextDocumentNotification, closeParams);
+  });
 };
 
-export const setupWorkspace = async (files) => {
+export const setupWorkspace = async (files: Record<string, string>) => {
   const workspaceFolder = await mkdtemp(join(tmpdir(), "test-workspace-"));
 
   for (const path in files) {
@@ -129,6 +124,6 @@ export const setupWorkspace = async (files) => {
   return pathToFileURL(workspaceFolder).toString();
 };
 
-export const tearDownWorkspace = async (workspaceFolder) => {
+export const tearDownWorkspace = async (workspaceFolder: string) => {
   await rm(fileURLToPath(workspaceFolder), { recursive: true });
 };
