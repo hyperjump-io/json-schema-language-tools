@@ -7,5 +7,6 @@
     "strict": true,
     "checkJs": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["out"]
 }

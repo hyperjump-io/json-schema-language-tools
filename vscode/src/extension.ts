@@ -1,11 +1,12 @@
-"use strict";
-const path = require("node:path");
-const { LanguageClient, TransportKind, MarkupKind } = require("vscode-languageclient");
+import * as path from "node:path";
+import { LanguageClient, TransportKind, MarkupKind } from "vscode-languageclient/node.js";
+
+import type { ExtensionContext } from "vscode";
 
 
-let client;
+let client: LanguageClient | undefined;
 
-const activate = (context) => {
+const activate = async (context: ExtensionContext) => {
   const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
   const serverOptions = {
     run: {
@@ -16,15 +17,13 @@ const activate = (context) => {
       module: serverModule,
       transport: TransportKind.ipc,
       options: {
-        execArgc: ["--nolazy", "--inspect=6009"]
+        execArgv: ["--nolazy", "--inspect=6009"]
       }
     }
   };
 
   const clientOptions = {
-    documentSelector: [
-      { scheme: "file", language: "json" }
-    ],
+    documentSelector: [{ scheme: "file", language: "json" }],
     capabilities: {
       textDocument: {
         hover: {
@@ -35,9 +34,9 @@ const activate = (context) => {
   };
 
   client = new LanguageClient("jsonSchemaLanguageServer", "JSON Schema Language Server", serverOptions, clientOptions);
-  client.start();
+  await client.start();
 };
 
-const deactivate = () => client?.stop();
+const deactivate = async () => client?.stop();
 
 module.exports = { activate, deactivate };

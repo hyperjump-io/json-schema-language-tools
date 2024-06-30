@@ -29,5 +29,6 @@ jobs:
     - run: cd language-server && npm run type-check
     - run: cd language-server && npm run lint
     - run: cd vscode && npm ci
+    - run: cd vscode && npm run type-check
     - run: cd vscode && npm run lint
     - run: cd vscode && npm run build
