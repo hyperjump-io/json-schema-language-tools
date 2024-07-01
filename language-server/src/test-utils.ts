@@ -91,7 +91,7 @@ export const initializeServer = async (client: Connection, initParams: Partial<I
 };
 
 export const openDocument = async (client: Connection, uri: string, text?: string) => {
-  const baseUri = `file:///${randomUUID()}/`;
+  const baseUri = pathToFileURL(`/${randomUUID()}/`).toString();
   const documentUri = resolveIri(uri, baseUri);
 
   await client.sendNotification(DidOpenTextDocumentNotification.type, {
