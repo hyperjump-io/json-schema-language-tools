@@ -97,6 +97,12 @@ export default {
         await validateSchema(schemaDocument);
       }
     });
+
+    connection.onShutdown(() => {
+      for (const path in watchers) {
+        watchers[path].close();
+      }
+    });
   },
 
   onInitialize({ capabilities, workspaceFolders }) {

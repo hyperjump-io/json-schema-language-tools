@@ -13,6 +13,7 @@ import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
 
 import type { Connection, ServerCapabilities } from "vscode-languageserver";
+// import { afterEach } from "node:test";
 
 
 describe("Feature - workspace (neovim)", () => {
@@ -49,8 +50,8 @@ describe("Feature - workspace (neovim)", () => {
   });
 
   afterAll(async () => {
+    await tearDownWorkspace(client, workspaceFolder);
     client.dispose();
-    await tearDownWorkspace(workspaceFolder);
   });
 
   test("capabilities", async () => {
@@ -62,7 +63,7 @@ describe("Feature - workspace (neovim)", () => {
     });
   });
 
-  test("a change to a watched file should validate the workspace", async () => {
+  test.only("a change to a watched file should validate the workspace", async () => {
     const validatedSchemas = new Promise((resolve) => {
       let schemaUris: string[];
 

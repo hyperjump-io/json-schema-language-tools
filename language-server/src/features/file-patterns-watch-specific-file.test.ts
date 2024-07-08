@@ -55,7 +55,7 @@ describe("Feature - Watch File Patterns", () => {
     await closeDocument(client, documentUri);
     await closeDocument(client, documentUriB);
 
-    await tearDownWorkspace(workspaceFolder);
+    await tearDownWorkspace(client, workspaceFolder);
   });
 
   test("watches only specified files", async () => {

@@ -6,6 +6,7 @@ import {
   InitializedNotification,
   RegistrationRequest,
   SemanticTokensRefreshRequest,
+  ShutdownRequest,
   WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
 import { createConnection } from "vscode-languageserver/node.js";
@@ -124,6 +125,8 @@ export const setupWorkspace = async (files: Record<string, string>) => {
   return pathToFileURL(workspaceFolder).toString();
 };
 
-export const tearDownWorkspace = async (workspaceFolder: string) => {
+export const tearDownWorkspace = async (client: Connection, workspaceFolder: string) => {
+  await client.sendRequest(ShutdownRequest.type);
+  //await client.sendNotification(ExitNotification.type);
   await rm(fileURLToPath(workspaceFolder), { recursive: true });
 };

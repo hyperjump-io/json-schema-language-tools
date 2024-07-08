@@ -45,7 +45,7 @@ describe("Feature - workspace", () => {
   });
 
   afterAll(async () => {
-    await tearDownWorkspace(workspaceFolder);
+    await tearDownWorkspace(client, workspaceFolder);
   });
 
   test("capabilities", async () => {

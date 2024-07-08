@@ -35,6 +35,11 @@ export const buildServer = (connection, features) => {
     }
   });
 
+  connection.onExit(() => {
+    connection.dispose();
+  });
+
   connection.listen();
   documents.listen(connection);
 };
+
