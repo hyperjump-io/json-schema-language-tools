@@ -63,7 +63,7 @@ describe("Feature - workspace (neovim)", () => {
     });
   });
 
-  test.only("a change to a watched file should validate the workspace", async () => {
+  test("a change to a watched file should validate the workspace", async () => {
     const validatedSchemas = new Promise((resolve) => {
       let schemaUris: string[];
 
