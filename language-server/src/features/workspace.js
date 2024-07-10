@@ -10,7 +10,7 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { publishAsync, subscribe } from "../pubsub.js";
+import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
@@ -18,7 +18,7 @@ import picomatch from "picomatch";
 /**
  * @import * as Type from "./workspace.d.ts"
  * @import { FSWatcher } from "node:fs"
- * @import { WorkspaceFolder } from "vscode-languageserver";
+ * @import { WorkspaceFolder } from "vscode-languageserver"
  * @import { Feature } from "../build-server.js"
  */
 
@@ -26,10 +26,13 @@ import picomatch from "picomatch";
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 
+/** @type string */
+let subscriptionToken;
+
 /** @type Feature */
 export default {
   load(connection, documents) {
-    subscribe("workspaceChanged", async (_message, _changes) => {
+    subscriptionToken = subscribe("workspaceChanged", async (_message, _changes) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
 
@@ -128,7 +131,7 @@ export default {
     const settings = await getDocumentSettings(connection);
 
     if (hasWorkspaceWatchCapability) {
-      connection.client.register(DidChangeWatchedFilesNotification.type, {
+      await connection.client.register(DidChangeWatchedFilesNotification.type, {
         watchers: settings.schemaFilePatterns.map((pattern) => {
           return { globPattern: pattern };
         })
@@ -150,6 +153,14 @@ export default {
         await publishAsync("workspaceChanged", { changes: [] });
       });
     }
+  },
+
+  onShutdown() {
+    for (const path in watchers) {
+      watchers[path].close();
+    }
+
+    unsubscribe("workspaceChanged", subscriptionToken);
   }
 };
 

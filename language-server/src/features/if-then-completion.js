@@ -21,6 +21,9 @@ export default {
   },
 
   async onInitialized() {
+  },
+
+  onShutdown() {
   }
 };
 

@@ -1,21 +1,24 @@
-import { beforeAll, describe, expect, test } from "vitest";
-import { getTestClient, initializeServer } from "../test-utils.js";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 
-import type { Connection, ServerCapabilities } from "vscode-languageserver";
+import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - Completion", () => {
-  let client: Connection;
-  let capabilities: ServerCapabilities;
+  let client: TestClient<DocumentSettings>;
 
   beforeAll(async () => {
-    client = getTestClient([completion]);
-    capabilities = await initializeServer(client);
+    client = new TestClient([completion]);
+    await client.start();
+  });
+
+  afterAll(async () => {
+    await client.stop();
   });
 
   test("completion provider capabilities", async () => {
-    expect(capabilities.completionProvider).to.eql({
+    expect(client.serverCapabilities?.completionProvider).to.eql({
       resolveProvider: false,
       triggerCharacters: ["\"", ":", " "]
     });

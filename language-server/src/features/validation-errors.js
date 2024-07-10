@@ -1,16 +1,20 @@
 import * as Browser from "@hyperjump/browser";
 import * as SchemaNode from "../schema-node.js";
-import { subscribe } from "../pubsub.js";
+import { subscribe, unsubscribe } from "../pubsub.js";
 
 /**
  * @import * as Type from "./validation-errors.js"
  * @import { Feature } from "../build-server.js"
  */
 
+
+/** @type string */
+let subscriptionToken;
+
 /** @type Feature */
 export default {
   load() {
-    subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
+    subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for await (const [instance, message] of invalidNodes(schemaDocument.errors)) {
         diagnostics.push({ instance, message });
       }
@@ -22,6 +26,10 @@ export default {
   },
 
   async onInitialized() {
+  },
+
+  onShutdown() {
+    unsubscribe("diagnostics", subscriptionToken);
   }
 };
 

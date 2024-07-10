@@ -127,3 +127,7 @@ export const setupWorkspace = async (files: Record<string, string>) => {
 export const tearDownWorkspace = async (workspaceFolder: string) => {
   await rm(fileURLToPath(workspaceFolder), { recursive: true });
 };
+
+export const wait = async (delay: number) => new Promise((resolve) => {
+  setTimeout(resolve, delay);
+});

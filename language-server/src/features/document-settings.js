@@ -1,5 +1,5 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
-import { publish } from "../pubsub.js";
+import { publishAsync } from "../pubsub.js";
 import { clearSchemaDocuments } from "./schema-registry.js";
 
 /**
@@ -14,13 +14,13 @@ let hasDidChangeConfigurationCapability = false;
 /** @type Feature */
 export default {
   load(connection, documents) {
-    connection.onDidChangeConfiguration(() => {
+    connection.onDidChangeConfiguration(async () => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
         clearSchemaDocuments();
       }
 
-      publish("workspaceChanged", { changes: [] });
+      await publishAsync("workspaceChanged", { changes: [] });
     });
 
     documents.onDidClose(({ document }) => {
@@ -37,11 +37,13 @@ export default {
 
   async onInitialized(connection) {
     if (hasDidChangeConfigurationCapability) {
-      connection.client.register(DidChangeConfigurationNotification.type, {
+      await connection.client.register(DidChangeConfigurationNotification.type, {
         section: "jsonSchemaLanguageServer"
       });
     }
-  }
+  },
+
+  onShutdown() {}
 };
 
 const documentSettings = new Map();

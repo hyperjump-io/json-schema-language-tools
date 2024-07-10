@@ -1,22 +1,31 @@
-import { beforeAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { CompletionItemKind, CompletionRequest } from "vscode-languageserver";
+import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
-import { getTestClient, initializeServer, openDocument } from "../test-utils.js";
 
-import type { Connection } from "vscode-languageserver";
+import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - $schema completion", () => {
-  let client: Connection;
+  let client: TestClient<DocumentSettings>;
+  let documentUri: string;
 
   beforeAll(async () => {
-    client = getTestClient([completion, schemaCompletion]);
-    await initializeServer(client);
+    client = new TestClient([completion, schemaCompletion]);
+    await client.start();
+  });
+
+  afterEach(async () => {
+    await client.closeDocument(documentUri);
+  });
+
+  afterAll(async () => {
+    await client.stop();
   });
 
   test("$schema completion with string", async () => {
-    const documentUri = await openDocument(client, "subject.schema.json", `{
+    documentUri = await client.openDocument("subject.schema.json", `{
   "$schema": ""
 }`);
 
@@ -31,7 +40,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion with colon", async () => {
-    const documentUri = await openDocument(client, "subject.schema.json", `{
+    documentUri = await client.openDocument("subject.schema.json", `{
   "$schema":
 }`);
 
@@ -46,7 +55,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion with colon and space", async () => {
-    const documentUri = await openDocument(client, "subject.schema.json", `{
+    documentUri = await client.openDocument("subject.schema.json", `{
   "$schema": 
 }`);
 
@@ -61,7 +70,7 @@ describe("Feature - $schema completion", () => {
   });
 
   test("$schema completion without colon", async () => {
-    const documentUri = await openDocument(client, "subject.schema.json", `{
+    documentUri = await client.openDocument("subject.schema.json", `{
   "$schema"
 }`);
 

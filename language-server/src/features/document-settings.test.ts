@@ -1,40 +1,36 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import {
-  ConfigurationRequest,
-  DidChangeTextDocumentNotification,
-  PublishDiagnosticsNotification
-} from "vscode-languageserver";
-import { getTestClient, closeDocument, initializeServer, openDocument } from "../test-utils.js";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { PublishDiagnosticsNotification } from "vscode-languageserver";
+import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
+import semanticTokens from "./semantic-tokens.js";
 import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import validationErrorsFeature from "./validation-errors.js";
 
-import type { Connection, Diagnostic } from "vscode-languageserver";
+import type { Diagnostic } from "vscode-languageserver";
+import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - Document Settings", () => {
-  let client: Connection;
-  let documentUri: string;
+  let client: TestClient<DocumentSettings>;
 
-  beforeAll(async () => {
-    client = getTestClient([
+  beforeEach(async () => {
+    client = new TestClient([
       workspace,
       documentSettings,
+      semanticTokens,
       schemaRegistry,
       validationErrorsFeature
     ]);
-    const init = {};
-    const settings = { "defaultDialect": "https://json-schema.org/draft/2020-12/schema" };
-    await initializeServer(client, init, settings);
+    await client.start();
   });
 
-  afterAll(async () => {
-    await closeDocument(client, documentUri);
+  afterEach(async () => {
+    await client.stop();
   });
 
   test("test default dialect", async () => {
-    documentUri = await openDocument(client, "./subject.schema.json", `{}`);
+    await client.changeConfiguration({ defaultDialect: "https://json-schema.org/draft/2020-12/schema" });
 
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
@@ -42,65 +38,40 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.sendNotification(DidChangeTextDocumentNotification.type, {
-      textDocument: { uri: documentUri, version: 1 },
-      contentChanges: []
-    });
+    await client.openDocument("./subject.schema.json", `{}`);
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
   });
 
   test("test no dialect", async () => {
-    documentUri = await openDocument(client, "./subject.schema.json", `{}`);
-
-    client.onRequest(ConfigurationRequest.type, () => {
-      return [{}];
-    });
-
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
 
-    await client.sendNotification(DidChangeTextDocumentNotification.type, {
-      textDocument: { uri: documentUri, version: 1 },
-      contentChanges: []
-    });
+    await client.openDocument("./subject.schema.json", `{}`);
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("No dialect");
   });
 
   test("test unknown dialect", async () => {
-    documentUri = await openDocument(client, "./subject.schema.json", `{ "$schema": "" }`);
-
-    client.onRequest(ConfigurationRequest.type, () => {
-      return [{}];
-    });
-
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
 
-    await client.sendNotification(DidChangeTextDocumentNotification.type, {
-      textDocument: { uri: documentUri, version: 1 },
-      contentChanges: []
-    });
+    await client.openDocument("./subject.schema.json", `{ "$schema": "" }`);
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown dialect");
   });
 
   test("test unknown dialect when default dialect is unknown", async () => {
-    documentUri = await openDocument(client, "./subject.schema.json", `{}`);
-
-    client.onRequest(ConfigurationRequest.type, () => {
-      return [{ "defaultDialect": "" }];
-    });
+    await client.changeConfiguration({ defaultDialect: "https://example.com/unknown-dialect" });
 
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
@@ -108,12 +79,25 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.sendNotification(DidChangeTextDocumentNotification.type, {
-      textDocument: { uri: documentUri, version: 1 },
-      contentChanges: []
-    });
+    await client.openDocument("./subject.schema.json", `{}`);
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown dialect");
+  });
+
+  test("watches only specified files", async () => {
+    await client.changeConfiguration({ "schemaFilePatterns": ["**/subjectB.schema.json"] });
+
+    const diagnosticsPromise = new Promise<string>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.uri);
+      });
+    });
+
+    await client.openDocument("./subject.schema.json", "{}");
+    const documentUriB = await client.openDocument("./subjectB.schema.json", "{}");
+
+    const diagnostics = await diagnosticsPromise;
+    expect(diagnostics).to.equal(documentUriB);
   });
 });

@@ -35,6 +35,12 @@ export const buildServer = (connection, features) => {
     }
   });
 
+  connection.onShutdown(() => {
+    for (const feature of features) {
+      feature.onShutdown(connection, documents);
+    }
+  });
+
   connection.listen();
   documents.listen(connection);
 };

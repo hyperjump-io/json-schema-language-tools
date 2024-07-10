@@ -6,6 +6,7 @@ export type Feature = {
   load: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
   onInitialize: (params: InitializeParams) => ServerCapabilities;
   onInitialized: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
+  onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
 };
 
 export const buildServer: (connection: Connection, features: Feature[]) => void;

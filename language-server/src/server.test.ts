@@ -1,20 +1,23 @@
-import { describe, test, expect, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { TextDocumentSyncKind } from "vscode-languageserver";
-import { getTestClient, initializeServer } from "./test-utils.js";
+import { TestClient } from "./test-client.js";
 
-import type { Connection, ServerCapabilities } from "vscode-languageserver";
+import type { DocumentSettings } from "./features/document-settings.js";
 
 
 describe("JSON Schema Language Server", () => {
-  let client: Connection;
-  let capabilities: ServerCapabilities;
+  let client: TestClient<DocumentSettings>;
 
   beforeAll(async () => {
-    client = getTestClient([]);
-    capabilities = await initializeServer(client);
+    client = new TestClient([]);
+    await client.start();
+  });
+
+  afterAll(async () => {
+    await client.stop();
   });
 
   test("textDocumentSync = Incremental", async () => {
-    expect(capabilities.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
+    expect(client.serverCapabilities?.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
   });
 });
