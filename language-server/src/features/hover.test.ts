@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import hover from "./hover.js";
