@@ -1,10 +1,12 @@
 import { CompletionItemKind } from "vscode-languageserver";
 import { getDialectIds } from "@hyperjump/json-schema/experimental";
 import * as SchemaDocument from "../schema-document.js";
-import { subscribe } from "../pubsub.js";
+import { subscribe, unsubscribe } from "../pubsub.js";
 
 /** @import { Feature } from "../build-server.js"; */
 
+/** @type string */
+let subscriptionToken;
 
 /** @type Feature */
 export default {
@@ -16,7 +18,7 @@ export default {
     ]);
     const shouldHaveTrailingHash = (/** @type string */ uri) => trailingHashDialects.has(uri);
 
-    subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
+    subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/$schema") && currentProperty.type === "string") {
         completions.push(...getDialectIds().map((uri) => ({
@@ -35,5 +37,6 @@ export default {
   },
 
   onShutdown() {
+    unsubscribe("completions", subscriptionToken);
   }
 };
