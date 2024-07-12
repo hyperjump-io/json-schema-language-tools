@@ -1,5 +1,5 @@
 import * as SchemaNode from "../schema-node.js";
-import { subscribe } from "../pubsub.js";
+import { subscribe, unsubscribe } from "../pubsub.js";
 import { keywordNameFor } from "../util.js";
 
 /**
@@ -8,10 +8,13 @@ import { keywordNameFor } from "../util.js";
  */
 
 
+/** @type string */
+let subscriptionToken;
+
 /** @type Feature */
 export default {
   load() {
-    subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
+    subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const node of references(schemaResource)) {
           const reference = SchemaNode.value(node);
@@ -32,6 +35,7 @@ export default {
   },
 
   onShutdown() {
+    unsubscribe("diagnostics", subscriptionToken);
   }
 };
 

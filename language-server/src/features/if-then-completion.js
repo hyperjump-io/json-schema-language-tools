@@ -1,14 +1,16 @@
 import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
-import { subscribe } from "../pubsub.js";
+import { subscribe, unsubscribe } from "../pubsub.js";
 
 /** @import { Feature } from "../build-server.js" */
 
+/** @type string */
+let subscriptionToken;
 
 /** @type Feature */
 export default {
   load() {
-    subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
+    subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/if") && currentProperty.type === "property") {
         completions.push(...ifThenPatternCompletion);
@@ -24,6 +26,7 @@ export default {
   },
 
   onShutdown() {
+    unsubscribe("completions", subscriptionToken);
   }
 };
 
