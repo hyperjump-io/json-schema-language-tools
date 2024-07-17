@@ -216,5 +216,387 @@ describe("Feature - Semantic Tokens", () => {
       expect(response?.data).to.eql(expected);
     });
   });
+
+  describe("2019-09", () => {
+    let documentUri: string;
+
+    afterAll(async () => {
+      await client.closeDocument(documentUri);
+    });
+
+    test.each([
+      // Applicators
+      ["additionalItems", "true", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]],
+      ["unevaluatedItems", "true", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["items", "true", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["contains", "true", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["additionalProperties", "true", [1, 2, 9, 1, 0, 1, 2, 22, 1, 0]],
+      ["unevaluatedProperties", "true", [1, 2, 9, 1, 0, 1, 2, 23, 1, 0]],
+      ["properties", "{}", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["patternProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 19, 1, 0]],
+      ["dependentSchemas", "{}", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["propertyNames", "{}", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["if", "true", [1, 2, 9, 1, 0, 1, 2, 4, 1, 0]],
+      ["then", "true", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["else", "true", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["allOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["anyOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]],
+
+      // Content
+      ["contentMediaType", "\"\"", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["contentEncoding", "\"\"", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]],
+      ["contentSchema", "{}", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+
+      // Core
+      ["$id", "\"\"", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]],
+      ["$anchor", "\"foo\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["$ref", "\"\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["$recursiveRef", "\"\"", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["$recursiveAnchor", "true", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["$vocabulary", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["$comment", "\"\"", [1, 2, 9, 1, 0, 1, 2, 14, 2, 0]],
+      ["$defs", "{}", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+
+      // Format
+      ["format", "\"\"", [1, 2, 9, 1, 0, 1, 2, 8, 1, 0]],
+
+      // Meta-data
+      ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["deprecated", "true", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["readOnly", "true", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["writeOnly", "true", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["examples", "[]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+
+      // Validation
+      ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["maximum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMaximum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["minimum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMinimum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["maxLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["minLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["pattern", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["maxItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["minItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["uniqueItems", "true", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["maxContains", "1", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["minContains", "1", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["maxProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["minProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["required", "[]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["dependentRequired", "{}", [1, 2, 9, 1, 0, 1, 2, 19, 1, 0]],
+      ["const", "1", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["enum", "[]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]]
+    ])("%s should be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+
+
+    test.each([
+      // Applicators
+      ["dependencies", "{}", [1, 2, 9, 1, 0]],
+      ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
+
+      // Core
+      ["id", "\"\"", [1, 2, 9, 1, 0]],
+      ["$dynamicRef", "\"#foo\"", [1, 2, 9, 1, 0]],
+      ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0]],
+      ["definitions", "{}", [1, 2, 9, 1, 0]]
+    ])("%s should not be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+  });
+
+  describe("draft-07", () => {
+    let documentUri: string;
+
+    afterAll(async () => {
+      await client.closeDocument(documentUri);
+    });
+
+    test.each([
+      ["$id", "\"\"", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]],
+      ["$ref", "\"\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["$comment", "\"\"", [1, 2, 9, 1, 0, 1, 2, 14, 2, 0]],
+      ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["readOnly", "true", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["writeOnly", "true", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["maximum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMaximum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["minimum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMinimum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["maxLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["minLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["pattern", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["additionalItems", "true", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]],
+      ["items", "true", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["maxItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["minItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["uniqueItems", "true", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["contains", "{}", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["maxProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["minProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["required", "[\"foo\"]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["additionalProperties", "true", [1, 2, 9, 1, 0, 1, 2, 22, 1, 0]],
+      ["definitions", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["properties", "{}", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["patternProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 19, 1, 0]],
+      ["dependencies", "{}", [1, 2, 9, 1, 0, 1, 2, 14, 1, 0]],
+      ["propertyNames", "{}", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["const", "1", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["enum", "[1]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["format", "\"\"", [1, 2, 9, 1, 0, 1, 2, 8, 1, 0]],
+      ["if", "true", [1, 2, 9, 1, 0, 1, 2, 4, 1, 0]],
+      ["then", "true", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["else", "true", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["allOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["anyOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
+    ])("%s should be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+
+
+    test.each([
+      ["contentMediaType", "\"\"", [1, 2, 9, 1, 0]],
+      ["contentEncoding", "\"\"", [1, 2, 9, 1, 0]],
+      ["dependentSchemas", "{}", [1, 2, 9, 1, 0]],
+      ["dependentRequired", "{}", [1, 2, 9, 1, 0]],
+      ["examples", "[]", [1, 2, 9, 1, 0]],
+      ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
+      ["minContains", "1", [1, 2, 9, 1, 0]],
+      ["maxContains", "1", [1, 2, 9, 1, 0]],
+      ["id", "\"\"", [1, 2, 9, 1, 0]],
+      ["$dynamicRef", "\"#foo\"", [1, 2, 9, 1, 0]],
+      ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0]],
+      ["$recursiveRef", "\"#\"", [1, 2, 9, 1, 0]],
+      ["$recursiveAnchor", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedProperties", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
+      ["$defs", "{}", [1, 2, 9, 1, 0]]
+    ])("%s should not be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+  });
+  describe("draft-06", () => {
+    let documentUri: string;
+
+    afterAll(async () => {
+      await client.closeDocument(documentUri);
+    });
+
+    test.each([
+      ["$id", "\"\"", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]],
+      ["$ref", "\"\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["maximum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMaximum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["minimum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMinimum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["maxLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["minLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["pattern", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["additionalItems", "true", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]],
+      ["items", "true", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["maxItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["minItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["uniqueItems", "true", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["contains", "{}", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["maxProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["minProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["required", "[\"foo\"]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["additionalProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 22, 1, 0]],
+      ["definitions", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["properties", "{}", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["patternProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 19, 1, 0]],
+      ["dependencies", "{}", [1, 2, 9, 1, 0, 1, 2, 14, 1, 0]],
+      ["propertyNames", "{}", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["const", "1", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["enum", "[1]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["format", "\"\"", [1, 2, 9, 1, 0, 1, 2, 8, 1, 0]],
+      ["allOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["anyOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
+    ])("%s should be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+
+    test.each([
+      ["dependentSchemas", "{}", [1, 2, 9, 1, 0]],
+      ["dependentRequired", "{}", [1, 2, 9, 1, 0]],
+      ["examples", "[]", [1, 2, 9, 1, 0]],
+      ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
+      ["if", "{}", [1, 2, 9, 1, 0]],
+      ["then", "{}", [1, 2, 9, 1, 0]],
+      ["else", "{}", [1, 2, 9, 1, 0]],
+      ["minContains", "1", [1, 2, 9, 1, 0]],
+      ["maxContains", "1", [1, 2, 9, 1, 0]],
+      ["id", "\"\"", [1, 2, 9, 1, 0]],
+      ["$dynamicRef", "\"#foo\"", [1, 2, 9, 1, 0]],
+      ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0]],
+      ["$recursiveRef", "\"#\"", [1, 2, 9, 1, 0]],
+      ["$recursiveAnchor", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedProperties", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
+      ["$defs", "{}", [1, 2, 9, 1, 0]]
+    ])("%s should not be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+  });
+
+  describe("draft-04", () => {
+    let documentUri: string;
+
+    afterAll(async () => {
+      await client.closeDocument(documentUri);
+    });
+
+    test.each([
+      ["id", "\"\"", [1, 2, 9, 1, 0, 1, 2, 4, 1, 0]],
+      ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["maximum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMaximum", "true, \"maximum\": 1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0, 0, 26, 9, 1, 0]],
+      ["minimum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["exclusiveMinimum", "true, \"minimum\": 1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0, 0, 26, 9, 1, 0]],
+      ["maxLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["minLength", "1", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
+      ["pattern", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["additionalItems", "{}", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]],
+      ["items", "{}", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["maxItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["minItems", "1", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["uniqueItems", "true", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["maxProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["minProperties", "1", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
+      ["required", "[\"foo\"]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
+      ["additionalProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 22, 1, 0]],
+      ["definitions", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["properties", "{}", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
+      ["patternProperties", "{}", [1, 2, 9, 1, 0, 1, 2, 19, 1, 0]],
+      ["dependencies", "{}", [1, 2, 9, 1, 0, 1, 2, 14, 1, 0]],
+      ["enum", "[1]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
+      ["format", "\"\"", [1, 2, 9, 1, 0, 1, 2, 8, 1, 0]],
+      ["allOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["anyOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
+      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
+    ])("%s should be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+
+
+    test.each([
+      ["dependentSchemas", "{}", [1, 2, 9, 1, 0]],
+      ["dependentRequired", "{}", [1, 2, 9, 1, 0]],
+      ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
+      ["if", "{}", [1, 2, 9, 1, 0]],
+      ["then", "{}", [1, 2, 9, 1, 0]],
+      ["else", "{}", [1, 2, 9, 1, 0]],
+      ["contains", "{}", [1, 2, 9, 1, 0]],
+      ["minContains", "1", [1, 2, 9, 1, 0]],
+      ["maxContains", "1", [1, 2, 9, 1, 0]],
+      ["$id", "\"\"", [1, 2, 9, 1, 0]],
+      ["$dynamicRef", "\"#foo\"", [1, 2, 9, 1, 0]],
+      ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0]],
+      ["$recursiveRef", "\"#\"", [1, 2, 9, 1, 0]],
+      ["$recursiveAnchor", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedProperties", "true", [1, 2, 9, 1, 0]],
+      ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
+      ["$defs", "{}", [1, 2, 9, 1, 0]]
+    ])("%s should not be highlighted", async (keyword, value, expected) => {
+      documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "${keyword}": ${value}
+}`);
+
+      const response = await client.sendRequest(SemanticTokensRequest.type, {
+        textDocument: { uri: documentUri }
+      });
+
+      expect(response?.data).to.eql(expected);
+    });
+  });
 });
 
