@@ -140,6 +140,12 @@ const toErrorMessage = async function* (error) {
     } else {
       yield `Expected ${["a", "o"].includes(type[0]) ? "an" : "a"} ${type}`;
     }
+  } else if (error.keyword === "https://json-schema.org/keyword/if") {
+    // Skip
+  } else if (error.keyword === "https://json-schema.org/keyword/then") {
+    // Skip
+  } else if (error.keyword === "https://json-schema.org/keyword/else") {
+    // Skip
   } else if (error.keyword === "https://json-schema.org/keyword/unevaluatedItems") {
     // Skip
   } else if (error.keyword === "https://json-schema.org/keyword/unevaluatedProperties") {
@@ -160,10 +166,6 @@ const toErrorMessage = async function* (error) {
           }
         }
       }
-    }
-  } else if (error.keyword === "https://json-schema.org/evaluation/validate") {
-    if (Browser.value(error.keywordNode) === false) {
-      yield `No value allowed`;
     }
   } else {
     const keyword = error.keywordNode.cursor.split("/").pop();
