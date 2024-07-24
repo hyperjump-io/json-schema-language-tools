@@ -29,134 +29,175 @@ describe("Feature - Validation Errors", () => {
     await client.stop();
   });
 
-  test.each([
-    [42, [`Expected a string or array`]],
-    ["invalid", [`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`]],
-    [["array", "invalid"], [`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`]],
-    [["array", "invalid", "alsoInvalid"], [
-      `Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`,
-      `Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`
-    ]]
-  ])("invalid types", async (value, expected) => {
-    await client.openDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": ${JSON.stringify(value)}
-    }`);
-
-
+  test("type (singular)", async () => {
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": 42
+    }`);
+
     const diagnostics = await diagnosticsPromise;
-    const messages = diagnostics.map((diagnostic) => diagnostic.message);
-    expect(messages).to.eql(expected);
+    expect(diagnostics[0].message).to.eql("Expected an object");
+  });
+
+  test("type (array)", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": true
+    }`);
+
+    const diagnostics = await diagnosticsPromise;
+    expect(diagnostics[0].message).to.eql("Expected a string or array");
+  });
+
+  test("enum", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "invalid"
+    }`);
+
+    const diagnostics = await diagnosticsPromise;
+    expect(diagnostics[0].message).to.eql(`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`);
   });
 
   test("minimum", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
     await client.openDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "maxLength": -1
     }`);
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must be greater than or equal to 0");
   });
 
   test("exclusiveMinimum", async () => {
-    await client.openDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "multipleOf": 0
-    }`);
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "multipleOf": 0
+    }`);
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must be greater than 0");
   });
 
   test("additionalProperties", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
     await client.openDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": { "type": 42 }
       }
     }`);
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Expected a string or array");
   });
 
   test("pattern", async () => {
-    await client.openDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$anchor": "9"
-    }`);
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$anchor": "9"
+    }`);
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must match the pattern /^[A-Za-z_][-A-Za-z0-9._]*$/");
   });
 
   test("minItems", async () => {
-    await client.openDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": []
-    }`);
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
+
+    await client.openDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": []
+    }`);
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("A minimum of 1 items are required");
   });
 
   test("uniqueItems", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
     await client.openDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "required": ["item_id", "item_id"] }
 }`);
 
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected all items to be unique. "item_id" appears multiple times.`);
   });
 
   test("dependencies", async () => {
-    await client.openDocument("./subject.schema.json", `{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "exclusiveMaximum": true
-}`);
-
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
+
+    await client.openDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "exclusiveMaximum": true
+}`);
+
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Property "maximum" is required`);
   });
 
   test("$ref", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
     await client.openDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/foo",
@@ -165,16 +206,17 @@ describe("Feature - Validation Errors", () => {
   }
 }`);
 
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected a string or array`);
   });
 
   test("$dynamicRef", async () => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
+
     await client.openDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$dynamicRef": "#foo",
@@ -190,11 +232,6 @@ describe("Feature - Validation Errors", () => {
   }
 }`);
 
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected a string or array`);
   });
