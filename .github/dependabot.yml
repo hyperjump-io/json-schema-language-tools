@@ -1,0 +1,14 @@
+version: 2
+updates:
+- package-ecosystem: "npm"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+- package-ecosystem: "npm"
+  directory: "/language-server"
+  schedule:
+    interval: "weekly"
+- package-ecosystem: "npm"
+  directory: "/vscode"
+  schedule:
+    interval: "weekly"
