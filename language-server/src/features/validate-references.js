@@ -3,7 +3,7 @@ import { subscribe, unsubscribe } from "../pubsub.js";
 import { keywordNameFor } from "../util.js";
 
 /**
- * @import * as Type from "./validation-references.js"
+ * @import * as Type from "./validate-references.js"
  * @import { Feature } from "../build-server.js"
  */
 

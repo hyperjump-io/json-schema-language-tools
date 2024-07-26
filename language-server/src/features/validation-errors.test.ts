@@ -172,7 +172,8 @@ describe("Feature - Validation Errors", () => {
 }`);
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`Expected all items to be unique. "item_id" appears multiple times.`);
+    expect(diagnostics[0].message).to.eql(`All items must be unique`);
+    expect(diagnostics[1].message).to.eql(`All items must be unique`);
   });
 
   test("dependencies", async () => {

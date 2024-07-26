@@ -9,8 +9,8 @@ import type { Feature } from "../build-server.js";
 export type ValidationDiagnostic = {
   instance: SchemaNode;
   message: string;
-  severity: DiagnosticSeverity;
-  tags: DiagnosticTag[];
+  severity?: DiagnosticSeverity;
+  tags?: DiagnosticTag[];
 };
 
 export const validateSchema: (schemaDocument: SchemaDocument) => Promise<void>;
@@ -19,7 +19,7 @@ export const buildDiagnostic: (
   node: SchemaNode,
   message: string,
   severity?: DiagnosticSeverity,
-  tags: DiagnosticTag[]
+  tags?: DiagnosticTag[]
 ) => Diagnostic;
 export const onWorkspaceChange: (eventType: WatchEventType, filename?: string) => Promise<void>;
 export const isMatchedFile: (uri: string, patterns: string[]) => boolean;
