@@ -1,10 +1,10 @@
 import type { SchemaError } from "../schema-document.js";
-import type { SchemaNode } from "../schema-node.js";
 import type { Feature } from "../build-server.js";
+import type { ValidationDiagnostic } from "./workspace.js";
 
 
-export const invalidNodes: (errors: SchemaError[]) => AsyncGenerator<[SchemaNode, string]>;
-export const toErrorMessage: (error: SchemaError) => AsyncGenerator<string>;
+export const invalidNodes: (errors: SchemaError[]) => AsyncGenerator<ValidationDiagnostic>;
+export const toErrorMessage: (error: SchemaError) => AsyncGenerator<ValidationDiagnostic>;
 
 declare const validationErrors: Feature;
 export default validationErrors;
