@@ -15,6 +15,7 @@ import completionFeature from "./features/completion.js";
 import ifThenCompletionFeature from "./features/if-then-completion.js";
 import schemaCompletion from "./features/schema-completion.js";
 import hoverFeature from "./features/hover.js";
+import referencesFeature from "./features/references.js";
 
 
 const features = [
@@ -28,6 +29,7 @@ const features = [
   schemaCompletion,
   ifThenCompletionFeature,
   hoverFeature,
+  referencesFeature,
   workspaceFeature
 ];
 

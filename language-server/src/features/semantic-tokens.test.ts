@@ -1,10 +1,11 @@
-import { beforeAll, afterAll, describe, expect, test } from "vitest";
+import { beforeAll, afterAll, afterEach, describe, expect, test } from "vitest";
 import { SemanticTokensRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import semanticTokensFeature from "./semantic-tokens.js";
 import workspace from "./workspace.js";
 import type { DocumentSettings } from "./document-settings.js";
 import documentSettings from "./document-settings.js";
+import schemaRegistry from "./schema-registry.js";
 
 
 describe("Feature - Semantic Tokens", () => {
@@ -14,11 +15,16 @@ describe("Feature - Semantic Tokens", () => {
   beforeAll(async () => {
     client = new TestClient([
       documentSettings,
+      schemaRegistry,
       semanticTokensFeature,
       workspace
     ]);
 
     await client.start();
+  });
+
+  afterEach(async () => {
+    await client.closeDocument(documentUri);
   });
 
   afterAll(async () => {

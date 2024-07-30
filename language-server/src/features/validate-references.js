@@ -40,7 +40,7 @@ export default {
 };
 
 /** @type Type.references */
-const references = function* (schemaResource) {
+export const references = function* (schemaResource) {
   const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri);
   const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri);
 
