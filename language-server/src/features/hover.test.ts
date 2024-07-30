@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import hover from "./hover.js";
+import schemaRegistry from "./schema-registry.js";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
 import type { DocumentSettings } from "./document-settings.js";
@@ -11,7 +12,7 @@ describe("Feature - Hover", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeAll(async () => {
-    client = new TestClient([hover]);
+    client = new TestClient([schemaRegistry, hover]);
     await client.start();
   });
 
@@ -41,7 +42,7 @@ describe("Feature - Hover", () => {
       });
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -77,7 +78,7 @@ describe("Feature - Hover", () => {
       });
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -107,7 +108,7 @@ describe("Feature - Hover", () => {
       });
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -119,7 +120,7 @@ describe("Feature - Hover", () => {
   describe("2020-12", () => {
     let documentUri: string;
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -242,7 +243,7 @@ describe("Feature - Hover", () => {
   describe("2019-09", () => {
     let documentUri: string;
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -363,7 +364,7 @@ describe("Feature - Hover", () => {
   describe("draft-07", () => {
     let documentUri: string;
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -466,7 +467,7 @@ describe("Feature - Hover", () => {
   describe("draft-06", () => {
     let documentUri: string;
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 
@@ -564,7 +565,7 @@ describe("Feature - Hover", () => {
   describe("draft-04", () => {
     let documentUri: string;
 
-    afterAll(async () => {
+    afterEach(async () => {
       await client.closeDocument(documentUri);
     });
 

@@ -3,6 +3,7 @@ import { CompletionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
+import schemaRegistry from "./schema-registry.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
@@ -12,7 +13,7 @@ describe("Feature - if/then completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([completion, ifThenCompletionFeature]);
+    client = new TestClient([schemaRegistry, completion, ifThenCompletionFeature]);
     await client.start();
   });
 

@@ -40,6 +40,7 @@ export class TestClient<Configuration> {
   private _settings: Partial<Configuration> | undefined;
   private _configurationChangeNotificationOptions: DidChangeConfigurationRegistrationOptions | null | undefined;
   private openDocuments: Set<string> = new Set();
+  private baseUri: string;
 
   onRequest: Connection["onRequest"];
   sendRequest: Connection["sendRequest"];
@@ -50,6 +51,7 @@ export class TestClient<Configuration> {
 
   constructor(features: Feature[], serverName: string = "jsonSchemaLanguageServer") {
     this._serverName = serverName;
+    this.baseUri = pathToFileURL(`/${randomUUID()}/`).toString();
 
     const up = new TestStream();
     const down = new TestStream();
@@ -218,8 +220,7 @@ export class TestClient<Configuration> {
   }
 
   async openDocument(uri: string, text?: string) {
-    const baseUri = pathToFileURL(`/${randomUUID()}/`).toString();
-    const documentUri = resolveIri(uri, baseUri);
+    const documentUri = resolveIri(uri, this.baseUri);
 
     await this._client.sendNotification(DidOpenTextDocumentNotification.type, {
       textDocument: {

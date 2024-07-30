@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { CompletionItemKind, CompletionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
+import schemaRegistry from "./schema-registry.js";
 import schemaCompletion from "./schema-completion.js";
 
 import type { DocumentSettings } from "./document-settings.js";
@@ -12,7 +13,7 @@ describe("Feature - $schema completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([completion, schemaCompletion]);
+    client = new TestClient([completion, schemaCompletion, schemaRegistry]);
     await client.start();
   });
 
