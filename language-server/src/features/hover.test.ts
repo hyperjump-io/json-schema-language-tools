@@ -209,7 +209,7 @@ describe("Feature - Hover", () => {
       });
 
       const contents = response?.contents as MarkupContent;
-      expect(contents.value).to.not.be.empty;
+      expect(contents.value).to.not.be.empty; // eslint-disable-line @typescript-eslint/no-unused-expressions
     });
 
     test.each([
@@ -330,7 +330,7 @@ describe("Feature - Hover", () => {
       });
 
       const contents = response?.contents as MarkupContent;
-      expect(contents.value).to.not.be.empty;
+      expect(contents.value).to.not.be.empty; // eslint-disable-line @typescript-eslint/no-unused-expressions
     });
 
     test.each([
@@ -429,7 +429,7 @@ describe("Feature - Hover", () => {
       });
 
       const contents = response?.contents as MarkupContent;
-      expect(contents.value).to.not.be.empty;
+      expect(contents.value).to.not.be.empty; // eslint-disable-line @typescript-eslint/no-unused-expressions
     });
 
     test.each([
@@ -524,7 +524,7 @@ describe("Feature - Hover", () => {
       });
 
       const contents = response?.contents as MarkupContent;
-      expect(contents.value).to.not.be.empty;
+      expect(contents.value).to.not.be.empty; // eslint-disable-line @typescript-eslint/no-unused-expressions
     });
 
     test.each([
@@ -617,7 +617,7 @@ describe("Feature - Hover", () => {
       });
 
       const contents = response?.contents as MarkupContent;
-      expect(contents.value).to.not.be.empty;
+      expect(contents.value).to.not.be.empty; // eslint-disable-line @typescript-eslint/no-unused-expressions
     });
 
     test.each([
