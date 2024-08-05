@@ -18,10 +18,10 @@ import {
   WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
 import { createConnection } from "vscode-languageserver/node.js";
-import { resolveIri } from "@hyperjump/uri";
 import { merge } from "merge-anything";
 import { buildServer } from "./build-server.js";
 import { wait } from "./test-utils.js";
+import { resolveIri } from "./util.js";
 
 import type {
   Connection,

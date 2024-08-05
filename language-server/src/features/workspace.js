@@ -1,7 +1,7 @@
 import { watch } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import {
   DiagnosticSeverity,
   DidChangeWatchedFilesNotification,
@@ -10,6 +10,7 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { URI } from "vscode-uri";
 import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
@@ -260,7 +261,7 @@ const workspaceSchemas = async function* (schemaFilePatterns) {
       if (isMatchedFile(filename, schemaFilePatterns)) {
         const schemaPath = resolve(path, filename);
 
-        yield pathToFileURL(schemaPath).toString();
+        yield URI.file(schemaPath).toString();
       }
     }
   }

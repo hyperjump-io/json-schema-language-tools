@@ -7,11 +7,11 @@ import {
   WorkDoneProgress,
   WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
-import { resolveIri } from "@hyperjump/uri";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
 import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
+import { resolveIri } from "../util.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
