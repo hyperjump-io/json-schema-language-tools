@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { ReferencesRequest } from "vscode-languageserver";
+import { DefinitionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
-import ReferencesFeature from "./references.js";
+import definitionFeature from "./definition.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
 
-describe("Feature - References", () => {
+describe("Feature - Goto Definition", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeEach(async () => {
@@ -17,7 +17,7 @@ describe("Feature - References", () => {
       workspace,
       documentSettings,
       schemaRegistry,
-      ReferencesFeature
+      definitionFeature
     ]);
     await client.start();
   });
@@ -26,26 +26,25 @@ describe("Feature - References", () => {
     await client.stop();
   });
 
-  test("no references", async () => {
+  test("no defintions", async () => {
     const documentUri = await client.openDocument("./subject.schema.json", `{}`);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
+    const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
         line: 0,
         character: 1
-      },
-      context: { includeDeclaration: false }
+      }
     });
 
     expect(response).to.eql([]);
   });
 
-  test("don't return references that do not match location", async () => {
+  test("don't return definitions that do not match location", async () => {
     const documentUri = await client.openDocument("./subject.schema.json", `{
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/locations", 
-  "$defs":{
+  "$defs": {
     "names": {
       
     },
@@ -55,16 +54,21 @@ describe("Feature - References", () => {
   },
 }`);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
+    const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
-        line: 5,
-        character: 4
-      },
-      context: { includeDeclaration: false }
+        line: 2,
+        character: 11
+      }
     });
 
-    expect(response).to.eql([]);
+    expect(response).to.eql([{
+      uri: documentUri,
+      range: {
+        start: { line: 7, character: 17 },
+        end: { line: 9, character: 5 }
+      }
+    }]);
   });
 
   test("match one reference", async () => {
@@ -78,27 +82,55 @@ describe("Feature - References", () => {
   },
 }`);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
+    const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
-        line: 5,
-        character: 4
-      },
-      context: { includeDeclaration: false }
+        line: 2,
+        character: 20
+      }
     });
 
     expect(response).to.eql([
       {
         "uri": documentUri,
         "range": {
-          "start": { "line": 2, "character": 10 },
-          "end": { "line": 2, "character": 25 }
+          "start": { "line": 4, "character": 13 },
+          "end": { "line": 6, "character": 5 }
+        }
+      }
+    ]);
+  });
+  test("match one definition", async () => {
+    const documentUri = await client.openDocument("./subject.schema.json", `{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/names", 
+  "$defs":{
+    "names": {
+      
+    }
+  },
+}`);
+
+    const response = await client.sendRequest(DefinitionRequest.type, {
+      textDocument: { uri: documentUri },
+      position: {
+        line: 2,
+        character: 18
+      }
+    });
+
+    expect(response).to.eql([
+      {
+        "uri": documentUri,
+        "range": {
+          "start": { "line": 4, "character": 13 },
+          "end": { "line": 6, "character": 5 }
         }
       }
     ]);
   });
 
-  test("cross file reference", async () => {
+  test("cross file definition", async () => {
     const documentUriA = await client.openDocument("./subjectA.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
@@ -114,21 +146,20 @@ describe("Feature - References", () => {
 }
 `);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
-      textDocument: { uri: documentUriA },
+    const response = await client.sendRequest(DefinitionRequest.type, {
+      textDocument: { uri: documentUriB },
       position: {
-        line: 4,
-        character: 4
-      },
-      context: { includeDeclaration: false }
+        line: 2,
+        character: 20
+      }
     });
 
     expect(response).to.eql([
       {
-        "uri": documentUriB,
+        "uri": documentUriA,
         "range": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 3, "character": 1 }
+          "start": { "line": 3, "character": 14 },
+          "end": { "line": 5, "character": 5 }
         }
       }
     ]);
@@ -150,21 +181,20 @@ describe("Feature - References", () => {
   }
 }`);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
-      textDocument: { uri: documentUriB },
+    const response = await client.sendRequest(DefinitionRequest.type, {
+      textDocument: { uri: documentUri },
       position: {
-        line: 5,
-        character: 4
-      },
-      context: { includeDeclaration: false }
+        line: 2,
+        character: 37
+      }
     });
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
+        "uri": documentUriB,
         "range": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 3, "character": 1 }
+          "start": { "line": 4, "character": 13 },
+          "end": { "line": 6, "character": 5 }
         }
       }
     ]);
@@ -180,21 +210,20 @@ describe("Feature - References", () => {
    }  
 }`);
 
-    const response = await client.sendRequest(ReferencesRequest.type, {
+    const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
       position: {
-        line: 2,
-        character: 46
-      },
-      context: { includeDeclaration: false }
+        line: 5,
+        character: 30
+      }
     });
 
     expect(response).to.eql([
       {
         "uri": documentUri,
         "range": {
-          "start": { "line": 5, "character": 13 },
-          "end": { "line": 5, "character": 58 }
+          "start": { "line": 0, "character": 0 },
+          "end": { "line": 7, "character": 1 }
         }
       }
     ]);

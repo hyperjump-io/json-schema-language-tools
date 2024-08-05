@@ -1,9 +1,8 @@
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
-import { resolveIri } from "@hyperjump/uri";
 import * as JsonNode from "./json-node.js";
 import { getSchemaResource } from "./features/schema-registry.js";
-import { toAbsoluteUri, uriFragment } from "./util.js";
+import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
 
 /**
  * @import { Json } from "@hyperjump/json-pointer"
@@ -60,7 +59,7 @@ export const get = (uri, node) => {
   }
 
   const fragment = uriFragment(uri);
-  const pointer = fragment === "" || fragment[0] === "/" ? fragment : node.anchors[fragment];
+  const pointer = fragment === "" || fragment[0] === "/" ? fragment : schemaResource.anchors[fragment];
   if (typeof pointer !== "string") {
     return;
   }
@@ -72,7 +71,7 @@ export const get = (uri, node) => {
 
     segment = segment === "-" && JsonNode.typeOf(node) === "array" ? `${JsonNode.length(node)}` : segment;
     return JsonNode.step(segment, node);
-  }, schemaResource, JsonPointer.pointerSegments(pointer));
+  }, schemaResource.root, JsonPointer.pointerSegments(pointer));
 };
 
 export {

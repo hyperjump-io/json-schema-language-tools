@@ -1,10 +1,9 @@
 import { getSchema, compile, interpret, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
-import { resolveIri, toAbsoluteIri } from "@hyperjump/uri";
 import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
-import { keywordNameFor, toAbsoluteUri, uriFragment } from "./util.js";
+import { keywordNameFor, toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js";
 
 /**
  * @import { TextDocument } from "vscode-languageserver-textdocument"
@@ -114,6 +113,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
  */
 const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, pointer = "", parent = undefined, anchors = {}) => {
   const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length, dialectUri, anchors);
+  schemaNode.baseUri = normalizeUri(schemaNode.baseUri);
 
   switch (node.type) {
     case "array":
@@ -129,7 +129,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, 
         const $schema = nodeStep(node, "$schema");
         if ($schema?.type === "string") {
           try {
-            dialectUri = toAbsoluteIri(getNodeValue($schema));
+            dialectUri = normalizeUri(toAbsoluteUri(getNodeValue($schema)));
             schemaNode.dialectUri = dialectUri;
           } catch (error) {
             // Ignore
@@ -139,7 +139,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, 
         const idToken = keywordNameFor("https://json-schema.org/keyword/id", dialectUri);
         const $idNode = idToken && nodeStep(node, idToken);
         if ($idNode) {
-          uri = toAbsoluteIri(resolveIri(getNodeValue($idNode), uri));
+          uri = toAbsoluteUri(resolveIri(getNodeValue($idNode), uri));
           schemaNode.baseUri = uri;
         }
 
@@ -148,7 +148,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, 
         if (legacy$idNode?.type === "string") {
           const legacy$id = getNodeValue(legacy$idNode);
           if (legacy$id[0] !== "#") {
-            uri = toAbsoluteIri(resolveIri(legacy$id, uri));
+            uri = toAbsoluteUri(resolveIri(legacy$id, uri));
             schemaNode.baseUri = uri;
           }
         }
@@ -207,7 +207,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, 
 const getEmbeddedDialectUri = (node, dialectUri) => {
   const $schema = nodeStep(node, "$schema");
   if ($schema?.type === "string") {
-    const embeddedDialectUri = toAbsoluteIri(getNodeValue($schema));
+    const embeddedDialectUri = normalizeUri(toAbsoluteUri(getNodeValue($schema)));
     if (!hasDialect(embeddedDialectUri)) {
       return embeddedDialectUri;
     } else {

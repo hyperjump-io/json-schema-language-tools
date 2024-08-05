@@ -8,10 +8,10 @@ import {
 } from "vscode-languageserver";
 import { utimes } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { resolveIri } from "@hyperjump/uri";
 import workspace from "./workspace.js";
 import documentSettings from "./document-settings.js";
 import schemaRegistry from "./schema-registry.js";
+import { resolveIri } from "../util.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 

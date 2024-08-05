@@ -1,7 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { URI } from "vscode-uri";
 
 
 export const setupWorkspace = async (files: Record<string, string>) => {
@@ -11,7 +12,7 @@ export const setupWorkspace = async (files: Record<string, string>) => {
     await writeFile(join(workspaceFolder, path), files[path], "utf-8");
   }
 
-  return pathToFileURL(workspaceFolder).toString();
+  return URI.file(workspaceFolder).toString();
 };
 
 export const tearDownWorkspace = async (workspaceFolder: string) => {

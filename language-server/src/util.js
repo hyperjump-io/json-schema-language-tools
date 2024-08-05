@@ -1,4 +1,6 @@
 import { getKeywordName } from "@hyperjump/json-schema/experimental";
+import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
+import { URI } from "vscode-uri";
 
 
 /** @type (uri: string) => string */
@@ -20,4 +22,15 @@ export const keywordNameFor = (keywordUri, dialectUri = "") => {
   } catch (error) {
     return undefined;
   }
+};
+
+/** @type (uri: string, baseUri: string) => string */
+export const resolveIri = (uri, baseUri) => {
+  const resolved = hyperjumpResolveIri(uri, baseUri);
+  return normalizeUri(resolved);
+};
+
+/** @type (uri: string) => string */
+export const normalizeUri = (uri) => {
+  return URI.parse(uri).toString();
 };
