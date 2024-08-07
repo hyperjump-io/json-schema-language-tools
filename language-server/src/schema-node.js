@@ -5,19 +5,53 @@ import * as JsonNode from "./json-node.js";
 import { getSchemaResource } from "./features/schema-registry.js";
 import { toAbsoluteUri, uriFragment } from "./util.js";
 
-/** @import * as Type from "./schema-node.js" */
+/**
+ * @import { Json } from "@hyperjump/json-pointer"
+ * @import { JsonNodeType } from "./json-node.js"
+ */
 
 
-/** @type Type.cons */
+/**
+ * @typedef {{
+ *   baseUri: string;
+ *   pointer: string;
+ *   type: JsonNodeType;
+ *   children: SchemaNode[];
+ *   parent?: SchemaNode;
+ *   root: SchemaNode;
+ *   valid: boolean;
+ *   errors: Record<string, string>;
+ *   annotations: Record<string, Record<string, unknown>>;
+ *   offset: number;
+ *   textLength: number;
+ *   dialectUri?: string;
+ *   anchors: Record<string, string>;
+ * }} SchemaNode
+ */
+
+/**
+ * @type (
+ *   baseUri: string,
+ *   pointer: string,
+ *   value: Json,
+ *   type: JsonNodeType,
+ *   children: SchemaNode[],
+ *   parent: SchemaNode | undefined,
+ *   offset: number,
+ *   textLength: number,
+ *   dialectUri: string | undefined,
+ *   anchors: Record<string, string>
+ * ) => SchemaNode;
+ */
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength, dialectUri, anchors) => {
-  const node = /** @type Type.SchemaNode */ (JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength));
+  const node = /** @type SchemaNode */ (JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength));
   node.dialectUri = dialectUri;
   node.anchors = anchors;
 
   return node;
 };
 
-/** @type Type.get */
+/** @type (url: string, context: SchemaNode) => SchemaNode | undefined */
 export const get = (uri, node) => {
   const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
   const schemaResource = node.baseUri === schemaId ? node : getSchemaResource(schemaId);
@@ -31,8 +65,8 @@ export const get = (uri, node) => {
     return;
   }
 
-  return reduce((node, segment) => {
-    if (!node) {
+  return reduce((/** @type SchemaNode | undefined */ node, segment) => {
+    if (node === undefined) {
       return;
     }
 

@@ -3,10 +3,17 @@ import { publishAsync } from "../pubsub.js";
 import { clearSchemaDocuments } from "./schema-registry.js";
 
 /**
- * @import * as Type from "./document-settings.js"
+ * @import { Connection } from "vscode-languageserver"
  * @import { Feature } from "../build-server.js"
  */
 
+
+/**
+ * @typedef {{
+ *   defaultDialect?: string;
+ *   schemaFilePatterns: string[];
+ * }} DocumentSettings
+ */
 
 let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
@@ -51,7 +58,7 @@ const defaultSettings = {
   schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
 };
 
-/** @type Type.getDocumentSettings */
+/** @type (connection: Connection, uri?: string) => Promise<DocumentSettings> */
 export const getDocumentSettings = async (connection, uri) => {
   if (!hasConfigurationCapability) {
     return defaultSettings;

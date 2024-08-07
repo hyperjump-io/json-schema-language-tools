@@ -16,13 +16,22 @@ import { getDocumentSettings } from "./document-settings.js";
 import picomatch from "picomatch";
 
 /**
- * @import * as Type from "./workspace.d.ts"
- * @import { FSWatcher } from "node:fs"
- * @import { WorkspaceFolder } from "vscode-languageserver"
+ * @import { FSWatcher, WatchEventType  } from "node:fs"
+ * @import { Diagnostic, DiagnosticTag, ServerCapabilities, WorkspaceFolder } from "vscode-languageserver"
  * @import { Feature } from "../build-server.js"
+ * @import { SchemaDocument } from "../schema-document.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  */
 
 
+/**
+ * @typedef {{
+ *   instance: SchemaNodeType;
+ *   message: string;
+ *   severity?: DiagnosticSeverity;
+ *   tags?: DiagnosticTag[];
+ * }} ValidationDiagnostic
+ */
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 
@@ -57,11 +66,11 @@ export default {
       reporter.done();
     });
 
-    /** @type Type.validateSchema */
+    /** @type (schemaDocument: SchemaDocument) => Promise<void> */
     const validateSchema = async (schemaDocument) => {
       connection.console.log(`Schema Validation: ${schemaDocument.textDocument.uri}`);
 
-      /** @type Type.ValidationDiagnostic[] */
+      /** @type ValidationDiagnostic[] */
       const diagnostics = [];
       await publishAsync("diagnostics", { schemaDocument, diagnostics });
 
@@ -73,7 +82,15 @@ export default {
       });
     };
 
-    /** @type Type.buildDiagnostic */
+    /**
+     * @type (
+     *   textDocument: TextDocument,
+     *   node: SchemaNodeType,
+     *   message: string,
+     *   severity?: DiagnosticSeverity,
+     *   tags?: DiagnosticTag[]
+     * ) => Diagnostic;
+     */
     const buildDiagnostic = (textDocument, node, message, severity = DiagnosticSeverity.Error, tags = []) => {
       return {
         severity: severity,
@@ -110,7 +127,7 @@ export default {
     hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
     hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
 
-    /** @type import("vscode-languageserver").ServerCapabilities */
+    /** @type ServerCapabilities */
     const serverCapabilities = {
       textDocumentSync: TextDocumentSyncKind.Incremental
     };
@@ -164,7 +181,7 @@ export default {
   }
 };
 
-/** @type Type.onWorkspaceChange */
+/** @type (eventType: WatchEventType, filename?: string) => Promise<void> */
 const onWorkspaceChange = async (eventType, filename) => {
   // eventType === "rename" means file added or deleted (on most platforms?)
   // eventType === "change" means file saved
@@ -179,7 +196,7 @@ const onWorkspaceChange = async (eventType, filename) => {
   });
 };
 
-/** @type Type.isMatchedFile */
+/** @type (uri: string, patterns: string[]) => boolean */
 export const isMatchedFile = (uri, patterns) => {
   patterns = patterns.map((pattern) => `**/${pattern}`);
   const matchers = patterns.map((pattern) => {
@@ -199,14 +216,14 @@ const workspaceFolders = new Set();
 /** @type Record<string, FSWatcher> */
 const watchers = {};
 
-/** @type Type.addWorkspaceFolders */
+/** @type (folders: WorkspaceFolder[]) => void */
 const addWorkspaceFolders = (folders) => {
   for (const folder of folders) {
     workspaceFolders.add(folder);
   }
 };
 
-/** @type Type.removeWorkspaceFolders */
+/** @type (folders: WorkspaceFolder[]) => void */
 const removeWorkspaceFolders = (folders) => {
   for (const folder of folders) {
     if (watchers[folder.uri]) {
@@ -217,7 +234,7 @@ const removeWorkspaceFolders = (folders) => {
   }
 };
 
-/** @type Type.watchWorkspace */
+/** @type (handler: (eventType: WatchEventType, filename?: string) => void, schemaFilePatterns: string[]) => void */
 const watchWorkspace = (handler, schemaFilePatterns) => {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);
@@ -234,7 +251,7 @@ const watchWorkspace = (handler, schemaFilePatterns) => {
   }
 };
 
-/** @type Type.workspaceSchemas */
+/** @type (schemaFilePatterns: string[]) => AsyncGenerator<string> */
 const workspaceSchemas = async function* (schemaFilePatterns) {
   for (const { uri } of workspaceFolders) {
     const path = fileURLToPath(uri);

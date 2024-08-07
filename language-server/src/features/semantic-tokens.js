@@ -8,11 +8,26 @@ import { fileURLToPath } from "node:url";
 import { getDocumentSettings } from "./document-settings.js";
 
 /**
- * @import * as Type from "./semantic-tokens.js"
+ * @import { SemanticTokensClientCapabilities, SemanticTokensLegend } from "vscode-languageserver"
+ * @import { TextDocument } from "vscode-languageserver-textdocument";
  * @import { Feature } from "../build-server.js"
+ * @import { SchemaDocument } from "../schema-document.js";
  * @import { SchemaNode as SchemaNodeType } from "../schema-node.js";
  */
 
+
+/**
+ * @typedef {{
+ *   tokenTypes: Record<string, number>,
+ *   tokenModifiers: Record<string, number>
+ * }} Legend
+ *
+ * @typedef {{
+ *   keywordInstance: SchemaNodeType;
+ *   tokenType: string;
+ *   tokenModifier?: string;
+ * }} KeywordToken
+ */
 
 /** @type Feature */
 export default {
@@ -23,7 +38,7 @@ export default {
       tokenBuilders.delete(document.uri);
     });
 
-    /** @type Type.getTokenBuilder */
+    /** @type (uri: string) => SemanticTokensBuilder */
     const getTokenBuilder = (uri) => {
       if (!tokenBuilders.has(uri)) {
         tokenBuilders.set(uri, new SemanticTokensBuilder());
@@ -32,7 +47,7 @@ export default {
       return tokenBuilders.get(uri);
     };
 
-    /** @type Type.buildTokens */
+    /** @type (builder: SemanticTokensBuilder, uri: string) => Promise<void> */
     const buildTokens = async (builder, uri) => {
       const textDocument = documents.get(uri);
       if (!textDocument) {
@@ -41,6 +56,7 @@ export default {
 
       const schemaDocument = await getSchemaDocument(connection, textDocument);
       const semanticTokens = getSemanticTokens(schemaDocument);
+      // VSCode requires this list to be in order. Neovim doesn't care.
       for (const { keywordInstance, tokenType, tokenModifier } of sortSemanticTokens(semanticTokens, textDocument)) {
         const startPosition = textDocument.positionAt(keywordInstance.offset);
         builder.push(
@@ -48,7 +64,7 @@ export default {
           startPosition.character,
           keywordInstance.textLength,
           semanticTokensLegend.tokenTypes[tokenType] ?? 0,
-          semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0
+          tokenModifier !== undefined ? semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0 : 0
         );
       }
     };
@@ -96,13 +112,13 @@ export default {
   }
 };
 
-/** @type Type.Legend */
+/** @type Legend */
 const semanticTokensLegend = {
   tokenTypes: {},
   tokenModifiers: {}
 };
 
-/** @type Type.buildSemanticTokensLegend */
+/** @type (capability: SemanticTokensClientCapabilities) => SemanticTokensLegend */
 const buildSemanticTokensLegend = (capability) => {
   const clientTokenTypes = new Set(capability.tokenTypes);
   const serverTokenTypes = [
@@ -137,8 +153,7 @@ const buildSemanticTokensLegend = (capability) => {
   return { tokenTypes, tokenModifiers };
 };
 
-// VSCode requires this list to be in order. Neovim doesn't care.
-/** @type Type.sortSemanticTokens */
+/** @type (semanticTokens: Generator<KeywordToken>, textDocument: TextDocument) => KeywordToken[] */
 const sortSemanticTokens = (semanticTokens, textDocument) => {
   return [...semanticTokens].sort((a, b) => {
     const aStartPosition = textDocument.positionAt(a.keywordInstance.offset);
@@ -150,14 +165,14 @@ const sortSemanticTokens = (semanticTokens, textDocument) => {
   });
 };
 
-/** @type Type.getSemanticTokens */
+/** @type (schemaDocument: SchemaDocument) => Generator<KeywordToken> */
 const getSemanticTokens = function* (schemaDocument) {
   for (const schemaResource of schemaDocument.schemaResources) {
     yield* schemaHandler(schemaResource);
   }
 };
 
-/** @type Type.schemaHandler */
+/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
 const schemaHandler = function* (schemaResource) {
   for (const [keyNode, valueNode] of SchemaNode.entries(schemaResource)) {
     const keywordName = SchemaNode.value(keyNode);
@@ -175,7 +190,7 @@ const schemaHandler = function* (schemaResource) {
   }
 };
 
-/** @type Type.keywordIdFor */
+/** @type (keywordName: string, dialectUri?: string) => string | undefined */
 const keywordIdFor = (keywordName, dialectUri) => {
   if (!dialectUri) {
     return;
@@ -190,14 +205,14 @@ const keywordIdFor = (keywordName, dialectUri) => {
   }
 };
 
-/** @type Type.schemaHandler */
+/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
 const schemaMapHandler = function* (schemaResource) {
   for (const schemaNode of SchemaNode.values(schemaResource)) {
     yield* schemaHandler(schemaNode);
   }
 };
 
-/** @type Type.schemaHandler */
+/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
 const schemaArrayHandler = function* (schemaResource) {
   for (const schemaNode of SchemaNode.iter(schemaResource)) {
     yield* schemaHandler(schemaNode);
@@ -206,10 +221,10 @@ const schemaArrayHandler = function* (schemaResource) {
 
 const noopKeywordHandler = function* () {};
 
-/** @type Type.getKeywordHandler */
+/** @type (keywordId: string) => typeof schemaHandler */
 const getKeywordHandler = (keywordId) => keywordId in keywordHandlers ? keywordHandlers[keywordId] : noopKeywordHandler;
 
-/** @type Record<string, Type.schemaHandler> */
+/** @type Record<string, schemaHandler> */
 const keywordHandlers = {
   "https://json-schema.org/keyword/additionalProperties": schemaHandler,
   "https://json-schema.org/keyword/allOf": schemaArrayHandler,

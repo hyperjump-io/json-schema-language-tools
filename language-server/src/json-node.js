@@ -3,12 +3,30 @@ import * as Instance from "@hyperjump/json-schema/annotated-instance/experimenta
 import { getNodeValue } from "jsonc-parser";
 
 /**
- * @import * as Type from "./json-node.js"
  * @import { Node } from "jsonc-parser"
+ * @import { Json } from "@hyperjump/json-pointer";
  */
 
 
-/** @type Type.fromJsonc */
+/**
+ * @typedef {{
+ *   baseUri: string;
+ *   pointer: string;
+ *   type: JsonNodeType;
+ *   children: JsonNode[];
+ *   parent?: JsonNode;
+ *   root: JsonNode;
+ *   valid: boolean;
+ *   errors: Record<string, string>;
+ *   annotations: Record<string, Record<string, unknown>>;
+ *   offset: number;
+ *   textLength: number;
+ * }} JsonNode
+ *
+ * @typedef {"object" | "array" | "string" | "number" | "boolean" | "null" | "property"} JsonNodeType
+ */
+
+/** @type (node: Node, uri?: string, pointer?: string, parent?: JsonNode) => JsonNode */
 export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
   const jsonNode = cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
 
@@ -38,9 +56,20 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
   return jsonNode;
 };
 
-/** @type Type.cons */
+/**
+ * @type (
+ *   baseUri: string,
+ *   pointer: string,
+ *   value: Json,
+ *   type: JsonNodeType,
+ *   children: JsonNode[],
+ *   parent: JsonNode | undefined,
+ *   offset: number,
+ *   textLength: number
+ * ) => JsonNode;
+ */
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength) => {
-  const node = /** @type Type.JsonNode */ (Instance.cons(uri, pointer, value, type, children, parent));
+  const node = /** @type JsonNode */ (Instance.cons(uri, pointer, value, type, children, parent));
   node.offset = offset;
   node.textLength = textLength;
 

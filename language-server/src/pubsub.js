@@ -1,11 +1,13 @@
-/** @import * as Type from "./pubsub.js" */
+/** @typedef {SubscriptionSyncFn<T> | SubscriptionAsyncFn<T>} SubscriptionFn<T> @template T */
+/** @typedef {(message: string, data: T) => void} SubscriptionSyncFn<T> @template T */
+/** @typedef {(message: string, data: T) => Promise<void>} SubscriptionAsyncFn<T> @template T */
 
 
-/** @type Record<string, Record<string, Type.SubscriptionFn<any>>> */
+/** @type Record<string, Record<string, SubscriptionFn<any>>> */
 const subscriptions = {};
 let uid = 0;
 
-/** @type Type.subscribe */
+/** @type <T>(message: string, fn: SubscriptionFn<T>) => string */
 export const subscribe = (message, fn) => {
   if (!(message in subscriptions)) {
     subscriptions[message] = {};
@@ -17,12 +19,12 @@ export const subscribe = (message, fn) => {
   return subscriptionId;
 };
 
-/** @type Type.unsubscribe */
+/** @type (message: string, token: string) => void */
 export const unsubscribe = (message, token) => {
   delete subscriptions[message][token];
 };
 
-/** @type Type.publish */
+/** @type <T>(message: string, data: T) => void */
 export const publish = (message, data) => {
   for (const subscribedMessage in subscriptions) {
     if (subscribedMessage === message || message.startsWith(`${subscribedMessage}.`)) {
@@ -33,7 +35,7 @@ export const publish = (message, data) => {
   }
 };
 
-/** @type Type.publishAsync */
+/** @type <T>(message: string, data: T) => Promise<void> */
 export const publishAsync = async (message, data) => {
   const promises = [];
   for (const subscribedMessage in subscriptions) {

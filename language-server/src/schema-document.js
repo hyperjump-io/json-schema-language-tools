@@ -7,13 +7,30 @@ import * as SchemaNode from "./schema-node.js";
 import { keywordNameFor, toAbsoluteUri, uriFragment } from "./util.js";
 
 /**
- * @import * as Type from "./schema-document.js"
- * @import { SchemaNode as SchemaNodeType } from "./schema-node.js"
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Node } from "jsonc-parser"
+ * @import { Browser } from "@hyperjump/browser"
+ * @import { SchemaDocument as SchemaDoc } from "@hyperjump/json-schema/experimental"
+ * @import { SchemaNode as SchemaNodeType } from "./schema-node.js"
  */
 
 
-/** @type Type.cons */
+/**
+ * @typedef {{
+ *   textDocument: TextDocument,
+ *   schemaResources: SchemaNodeType[],
+ *   errors: SchemaError[]
+ * }} SchemaDocument
+ *
+ * @typedef {{
+ *   keyword: string;
+ *   keywordNode?: Browser<SchemaDoc>;
+ *   instanceNode: SchemaNodeType;
+ *   message?: string;
+ * }} SchemaError
+ */
+
+/** @type (textDocument: TextDocument) => SchemaDocument */
 const cons = (textDocument) => {
   return {
     textDocument: textDocument,
@@ -22,7 +39,7 @@ const cons = (textDocument) => {
   };
 };
 
-/** @type Type.fromTextDocument */
+/** @type (textDocument: TextDocument, contextDialectUri?: string) => Promise<SchemaDocument> */
 export const fromTextDocument = async (textDocument, contextDialectUri) => {
   const document = cons(textDocument);
 
@@ -84,7 +101,17 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
   return document;
 };
 
-/** @type Type.buildSchemaResources */
+/**
+ * @type (
+ *   document: SchemaDocument,
+ *   node: Node,
+ *   uri?: string,
+ *   dialectUri?: string,
+ *   pointer?: string,
+ *   parent?: SchemaNodeType,
+ *   anchors?: Record<string, string>
+ * ) => SchemaNodeType
+ */
 const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, pointer = "", parent = undefined, anchors = {}) => {
   const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length, dialectUri, anchors);
 
@@ -176,7 +203,7 @@ const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, 
   return schemaNode;
 };
 
-/** @type Type.getEmbeddedDialectUri */
+/** @type (node: Node, dialectUri?: string) => string | undefined */
 const getEmbeddedDialectUri = (node, dialectUri) => {
   const $schema = nodeStep(node, "$schema");
   if ($schema?.type === "string") {
@@ -203,14 +230,18 @@ const getEmbeddedDialectUri = (node, dialectUri) => {
 
 // This largely duplicates SchemaNode.get, but we can't use that because the
 // schema document isn't registered yet when we need to call this function.
-/** @type Type.fromInstanceLocation */
+/** @type (document: SchemaDocument, instanceLocation: string) => SchemaNodeType | undefined */
 const fromInstanceLocation = (document, instanceLocation) => {
   const schemaUri = toAbsoluteUri(instanceLocation);
   for (const schemaResource of document.schemaResources) {
     if (schemaUri === schemaResource.baseUri) {
       const pointer = uriFragment(instanceLocation);
 
-      return reduce((node, segment) => {
+      return reduce((/** @type SchemaNodeType | undefined */ node, segment) => {
+        if (node === undefined) {
+          return;
+        }
+
         segment = segment === "-" && SchemaNode.typeOf(node) === "array" ? `${SchemaNode.length(node)}` : segment;
         return SchemaNode.step(segment, node);
       }, schemaResource, JsonPointer.pointerSegments(pointer));
@@ -218,7 +249,7 @@ const fromInstanceLocation = (document, instanceLocation) => {
   }
 };
 
-/** @type Type.findNodeAtOffset */
+/** @type (document: SchemaDocument, offset: number) => SchemaNodeType | undefined */
 export const findNodeAtOffset = (document, offset) => {
   for (const schemaResource of document.schemaResources) {
     const node = _findNodeAtOffset(schemaResource, offset);
@@ -228,7 +259,7 @@ export const findNodeAtOffset = (document, offset) => {
   }
 };
 
-/** @type Type._findNodeAtOffset */
+/** @type (node: SchemaNodeType, offset: number, includeRightBound?: boolean) => SchemaNodeType | undefined */
 const _findNodeAtOffset = (node, offset, includeRightBound = false) => {
   if (contains(node, offset, includeRightBound)) {
     for (let i = 0; i < node.children.length && node.children[i].offset <= offset; i++) {
@@ -242,13 +273,13 @@ const _findNodeAtOffset = (node, offset, includeRightBound = false) => {
   }
 };
 
-/** @type Type.contains */
+/** @type (node: SchemaNodeType, offset: number, includeRightBound?: boolean) => boolean */
 const contains = (node, offset, includeRightBound = false) => {
   return (offset >= node.offset && offset < (node.offset + node.textLength))
     || includeRightBound && (offset === (node.offset + node.textLength));
 };
 
-/** @type Type.nodeStep */
+/** @type (node: Node, key?: string) => Node | undefined */
 const nodeStep = (node, key) => {
   const property = node.children?.find((property) => {
     const keyNode = /** @type Node */ (property.children?.[0]);

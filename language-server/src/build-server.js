@@ -8,10 +8,21 @@ import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
 
-/** @import * as Type from "./build-server.js" */
+/**
+ * @import { Connection, InitializeParams, ServerCapabilities } from "vscode-languageserver"
+ */
 
 
-/** @type Type.buildServer */
+/**
+ * @typedef {{
+ *   load: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
+ *   onInitialize: (params: InitializeParams) => ServerCapabilities;
+ *   onInitialized: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
+ *   onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
+ * }} Feature
+ */
+
+/** @type (connection: Connection, features: Feature[]) => void */
 export const buildServer = (connection, features) => {
   const documents = new TextDocuments(TextDocument);
 

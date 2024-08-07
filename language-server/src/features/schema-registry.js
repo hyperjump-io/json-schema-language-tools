@@ -2,9 +2,13 @@ import { getDocumentSettings } from "./document-settings.js";
 import * as SchemaDocument from "../schema-document.js";
 
 /**
-  * @import * as Type from "./schema-registry.js"
-  * @import { Feature } from "../build-server.js"
-  */
+ * @import { Connection } from "vscode-languageserver"
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
+ * @import { Feature } from "../build-server.js"
+ * @import { SchemaDocument as SchemaDocumentType } from "../schema-document.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ */
+
 
 /** @type Feature */
 export default {
@@ -27,7 +31,7 @@ export default {
 
 const schemaDocuments = new Map();
 
-/** @type Type.getSchemaDocument */
+/** @type (connection: Connection, textDocument: TextDocument) => Promise<SchemaDocumentType> */
 export const getSchemaDocument = async (connection, textDocument) => {
   let { version, schemaDocument } = schemaDocuments.get(textDocument.uri) ?? {};
 
@@ -41,17 +45,15 @@ export const getSchemaDocument = async (connection, textDocument) => {
   return schemaDocument;
 };
 
-/** @type Type.clearSchemaDocuments */
 export const clearSchemaDocuments = () => schemaDocuments.clear();
 
-/** @type Type.allSchemaDocuments */
 export const allSchemaDocuments = function* () {
   for (const { schemaDocument } of schemaDocuments.values()) {
     yield schemaDocument;
   }
 };
 
-/** @type Type.getSchemaResource */
+/** @type (schemaUri: string) => SchemaNodeType | undefined */
 export const getSchemaResource = (schemaUri) => {
   for (const schemaDocument of allSchemaDocuments()) {
     for (const schemaResource of schemaDocument.schemaResources) {

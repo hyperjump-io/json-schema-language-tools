@@ -3,8 +3,8 @@ import { subscribe, unsubscribe } from "../pubsub.js";
 import { keywordNameFor } from "../util.js";
 
 /**
- * @import * as Type from "./validate-references.js"
  * @import { Feature } from "../build-server.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  */
 
 
@@ -39,7 +39,7 @@ export default {
   }
 };
 
-/** @type Type.references */
+/** @type (schemaResource: SchemaNodeType) => Generator<SchemaNodeType> */
 export const references = function* (schemaResource) {
   const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri);
   const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri);
