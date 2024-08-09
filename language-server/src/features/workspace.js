@@ -70,7 +70,7 @@ export default {
 
         const schemaDocument = await getSchemaDocument(connection, textDocument);
         for (const schemaResource of schemaDocument.schemaResources) {
-          const vocabToken = keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
+          const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
           const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
           if (vocabularyNode) {
             registerSchema(SchemaNode.value(schemaResource), schemaResource.baseUri);

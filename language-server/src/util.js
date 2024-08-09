@@ -1,4 +1,4 @@
-import { getKeywordName } from "@hyperjump/json-schema/experimental";
+import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimental";
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
 import { URI } from "vscode-uri";
 
@@ -15,12 +15,23 @@ export const uriFragment = (uri) => {
   return position === -1 ? "" : uri.slice(position + 1);
 };
 
-/** @type (keywordUri: string, dialectUri?: string) => string | undefined */
-export const keywordNameFor = (keywordUri, dialectUri = "") => {
+/** @type (keywordUri: string, dialectUri: string) => string | undefined */
+export const keywordNameFor = (keywordUri, dialectUri) => {
   try {
     return getKeywordName(dialectUri, keywordUri);
   } catch (error) {
     return undefined;
+  }
+};
+
+/** @type (keywordName: string, dialectUri: string) => string | undefined */
+export const keywordIdFor = (keywordName, dialectUri) => {
+  try {
+    return keywordName === "$schema"
+      ? "https://json-schema.org/keyword/schema"
+      : getKeywordId(keywordName, dialectUri);
+  } catch (error) {
+    return;
   }
 };
 

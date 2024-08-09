@@ -60,7 +60,7 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
  * @type (
  *   baseUri: string,
  *   pointer: string,
- *   value: Json,
+ *   value: Json | undefined,
  *   type: JsonType,
  *   children: JsonNode[],
  *   parent: JsonNode | undefined,

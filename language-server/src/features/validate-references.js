@@ -41,8 +41,8 @@ export default {
 
 /** @type (schemaResource: SchemaNodeType) => Generator<SchemaNodeType> */
 export const references = function* (schemaResource) {
-  const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri);
-  const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri);
+  const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri ?? "");
+  const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri ?? "");
 
   for (const node of SchemaNode.allNodes(schemaResource)) {
     if (node.parent && SchemaNode.typeOf(node.parent) === "property") {

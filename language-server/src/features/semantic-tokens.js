@@ -1,8 +1,7 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
-import { getKeywordId } from "@hyperjump/json-schema/experimental";
 import * as SchemaNode from "../schema-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
-import { toAbsoluteUri } from "../util.js";
+import { keywordIdFor, toAbsoluteUri } from "../util.js";
 import { isMatchedFile } from "./workspace.js";
 import { fileURLToPath } from "node:url";
 import { getDocumentSettings } from "./document-settings.js";
@@ -176,7 +175,7 @@ const getSemanticTokens = function* (schemaDocument) {
 const schemaHandler = function* (schemaResource) {
   for (const [keyNode, valueNode] of SchemaNode.entries(schemaResource)) {
     const keywordName = SchemaNode.value(keyNode);
-    const keywordId = keywordIdFor(keywordName, schemaResource.dialectUri);
+    const keywordId = schemaResource.dialectUri && keywordIdFor(keywordName, schemaResource.dialectUri);
 
     if (keywordId) {
       if (keywordId === "https://json-schema.org/keyword/comment") {
@@ -187,21 +186,6 @@ const schemaHandler = function* (schemaResource) {
         yield* getKeywordHandler(keywordId)(valueNode);
       }
     }
-  }
-};
-
-/** @type (keywordName: string, dialectUri?: string) => string | undefined */
-const keywordIdFor = (keywordName, dialectUri) => {
-  if (!dialectUri) {
-    return;
-  }
-
-  try {
-    return keywordName === "$schema"
-      ? "https://json-schema.org/keyword/schema"
-      : getKeywordId(keywordName, dialectUri);
-  } catch (error) {
-    return;
   }
 };
 

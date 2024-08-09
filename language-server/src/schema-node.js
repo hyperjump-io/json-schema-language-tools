@@ -2,7 +2,7 @@ import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
 import * as JsonNode from "./json-node.js";
 import { getSchemaResource } from "./features/schema-registry.js";
-import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
+import { toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js";
 
 /**
  * @import { Json } from "@hyperjump/json-pointer"
@@ -25,6 +25,9 @@ import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
  *   textLength: number;
  *   dialectUri?: string;
  *   anchors: Record<string, string>;
+ *   isSchema: boolean;
+ *   keywordUri: string | undefined;
+ *   embedded: Record<string, SchemaNode>;
  * }} SchemaNode
  */
 
@@ -32,20 +35,28 @@ import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
  * @type (
  *   baseUri: string,
  *   pointer: string,
- *   value: Json,
+ *   value: Json | undefined,
  *   type: JsonType,
- *   children: SchemaNode[],
  *   parent: SchemaNode | undefined,
  *   offset: number,
  *   textLength: number,
- *   dialectUri: string | undefined,
- *   anchors: Record<string, string>
+ *   dialectUri: string | undefined
  * ) => SchemaNode;
  */
-export const cons = (uri, pointer, value, type, children, parent, offset, textLength, dialectUri, anchors) => {
-  const node = /** @type SchemaNode */ (JsonNode.cons(uri, pointer, value, type, children, parent, offset, textLength));
+export const cons = (uri, pointer, value, type, parent, offset, textLength, dialectUri) => {
+  const node = /** @type SchemaNode */ (JsonNode.cons(uri, pointer, value, type, [], parent, offset, textLength));
+  node.baseUri = normalizeUri(node.baseUri);
   node.dialectUri = dialectUri;
-  node.anchors = anchors;
+  node.anchors = parent?.anchors ?? {};
+  node.embedded = parent?.embedded ?? {};
+
+  if (node.baseUri !== parent?.baseUri) {
+    node.embedded[uri] = node;
+    node.root = node;
+    node.isSchema = true;
+  } else {
+    node.isSchema = false;
+  }
 
   return node;
 };

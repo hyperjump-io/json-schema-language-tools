@@ -240,6 +240,7 @@ describe("Feature - Validate References Errors", () => {
     });
     await client.openDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/subject",
   "$ref": "./external#/$defs/b",
   "$defs": {
     "a": {

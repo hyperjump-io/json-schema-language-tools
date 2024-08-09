@@ -1,9 +1,10 @@
+import { getNodeValue, parseTree } from "jsonc-parser";
 import { getSchema, compile, interpret, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
-import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
-import { keywordNameFor, toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js";
+import { keywordNameFor, keywordIdFor, toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
+import { randomUUID } from "node:crypto";
 
 /**
  * @import { TextDocument } from "vscode-languageserver-textdocument"
@@ -42,57 +43,46 @@ const cons = (textDocument) => {
 export const fromTextDocument = async (textDocument, contextDialectUri) => {
   const document = cons(textDocument);
 
-  const json = textDocument.getText();
-  if (json) {
-    const root = parseTree(json, [], {
-      disallowComments: false,
-      allowTrailingComma: true,
-      allowEmptyContent: true
-    });
+  const root = fromJson(textDocument.getText(), textDocument.uri, contextDialectUri);
 
-    if (!root) {
-      return document;
-    }
+  for (const schemaResource of Object.values(root?.embedded ?? {})) {
+    document.schemaResources.push(schemaResource);
 
-    buildSchemaResources(document, root, textDocument.uri, contextDialectUri);
-
-    for (const schemaResource of document.schemaResources) {
-      if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
-        const $schema = SchemaNode.get("#/$schema", schemaResource);
-        if ($schema && SchemaNode.typeOf($schema) === "string") {
-          document.errors.push({
-            keyword: "https://json-schema.org/keyword/schema",
-            instanceNode: $schema,
-            message: "Unknown dialect"
-          });
-        } else if (schemaResource.dialectUri !== undefined) {
-          document.errors.push({
-            keyword: "https://json-schema.org/keyword/schema",
-            instanceNode: schemaResource,
-            message: "Unknown dialect"
-          });
-        } else {
-          document.errors.push({
-            keyword: "https://json-schema.org/keyword/schema",
-            instanceNode: schemaResource,
-            message: "No dialect"
-          });
-        }
-
-        continue;
+    if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
+      const $schema = SchemaNode.get("#/$schema", schemaResource);
+      if ($schema && SchemaNode.typeOf($schema) === "string") {
+        document.errors.push({
+          keyword: "https://json-schema.org/keyword/schema",
+          instanceNode: $schema,
+          message: "Unknown dialect"
+        });
+      } else if (schemaResource.dialectUri !== undefined) {
+        document.errors.push({
+          keyword: "https://json-schema.org/keyword/schema",
+          instanceNode: schemaResource,
+          message: "Unknown dialect"
+        });
+      } else {
+        document.errors.push({
+          keyword: "https://json-schema.org/keyword/schema",
+          instanceNode: schemaResource,
+          message: "No dialect"
+        });
       }
 
-      const schema = await getSchema(schemaResource.dialectUri);
-      const compiled = await compile(schema);
-      const output = interpret(compiled, schemaResource, BASIC);
-      if (output.errors) {
-        for (const error of output.errors) {
-          document.errors.push({
-            keyword: error.keyword,
-            keywordNode: await getSchema(error.absoluteKeywordLocation),
-            instanceNode: /** @type SchemaNodeType */ (fromInstanceLocation(document, error.instanceLocation))
-          });
-        }
+      continue;
+    }
+
+    const schema = await getSchema(schemaResource.dialectUri);
+    const compiled = await compile(schema);
+    const output = interpret(compiled, schemaResource, BASIC);
+    if (output.errors) {
+      for (const error of output.errors) {
+        document.errors.push({
+          keyword: error.keyword,
+          keywordNode: await getSchema(error.absoluteKeywordLocation),
+          instanceNode: /** @type SchemaNodeType */ (fromInstanceLocation(document, error.instanceLocation))
+        });
       }
     }
   }
@@ -100,132 +90,111 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
   return document;
 };
 
+/** @type (json: string, retrievalUri: string, contextDialectUri?: string) => SchemaNodeType | undefined */
+export const fromJson = (json, retrievalUri, contextDialectUri) => {
+  const root = parseTree(json, [], {
+    disallowComments: false,
+    allowTrailingComma: true,
+    allowEmptyContent: true
+  });
+
+  return root && fromJsonc(root, retrievalUri, "", contextDialectUri);
+};
+
 /**
  * @type (
- *   document: SchemaDocument,
  *   node: Node,
- *   uri?: string,
+ *   uri: string,
+ *   pointer: string,
  *   dialectUri?: string,
- *   pointer?: string,
  *   parent?: SchemaNodeType,
- *   anchors?: Record<string, string>
+ *   schemaLocations?: Set<string>,
+ *   knownLocations?: Set<string>
  * ) => SchemaNodeType
  */
-const buildSchemaResources = (document, node, uri = "", dialectUri = undefined, pointer = "", parent = undefined, anchors = {}) => {
-  const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length, dialectUri, anchors);
-  schemaNode.baseUri = normalizeUri(schemaNode.baseUri);
+const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new Set([""]), knownLocations = new Set([""])) => {
+  const isSchema = isValueNode(node) && schemaLocations.delete(pointer);
+  const isKnown = isValueNode(node) && knownLocations.delete(pointer);
+
+  if (node.type === "object" && (isSchema || !isKnown)) {
+    let embeddedDialectUri = dialectUri;
+    const $schemaNode = nodeStep(node, "$schema");
+    if ($schemaNode && $schemaNode.type === "string") {
+      try {
+        embeddedDialectUri = toAbsoluteUri(getNodeValue($schemaNode));
+      } catch (error) {
+        // Ignore for now
+      }
+    }
+
+    const idToken = keywordNameFor("https://json-schema.org/keyword/id", embeddedDialectUri ?? "")
+      || keywordNameFor("https://json-schema.org/keyword/draft-04/id", embeddedDialectUri ?? "");
+    const $idNode = idToken && nodeStep(node, idToken);
+    if ($idNode && $idNode.type === "string") {
+      const $id = getNodeValue($idNode);
+      uri = toAbsoluteUri(resolveIri($id, uri));
+      pointer = "";
+      dialectUri = embeddedDialectUri;
+    } else if (!parent) {
+      dialectUri = embeddedDialectUri;
+    } else if (embeddedDialectUri && !hasDialect(embeddedDialectUri)) {
+      uri = `urn:uuid:${randomUUID()}`;
+      pointer = "";
+      dialectUri = embeddedDialectUri;
+    }
+  }
+
+  const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, parent, node.offset, node.length, dialectUri);
+  if (isSchema) {
+    schemaNode.isSchema = isSchema;
+  }
 
   switch (node.type) {
     case "array":
-      schemaNode.children = node.children?.map((child, index) => {
-        const itemPointer = JsonPointer.append(`${index}`, pointer);
-        return buildSchemaResources(document, child, uri, dialectUri, itemPointer, schemaNode, anchors);
-      }) ?? [];
+      let index = 0;
+      for (const childNode of node.children ?? []) {
+        const itemPointer = JsonPointer.append(`${index++}`, pointer);
+        const childSchemaNode = fromJsonc(childNode, uri, itemPointer, dialectUri, schemaNode, schemaLocations, knownLocations);
+        schemaNode.children.push(childSchemaNode);
+      }
       break;
 
     case "object":
-      if (pointer === "") {
-        // Resource root
-        const $schema = nodeStep(node, "$schema");
-        if ($schema?.type === "string") {
-          try {
-            dialectUri = normalizeUri(toAbsoluteUri(getNodeValue($schema)));
-            schemaNode.dialectUri = dialectUri;
-          } catch (error) {
-            // Ignore
-          }
-        }
-
-        const idToken = keywordNameFor("https://json-schema.org/keyword/id", dialectUri);
-        const $idNode = idToken && nodeStep(node, idToken);
-        if ($idNode) {
-          uri = toAbsoluteUri(resolveIri(getNodeValue($idNode), uri));
-          schemaNode.baseUri = uri;
-        }
-
-        const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", dialectUri);
-        const legacy$idNode = nodeStep(node, legacyIdToken);
-        if (legacy$idNode?.type === "string") {
-          const legacy$id = getNodeValue(legacy$idNode);
-          if (legacy$id[0] !== "#") {
-            uri = toAbsoluteUri(resolveIri(legacy$id, uri));
-            schemaNode.baseUri = uri;
-          }
-        }
-      } else {
-        // Check for embedded schema
-        const embeddedDialectUri = getEmbeddedDialectUri(node, dialectUri);
-        if (embeddedDialectUri) {
-          buildSchemaResources(document, node, uri, embeddedDialectUri);
-
-          return SchemaNode.cons(uri, pointer, true, "boolean", [], parent, node.offset, node.length, dialectUri, anchors);
-        }
-      }
-
-      const anchorToken = keywordNameFor("https://json-schema.org/keyword/anchor", dialectUri);
-      const $anchorNode = anchorToken && nodeStep(node, anchorToken);
-      if ($anchorNode) {
-        const anchor = getNodeValue($anchorNode);
-        anchors[anchor] = pointer;
-      }
-
-      const legacyAnchorToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", dialectUri);
-      const legacyAnchorNode = legacyAnchorToken && nodeStep(node, legacyAnchorToken);
-      if (legacyAnchorNode) {
-        const anchor = getNodeValue(legacyAnchorNode);
-        if (anchor[0] === "#") {
-          anchors[uriFragment(anchor)] = pointer;
-        }
-      }
-
-      for (const child of node.children ?? []) {
-        const keyNode = /** @type Node */ (child.children?.[0]);
-        const propertyPointer = JsonPointer.append(getNodeValue(keyNode), pointer);
-        const propertyNode = buildSchemaResources(document, child, uri, dialectUri, propertyPointer, schemaNode, anchors);
-
-        if (propertyNode) {
-          schemaNode.children.push(propertyNode);
+      for (const childNode of node.children ?? []) {
+        const keywordNode = childNode.children?.[0];
+        const keyword = keywordNode && getNodeValue(keywordNode);
+        const propertyPointer = JsonPointer.append(keyword, pointer);
+        const childSchemaNode = fromJsonc(childNode, uri, propertyPointer, dialectUri, schemaNode, schemaLocations, knownLocations);
+        if (childSchemaNode.pointer !== "") {
+          schemaNode.children.push(childSchemaNode);
         }
       }
       break;
 
     case "property":
-      schemaNode.children = node.children?.map((child) => {
-        return buildSchemaResources(document, child, uri, dialectUri, pointer, schemaNode, anchors);
-      }) ?? [];
+      let propertyKeywordUri;
+      if (schemaNode.parent?.isSchema) {
+        const keywordNode = node.children?.[0];
+        const keyword = keywordNode && getNodeValue(keywordNode);
+        propertyKeywordUri = dialectUri && keywordIdFor(keyword, dialectUri);
+
+        if (propertyKeywordUri && !propertyKeywordUri?.startsWith("https://json-schema.org/keyword/unknown#")) {
+          const valueNode = node.children?.[1];
+          valueNode && keywordHandlers[propertyKeywordUri]?.(valueNode, pointer, schemaLocations, knownLocations);
+        }
+      }
+
+      for (const childNode of node.children ?? []) {
+        const childSchemaNode = fromJsonc(childNode, uri, pointer, dialectUri, schemaNode, schemaLocations, knownLocations);
+        childSchemaNode.keywordUri = propertyKeywordUri;
+        if (childSchemaNode.pointer !== "") {
+          schemaNode.children.push(childSchemaNode);
+        }
+      }
       break;
   }
 
-  if (schemaNode.pointer === "") {
-    document.schemaResources.push(schemaNode);
-  }
-
   return schemaNode;
-};
-
-/** @type (node: Node, dialectUri?: string) => string | undefined */
-const getEmbeddedDialectUri = (node, dialectUri) => {
-  const $schema = nodeStep(node, "$schema");
-  if ($schema?.type === "string") {
-    const embeddedDialectUri = normalizeUri(toAbsoluteUri(getNodeValue($schema)));
-    if (!hasDialect(embeddedDialectUri)) {
-      return embeddedDialectUri;
-    } else {
-      dialectUri = embeddedDialectUri;
-    }
-  }
-
-  const idToken = keywordNameFor("https://json-schema.org/keyword/id", dialectUri);
-  const $idNode = nodeStep(node, idToken);
-  if ($idNode?.type === "string") {
-    return dialectUri;
-  }
-
-  const legacyIdToken = keywordNameFor("https://json-schema.org/keyword/draft-04/id", dialectUri);
-  const legacy$idNode = nodeStep(node, legacyIdToken);
-  if (legacy$idNode?.type === "string" && getNodeValue(legacy$idNode)[0] !== "#") {
-    return dialectUri;
-  }
 };
 
 // This largely duplicates SchemaNode.get, but we can't use that because the
@@ -247,6 +216,11 @@ const fromInstanceLocation = (document, instanceLocation) => {
       }, schemaResource, JsonPointer.pointerSegments(pointer));
     }
   }
+};
+
+/** @type (node: Node) => boolean */
+const isValueNode = (node) => {
+  return node.type !== "property" && (node.parent?.type !== "property" || node.parent?.children?.[0] !== node);
 };
 
 /** @type (document: SchemaDocument, offset: number) => SchemaNodeType | undefined */
@@ -279,11 +253,169 @@ const contains = (node, offset, includeRightBound = false) => {
     || includeRightBound && (offset === (node.offset + node.textLength));
 };
 
-/** @type (node: Node, key?: string) => Node | undefined */
+/** @type (node: Node, key: string) => Node | undefined */
 const nodeStep = (node, key) => {
   const property = node.children?.find((property) => {
-    const keyNode = /** @type Node */ (property.children?.[0]);
-    return getNodeValue(keyNode) === key;
+    const keyNode = property.children?.[0];
+    return keyNode && getNodeValue(keyNode) === key;
   });
   return property?.children?.[1];
+};
+
+/** @type (node: Node, pointer: string) => Generator<string> */
+const nodeLocations = function* (node, pointer) {
+  yield pointer;
+
+  if (node.type === "object") {
+    for (const propertyNode of node.children ?? []) {
+      const [keyNode, valueNode] = propertyNode.children ?? [];
+      const property = getNodeValue(keyNode);
+      const propertyPointer = JsonPointer.append(property, pointer);
+
+      yield* nodeLocations(valueNode, propertyPointer);
+    }
+  } else if (node.type === "array") {
+    let index = 0;
+    for (const itemNode of node.children ?? []) {
+      const propertyPointer = JsonPointer.append(`${index++}`, pointer);
+
+      yield* nodeLocations(itemNode, propertyPointer);
+    }
+  }
+};
+
+/** @typedef {(node: Node, pointer: string, schemaLocations: Set<string>, knownLocations: Set<string>) => void} KeywordHandler */
+
+/** @type KeywordHandler */
+const knownKeywordHandler = (node, pointer, _schemaLocations, knownLocations) => {
+  for (const location of nodeLocations(node, pointer)) {
+    knownLocations.add(location);
+  }
+};
+
+/** @type KeywordHandler */
+const schemaKeywordHandler = (_node, pointer, schemaLocations, _knownLocations) => {
+  schemaLocations.add(pointer);
+};
+
+/** @type KeywordHandler */
+const schemaArrayKeywordHandler = (node, pointer, schemaLocations, knownLocations) => {
+  if (node.type !== "array" || !node.children) {
+    knownKeywordHandler(node, pointer, schemaLocations, knownLocations);
+    return;
+  }
+
+  knownLocations.add(pointer);
+  for (let index = 0; index < node.children.length; index++) {
+    const propertyPointer = JsonPointer.append(`${index++}`, pointer);
+    schemaLocations.add(propertyPointer);
+  }
+};
+
+/** @type KeywordHandler */
+const schemaObjectKeywordHandler = (node, pointer, schemaLocations, knownLocations) => {
+  if (node.type !== "object") {
+    knownKeywordHandler(node, pointer, schemaLocations, knownLocations);
+    return;
+  }
+
+  knownLocations.add(pointer);
+  for (const childNode of node.children ?? []) {
+    const propertyNode = childNode.children?.[0];
+    const property = propertyNode && getNodeValue(propertyNode);
+    const propertyPointer = JsonPointer.append(property, pointer);
+    schemaLocations.add(propertyPointer);
+  }
+};
+
+/** @type KeywordHandler */
+const schemaObjectObjectKeywordHandler = (node, pointer, schemaLocations, knownLocations) => {
+  if (node.type !== "object") {
+    knownKeywordHandler(node, pointer, schemaLocations, knownLocations);
+    return;
+  }
+
+  knownLocations.add(pointer);
+  for (const childNode of node.children ?? []) {
+    const propertyNode = childNode.children?.[0];
+    const property = propertyNode && getNodeValue(propertyNode);
+    let propertyPointer = JsonPointer.append(property, pointer);
+
+    if (propertyNode?.type !== "object") {
+      knownKeywordHandler(node, propertyPointer, schemaLocations, knownLocations);
+      continue;
+    }
+
+    knownLocations.add(propertyPointer);
+    for (const childNode of node.children ?? []) {
+      const propertyNode = childNode.children?.[0];
+      const property = propertyNode && getNodeValue(propertyNode);
+      propertyPointer = JsonPointer.append(property, propertyPointer);
+      schemaLocations.add(propertyPointer);
+    }
+  }
+};
+
+/** @type Record<string, KeywordHandler> */
+const keywordHandlers = {
+  "https://json-schema.org/keyword/additionalProperties": schemaKeywordHandler,
+  "https://json-schema.org/keyword/allOf": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/anchor": knownKeywordHandler,
+  "https://json-schema.org/keyword/anyOf": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/conditional": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/const": knownKeywordHandler,
+  "https://json-schema.org/keyword/contains": schemaKeywordHandler,
+  "https://json-schema.org/keyword/comment": knownKeywordHandler,
+  "https://json-schema.org/keyword/contentEncoding": knownKeywordHandler,
+  "https://json-schema.org/keyword/contentMediaType": knownKeywordHandler,
+  "https://json-schema.org/keyword/contentSchema": schemaKeywordHandler,
+  "https://json-schema.org/keyword/default": knownKeywordHandler,
+  "https://json-schema.org/keyword/definitions": schemaObjectKeywordHandler,
+  "https://json-schema.org/keyword/dependentRequired": knownKeywordHandler,
+  "https://json-schema.org/keyword/dependentSchemas": schemaObjectKeywordHandler,
+  "https://json-schema.org/keyword/deprecated": knownKeywordHandler,
+  "https://json-schema.org/keyword/description": knownKeywordHandler,
+  "https://json-schema.org/keyword/dynamicAnchor": knownKeywordHandler,
+  "https://json-schema.org/keyword/dynamicRef": knownKeywordHandler,
+  "https://json-schema.org/keyword/else": schemaKeywordHandler,
+  "https://json-schema.org/keyword/enum": knownKeywordHandler,
+  "https://json-schema.org/keyword/examples": knownKeywordHandler,
+  "https://json-schema.org/keyword/exclusiveMaximum": knownKeywordHandler,
+  "https://json-schema.org/keyword/exclusiveMinimum": knownKeywordHandler,
+  "https://json-schema.org/keyword/format": knownKeywordHandler,
+  "https://json-schema.org/keyword/id": knownKeywordHandler,
+  "https://json-schema.org/keyword/if": schemaKeywordHandler,
+  "https://json-schema.org/keyword/itemPattern": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/items": schemaKeywordHandler,
+  "https://json-schema.org/keyword/maxContains": knownKeywordHandler,
+  "https://json-schema.org/keyword/maxItems": knownKeywordHandler,
+  "https://json-schema.org/keyword/maxLength": knownKeywordHandler,
+  "https://json-schema.org/keyword/maxProperties": knownKeywordHandler,
+  "https://json-schema.org/keyword/maximum": knownKeywordHandler,
+  "https://json-schema.org/keyword/minContains": knownKeywordHandler,
+  "https://json-schema.org/keyword/minItems": knownKeywordHandler,
+  "https://json-schema.org/keyword/minLength": knownKeywordHandler,
+  "https://json-schema.org/keyword/minProperties": knownKeywordHandler,
+  "https://json-schema.org/keyword/minimum": knownKeywordHandler,
+  "https://json-schema.org/keyword/multipleOf": knownKeywordHandler,
+  "https://json-schema.org/keyword/not": schemaKeywordHandler,
+  "https://json-schema.org/keyword/oneOf": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/pattern": knownKeywordHandler,
+  "https://json-schema.org/keyword/patternProperties": schemaObjectKeywordHandler,
+  "https://json-schema.org/keyword/prefixItems": schemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/properties": schemaObjectKeywordHandler,
+  "https://json-schema.org/keyword/propertyDependencies": schemaObjectObjectKeywordHandler,
+  "https://json-schema.org/keyword/propertyNames": schemaKeywordHandler,
+  "https://json-schema.org/keyword/readOnly": knownKeywordHandler,
+  "https://json-schema.org/keyword/ref": knownKeywordHandler,
+  "https://json-schema.org/keyword/requireAllExcept": knownKeywordHandler,
+  "https://json-schema.org/keyword/required": knownKeywordHandler,
+  "https://json-schema.org/keyword/title": knownKeywordHandler,
+  "https://json-schema.org/keyword/then": schemaKeywordHandler,
+  "https://json-schema.org/keyword/type": knownKeywordHandler,
+  "https://json-schema.org/keyword/unevaluatedItems": schemaKeywordHandler,
+  "https://json-schema.org/keyword/unevaluatedProperties": schemaKeywordHandler,
+  "https://json-schema.org/keyword/uniqueItems": knownKeywordHandler,
+  "https://json-schema.org/keyword/vocabulary": knownKeywordHandler,
+  "https://json-schema.org/keyword/writeOnly": knownKeywordHandler
 };
