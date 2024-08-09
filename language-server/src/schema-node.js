@@ -6,7 +6,7 @@ import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
 
 /**
  * @import { Json } from "@hyperjump/json-pointer"
- * @import { JsonNodeType } from "./json-node.js"
+ * @import { JsonType } from "./json-node.js"
  */
 
 
@@ -14,7 +14,7 @@ import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
  * @typedef {{
  *   baseUri: string;
  *   pointer: string;
- *   type: JsonNodeType;
+ *   type: JsonType;
  *   children: SchemaNode[];
  *   parent?: SchemaNode;
  *   root: SchemaNode;
@@ -33,7 +33,7 @@ import { toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
  *   baseUri: string,
  *   pointer: string,
  *   value: Json,
- *   type: JsonNodeType,
+ *   type: JsonType,
  *   children: SchemaNode[],
  *   parent: SchemaNode | undefined,
  *   offset: number,

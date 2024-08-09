@@ -12,7 +12,7 @@ import { getNodeValue } from "jsonc-parser";
  * @typedef {{
  *   baseUri: string;
  *   pointer: string;
- *   type: JsonNodeType;
+ *   type: JsonType;
  *   children: JsonNode[];
  *   parent?: JsonNode;
  *   root: JsonNode;
@@ -23,7 +23,7 @@ import { getNodeValue } from "jsonc-parser";
  *   textLength: number;
  * }} JsonNode
  *
- * @typedef {"object" | "array" | "string" | "number" | "boolean" | "null" | "property"} JsonNodeType
+ * @typedef {"object" | "array" | "string" | "number" | "boolean" | "null" | "property"} JsonType
  */
 
 /** @type (node: Node, uri?: string, pointer?: string, parent?: JsonNode) => JsonNode */
@@ -61,7 +61,7 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
  *   baseUri: string,
  *   pointer: string,
  *   value: Json,
- *   type: JsonNodeType,
+ *   type: JsonType,
  *   children: JsonNode[],
  *   parent: JsonNode | undefined,
  *   offset: number,
