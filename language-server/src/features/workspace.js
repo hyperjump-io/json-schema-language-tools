@@ -11,10 +11,15 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
+import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { hasDialect } from "@hyperjump/json-schema/experimental";
+import { toAbsoluteIri } from "@hyperjump/uri";
+import picomatch from "picomatch";
 import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
+import * as SchemaNode from "../schema-node.js";
+import { keywordNameFor } from "../util.js";
 import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
-import picomatch from "picomatch";
 
 /**
  * @import { FSWatcher, WatchEventType  } from "node:fs"
@@ -33,11 +38,15 @@ import picomatch from "picomatch";
  *   tags?: DiagnosticTag[];
  * }} ValidationDiagnostic
  */
+
 let hasWorkspaceFolderCapability = false;
 let hasWorkspaceWatchCapability = false;
 
 /** @type string */
 let subscriptionToken;
+
+/** @type Set<string> */
+const customDialects = new Set();
 
 /** @type Feature */
 export default {
@@ -46,17 +55,47 @@ export default {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
 
+      // Unregister all existing schemas
+      for (const dialectUri of customDialects) {
+        unregisterSchema(dialectUri);
+      }
+      customDialects.clear();
+
       // Load all schemas
       const settings = await getDocumentSettings(connection);
       const schemaFilePatterns = settings.schemaFilePatterns;
       for await (const uri of workspaceSchemas(schemaFilePatterns)) {
-        let textDocument = documents.get(uri);
-        if (!textDocument) {
-          const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-          textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-        }
+        const instanceJson = await readFile(fileURLToPath(uri), "utf8");
+        const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
 
-        await getSchemaDocument(connection, textDocument);
+        const schemaDocument = await getSchemaDocument(connection, textDocument);
+        for (const schemaResource of schemaDocument.schemaResources) {
+          const vocabToken = keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
+          const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
+          if (vocabularyNode) {
+            registerSchema(SchemaNode.value(schemaResource), schemaResource.baseUri);
+            customDialects.add(schemaResource.baseUri);
+          }
+        }
+      }
+
+      // Rebuild custom dialect schemas
+      for (const schemaDocument of allSchemaDocuments()) {
+        for (const error of schemaDocument.errors) {
+          try {
+            const dialectUri = toAbsoluteIri(SchemaNode.value(error.instanceNode));
+            if (error.keyword === "https://json-schema.org/keyword/schema" && hasDialect(dialectUri)) {
+              for (const schemaResource of schemaDocument.schemaResources) {
+                if (customDialects.has(schemaResource.baseUri)) {
+                  unregisterSchema(schemaResource.baseUri);
+                }
+              }
+              await getSchemaDocument(connection, schemaDocument.textDocument);
+            }
+          } catch (error) {
+            // Ignore Invalid IRI for now
+          }
+        }
       }
 
       // Re/validate all schemas
@@ -175,6 +214,11 @@ export default {
 
   onShutdown() {
     removeWorkspaceFolders([...workspaceFolders]);
+
+    for (const dialectUri of customDialects) {
+      unregisterSchema(dialectUri);
+    }
+    customDialects.clear();
 
     unsubscribe("workspaceChanged", subscriptionToken);
   }

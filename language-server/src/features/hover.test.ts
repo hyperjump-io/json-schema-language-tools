@@ -196,7 +196,7 @@ describe("Feature - Hover", () => {
       ["type", "\"object\""]
     ])("%s should have a message", async (keyword, value) => {
       documentUri = await client.openDocument("./subject.schema.json", `{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
 
@@ -317,7 +317,7 @@ describe("Feature - Hover", () => {
       ["type", "\"object\""]
     ])("%s should have a message", async (keyword, value) => {
       documentUri = await client.openDocument("./subject.schema.json", `{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
 
