@@ -114,7 +114,6 @@ describe("Feature - Semantic Tokens", () => {
       await client.closeDocument(documentUri);
     });
 
-
     test.each([
       // Applicators
       ["prefixItems", "[{}]", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
@@ -144,7 +143,7 @@ describe("Feature - Semantic Tokens", () => {
       ["$ref", "\"\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
       ["$dynamicRef", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
       ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0, 1, 2, 16, 1, 0]],
-      ["$vocabulary", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["$vocabulary", "{}", [1, 2, 9, 1, 0, 0, 58, 5, 1, 0, 1, 2, 13, 1, 0]],
       ["$comment", "\"\"", [1, 2, 9, 1, 0, 1, 2, 14, 2, 0]],
       ["$defs", "{}", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
 
@@ -187,7 +186,7 @@ describe("Feature - Semantic Tokens", () => {
       ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
       documentUri = await client.openDocument("./subject.schema.json", `{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
 
@@ -261,7 +260,7 @@ describe("Feature - Semantic Tokens", () => {
       ["$ref", "\"\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
       ["$recursiveRef", "\"\"", [1, 2, 9, 1, 0, 1, 2, 15, 1, 0]],
       ["$recursiveAnchor", "true", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
-      ["$vocabulary", "{}", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
+      ["$vocabulary", "{}", [1, 2, 9, 1, 0, 0, 58, 5, 1, 0, 1, 2, 13, 1, 0]],
       ["$comment", "\"\"", [1, 2, 9, 1, 0, 1, 2, 14, 2, 0]],
       ["$defs", "{}", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
 
@@ -300,7 +299,7 @@ describe("Feature - Semantic Tokens", () => {
       ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
       documentUri = await client.openDocument("./subject.schema.json", `{
-  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
 
