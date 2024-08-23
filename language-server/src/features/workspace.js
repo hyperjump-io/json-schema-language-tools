@@ -174,9 +174,7 @@ export default {
   },
 
   onShutdown() {
-    for (const path in watchers) {
-      watchers[path].close();
-    }
+    removeWorkspaceFolders([...workspaceFolders]);
 
     unsubscribe("workspaceChanged", subscriptionToken);
   }
@@ -227,8 +225,9 @@ const addWorkspaceFolders = (folders) => {
 /** @type (folders: WorkspaceFolder[]) => void */
 const removeWorkspaceFolders = (folders) => {
   for (const folder of folders) {
-    if (watchers[folder.uri]) {
-      watchers[folder.uri].close();
+    const folderPath = fileURLToPath(folder.uri);
+    if (watchers[folderPath]) {
+      watchers[folderPath].close();
     }
 
     workspaceFolders.delete(folder);
