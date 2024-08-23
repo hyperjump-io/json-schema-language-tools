@@ -1,5 +1,6 @@
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { removeMediaTypePlugin } from "@hyperjump/browser";
 
 // Hyperjump
 import "@hyperjump/json-schema/draft-2020-12";
@@ -21,6 +22,9 @@ import "@hyperjump/json-schema/draft-04";
  *   onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
  * }} Feature
  */
+
+removeMediaTypePlugin("http");
+removeMediaTypePlugin("https");
 
 /** @type (connection: Connection, features: Feature[]) => void */
 export const buildServer = (connection, features) => {
