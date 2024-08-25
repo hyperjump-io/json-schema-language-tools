@@ -56,17 +56,6 @@ export const allSchemaDocuments = function* () {
   }
 };
 
-/** @type (schemaUri: string) => SchemaNodeType | undefined */
-export const getSchemaResource = (schemaUri) => {
-  for (const schemaDocument of allSchemaDocuments()) {
-    for (const schemaResource of schemaDocument.schemaResources) {
-      if (schemaResource.baseUri === schemaUri) {
-        return schemaResource;
-      }
-    }
-  }
-};
-
 /** @type (schemaUri: string) => SchemaDocumentType | undefined */
 export const getSchemaDocumentBySchemaUri = (schemaUri) => {
   for (const schemaDocument of allSchemaDocuments()) {

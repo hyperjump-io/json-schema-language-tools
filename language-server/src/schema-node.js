@@ -1,7 +1,7 @@
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
 import * as JsonNode from "./json-node.js";
-import { getSchemaResource } from "./features/schema-registry.js";
+import { allSchemaDocuments } from "./features/schema-registry.js";
 import { toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js";
 
 /**
@@ -64,7 +64,7 @@ export const cons = (uri, pointer, value, type, parent, offset, textLength, dial
 /** @type (url: string, context: SchemaNode) => SchemaNode | undefined */
 export const get = (uri, node) => {
   const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
-  const schemaResource = node.baseUri === schemaId ? node : getSchemaResource(schemaId);
+  const schemaResource = getSchemaResource(schemaId, node);
   if (!schemaResource) {
     return;
   }
@@ -83,6 +83,21 @@ export const get = (uri, node) => {
     segment = segment === "-" && JsonNode.typeOf(node) === "array" ? `${JsonNode.length(node)}` : segment;
     return JsonNode.step(segment, node);
   }, schemaResource.root, JsonPointer.pointerSegments(pointer));
+};
+
+/** @type (uri: string, node: SchemaNode) => SchemaNode | undefined */
+const getSchemaResource = (uri, node) => {
+  for (const embeddedSchemaUri in node.embedded) {
+    if (embeddedSchemaUri === uri) {
+      return node.embedded[embeddedSchemaUri];
+    }
+  }
+
+  for (const schemaDocument of allSchemaDocuments()) {
+    if (schemaDocument.schemaResources[0].baseUri === uri) {
+      return schemaDocument.schemaResources[0];
+    }
+  }
 };
 
 export {
