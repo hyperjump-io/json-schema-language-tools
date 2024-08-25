@@ -272,7 +272,9 @@ const nodeLocations = function* (node, pointer) {
       const property = getNodeValue(keyNode);
       const propertyPointer = JsonPointer.append(property, pointer);
 
-      yield* nodeLocations(valueNode, propertyPointer);
+      if (valueNode) {
+        yield* nodeLocations(valueNode, propertyPointer);
+      }
     }
   } else if (node.type === "array") {
     let index = 0;

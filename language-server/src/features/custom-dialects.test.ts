@@ -38,6 +38,7 @@ describe("Feature - Custom Dialects", () => {
       "subjectB.schema.json": `{
         "$id": "https://example.com/my-dialect",
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$dynamicAnchor": "meta",
 
         "$vocabulary": {
           "https://json-schema.org/draft/2020-12/vocab/core": true,

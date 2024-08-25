@@ -73,8 +73,15 @@ export default {
           const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
           const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
           if (vocabularyNode) {
-            registerSchema(SchemaNode.value(schemaResource), schemaResource.baseUri);
-            customDialects.add(schemaResource.baseUri);
+            try {
+              registerSchema(SchemaNode.value(schemaResource), schemaResource.baseUri);
+              customDialects.add(schemaResource.baseUri);
+            } catch (error) {
+              // TODO: present a diagnostic for unrecognized vocabulary error
+              if (error instanceof Error) {
+                connection.console.log(`Failed to register schema: ${error.stack}`);
+              }
+            }
           }
         }
       }

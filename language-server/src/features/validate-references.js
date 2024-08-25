@@ -1,5 +1,4 @@
-import { getDialectIds } from "@hyperjump/json-schema/experimental";
-import { toAbsoluteIri } from "@hyperjump/uri";
+import { getSchema } from "@hyperjump/json-schema/experimental";
 import * as SchemaNode from "../schema-node.js";
 import { subscribe, unsubscribe } from "../pubsub.js";
 import { keywordNameFor } from "../util.js";
@@ -17,19 +16,17 @@ let subscriptionToken;
 export default {
   load() {
     subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
-      const dialects = new Set(getDialectIds());
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const node of references(schemaResource)) {
           const reference = SchemaNode.value(node);
-          const referencedSchema = SchemaNode.get(reference, schemaResource);
+          let referencedSchema;
+          try {
+            referencedSchema = SchemaNode.get(reference, schemaResource) ?? await getSchema(reference);
+          } catch (error) {
+            // Ignore for now
+          }
+
           if (!referencedSchema) {
-            try {
-              if (dialects.has(toAbsoluteIri(reference))) {
-                continue;
-              }
-            } catch (error) {
-              // Ignore for now
-            }
             diagnostics.push({ instance: node, message: "Referenced schema doesn't exist" });
           }
         }
