@@ -94,7 +94,7 @@ const getSchemaResource = (uri, node) => {
   }
 
   for (const schemaDocument of allSchemaDocuments()) {
-    if (schemaDocument.schemaResources[0].baseUri === uri) {
+    if (schemaDocument.schemaResources[0]?.baseUri === uri) {
       return schemaDocument.schemaResources[0];
     }
   }
