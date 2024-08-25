@@ -80,7 +80,7 @@ describe("Feature - workspace (neovim)", () => {
     const subjectSchemaUri = resolveIri("./subject.schema.json", `${workspaceFolder}/`);
     await touch(fileURLToPath(subjectSchemaUri));
 
-    expect(await validatedSchemas).to.eql([subjectSchemaUri]);
+    expect(await validatedSchemas).to.include(subjectSchemaUri);
   });
 
   test.todo("changing the workspace folders should validate the workspace", () => {

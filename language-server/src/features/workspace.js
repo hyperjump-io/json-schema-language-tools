@@ -51,9 +51,16 @@ const customDialects = new Set();
 /** @type Feature */
 export default {
   load(connection, documents) {
-    subscriptionToken = subscribe("workspaceChanged", async (_message, _changes) => {
+    subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
+
+      // Clear diagnostics for deleted schemas
+      for (const change of changes) {
+        if (change.type === FileChangeType.Deleted) {
+          await connection.sendDiagnostics({ uri: change.uri, diagnostics: [] });
+        }
+      }
 
       // Unregister all existing schemas
       for (const dialectUri of customDialects) {
