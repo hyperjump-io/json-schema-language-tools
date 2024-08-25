@@ -7,34 +7,34 @@ estimates are not fixed and may go up or down weekly to reflect what we learned.
 
 The following sections are milestones and roughly in order of priority.
 
-## (231/315) MVP for vscode and neovim
+## (313/328) MVP for vscode and neovim
 
 The goal is to get something stable enough to release and get early adopters
 using it, providing feedback, finding bugs, and hopefully contributing as soon
 as possible.
 
-- [ ] (140/180) Stable architecture
-- [ ] (6/7) Testing strategy
-- [ ] (3/21) Feature test coverage
+- [x] (180/180) Stable architecture
+- [x] (9/9) Testing strategy
+- [x] (21/21) Feature test coverage
 - [ ] (2/7) Documentation
-- [ ] (12/14) No known bugs
+- [ ] (14/16) No known bugs
 - [x] (15/15) Workspace management
   - [x] (7/7) Revalidate schema when schema changes
   - [x] (7/7) Revalidate workspace when schema is saved
   - [x] (1/1) Revalidate workspace when configuration changes
-- [ ] (12/15) Schema AST
+- [ ] (24/24) Schema AST
   - [x] (7/7) JSON-compatible AST
   - [x] (1/1) Schema resource identification
   - [x] (1/1) Dialect identification
   - [x] (3/3) Support for references
-  - [ ] (0/3) Identify nodes as schemas
+  - [x] (12/12) Identify nodes as schemas and properties as keywords
 - [ ] (7/8) Code completion
   - [x] (3/3) $schema
   - [ ] (2/3) keyword
 - [x] (7/7) Hover
   - [x] (7/7) Keyword documentation hover
-- [x] (21/35) Diagnostics
-  - [ ] (7/14) Schema validation
+- [x] (28/35) Diagnostics
+  - [x] (14/14) Schema validation
   - [x] (7/7) Reference validation
   - [ ] (7/14) Deprecated keywords
 - [x] (6/6) Configuration
@@ -47,7 +47,6 @@ Linting can be used for everything from identifying common mistakes to enforcing
 code style.
 
 - [ ] (0/??) Schema AST
-  - [ ] (0/??) Identify properties as keywords
   - [ ] (0/??) Support for whitespace rules
 - [ ] (0/1) Diagnostics for linting errors
 - [ ] (0/??) Configurable rules
@@ -55,16 +54,16 @@ code style.
 - [ ] (0/??) Auto-fix linting errors
 - [ ] (0/??) TODO: Identify a minimum set of rules
 
-## (2/??) Full LSP support for editing JSON Schema
+## (8/??) Full LSP support for editing JSON Schemas
 
 - [ ] (0/??) Workspace management
   - [ ] (0/??) Optimize workspace refresh
 - [ ] (2/??) Code completion
   - [x] (2/2) if/then/else
   - [ ] (0/??) TODO: Identify missing completions
-- [ ] (0/??) Jump to def
+- [x] (2/2) Jump to def
 - [ ] (0/??) Workspace symbols
-- [ ] (0/??) Find references
+- [x] (4/4) Find references
 - [ ] (0/??) Code actions
   - [ ] (0/??) Refactoring support
     - [ ] (0/??) TODO: Identify refactorings
