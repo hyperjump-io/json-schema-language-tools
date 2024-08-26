@@ -37,7 +37,8 @@ export default {
       if (error.message) {
         yield {
           instance: error.instanceNode,
-          message: error.message
+          message: error.message,
+          severity: error.severity
         };
       } else if (error.keywordNode) {
         if (error.keyword === "https://json-schema.org/keyword/additionalProperties") {

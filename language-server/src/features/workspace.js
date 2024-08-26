@@ -11,14 +11,11 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
-import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
+import { unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { hasDialect } from "@hyperjump/json-schema/experimental";
-import { toAbsoluteIri } from "@hyperjump/uri";
 import picomatch from "picomatch";
 import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
-import * as SchemaNode from "../schema-node.js";
-import { keywordNameFor } from "../util.js";
-import { allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
+import { allRegisteredSchemas, allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
 import { getDocumentSettings } from "./document-settings.js";
 
 /**
@@ -45,9 +42,6 @@ let hasWorkspaceWatchCapability = false;
 /** @type string */
 let subscriptionToken;
 
-/** @type Set<string> */
-const customDialects = new Set();
-
 /** @type Feature */
 export default {
   load(connection, documents) {
@@ -63,51 +57,22 @@ export default {
       }
 
       // Unregister all existing schemas
-      for (const dialectUri of customDialects) {
-        unregisterSchema(dialectUri);
+      for (const schemaUri of allRegisteredSchemas()) {
+        unregisterSchema(schemaUri);
       }
-      customDialects.clear();
 
       // Load all schemas
       const settings = await getDocumentSettings(connection);
       const schemaFilePatterns = settings.schemaFilePatterns;
       for await (const uri of workspaceSchemas(schemaFilePatterns)) {
-        const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-        const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-
-        const schemaDocument = await getSchemaDocument(connection, textDocument);
-        for (const schemaResource of schemaDocument.schemaResources) {
-          const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
-          const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
-          if (vocabularyNode) {
-            try {
-              registerSchema(SchemaNode.value(schemaResource), schemaResource.baseUri);
-              customDialects.add(schemaResource.baseUri);
-            } catch (error) {
-              // TODO: present a diagnostic for unrecognized vocabulary error
-              if (error instanceof Error) {
-                connection.console.log(`Failed to register schema: ${error.stack}`);
-              }
-            }
-          }
-        }
+        await loadSchemaDocument(uri);
       }
 
-      // Rebuild custom dialect schemas
+      // Rebuild schemas that failed due to a custom dialect that hadn't loaded yet
       for (const schemaDocument of allSchemaDocuments()) {
         for (const error of schemaDocument.errors) {
-          try {
-            const dialectUri = toAbsoluteIri(SchemaNode.value(error.instanceNode));
-            if (error.keyword === "https://json-schema.org/keyword/schema" && hasDialect(dialectUri)) {
-              for (const schemaResource of schemaDocument.schemaResources) {
-                if (customDialects.has(schemaResource.baseUri)) {
-                  unregisterSchema(schemaResource.baseUri);
-                }
-              }
-              await getSchemaDocument(connection, schemaDocument.textDocument);
-            }
-          } catch (error) {
-            // Ignore Invalid IRI for now
+          if (error.keyword === "https://json-schema.org/keyword/schema" && hasDialect(error.instanceNode.dialectUri)) {
+            await loadSchemaDocument(schemaDocument.textDocument.uri);
           }
         }
       }
@@ -119,6 +84,14 @@ export default {
 
       reporter.done();
     });
+
+    /** @type (uri: string) => Promise<void> */
+    const loadSchemaDocument = async (uri) => {
+      const instanceJson = await readFile(fileURLToPath(uri), "utf8");
+      const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
+
+      await getSchemaDocument(connection, textDocument);
+    };
 
     /** @type (schemaDocument: SchemaDocument) => Promise<void> */
     const validateSchema = async (schemaDocument) => {
@@ -229,10 +202,9 @@ export default {
   onShutdown() {
     removeWorkspaceFolders([...workspaceFolders]);
 
-    for (const dialectUri of customDialects) {
-      unregisterSchema(dialectUri);
+    for (const schemaUri of allRegisteredSchemas()) {
+      unregisterSchema(schemaUri);
     }
-    customDialects.clear();
 
     unsubscribe("workspaceChanged", subscriptionToken);
   }

@@ -1,7 +1,8 @@
-import { getNodeValue, parseTree } from "jsonc-parser";
-import { getSchema, compile, interpret, hasDialect, BASIC } from "@hyperjump/json-schema/experimental";
+import { DiagnosticSeverity } from "vscode-languageserver";
+import { getSchema, compile, interpret, hasDialect, BASIC, hasVocabulary } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
+import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
 import { keywordNameFor, keywordIdFor, toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
 import { randomUUID } from "node:crypto";
@@ -27,6 +28,7 @@ import { randomUUID } from "node:crypto";
  *   keywordNode?: Browser<SchemaDoc>;
  *   instanceNode: SchemaNodeType;
  *   message?: string;
+ *   severity?: DiagnosticSeverity;
  * }} SchemaError
  */
 
@@ -48,6 +50,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
   for (const schemaResource of Object.values(root?.embedded ?? {})) {
     document.schemaResources.push(schemaResource);
 
+    // Validate dialect
     if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
       const $schema = SchemaNode.get("#/$schema", schemaResource);
       if ($schema && SchemaNode.typeOf($schema) === "string") {
@@ -73,6 +76,30 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
       continue;
     }
 
+    // Validate vocabularies
+    const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
+    const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
+    if (vocabularyNode) {
+      for (const [vocabularyUriNode, isRequiredNode] of SchemaNode.entries(vocabularyNode)) {
+        const vocabularyUri = SchemaNode.value(vocabularyUriNode);
+        const isRequired = SchemaNode.value(isRequiredNode);
+
+        if (!hasVocabulary(vocabularyUri)) {
+          document.errors.push({
+            keyword: "https://json-schema.org/keyword/vocabulary",
+            instanceNode: vocabularyUriNode,
+            message: isRequired ? "Unknown vocabulary" : "Unknown optional vocabulary",
+            severity: isRequired ? undefined : DiagnosticSeverity.Warning
+          });
+        }
+      }
+
+      if (document.errors.some((error) => error.severity !== DiagnosticSeverity.Warning)) {
+        continue;
+      }
+    }
+
+    // Validate schema
     const schema = await getSchema(schemaResource.dialectUri);
     const compiled = await compile(schema);
     const output = interpret(compiled, schemaResource, BASIC);
