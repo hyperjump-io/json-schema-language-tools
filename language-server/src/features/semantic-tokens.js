@@ -1,7 +1,5 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
-import * as SchemaNode from "../schema-node.js";
 import { getSchemaDocument } from "./schema-registry.js";
-import { keywordIdFor, toAbsoluteUri } from "../util.js";
 import { isMatchedFile } from "./workspace.js";
 import { fileURLToPath } from "node:url";
 import { getDocumentSettings } from "./document-settings.js";
@@ -167,65 +165,24 @@ const sortSemanticTokens = (semanticTokens, textDocument) => {
 /** @type (schemaDocument: SchemaDocument) => Generator<KeywordToken> */
 const getSemanticTokens = function* (schemaDocument) {
   for (const schemaResource of schemaDocument.schemaResources) {
-    yield* schemaHandler(schemaResource);
+    yield* allKeywords(schemaResource);
   }
 };
 
-/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
-const schemaHandler = function* (schemaResource) {
-  for (const [keyNode, valueNode] of SchemaNode.entries(schemaResource)) {
-    const keywordName = SchemaNode.value(keyNode);
-    const keywordId = schemaResource.dialectUri && keywordIdFor(keywordName, schemaResource.dialectUri);
-
-    if (keywordId) {
-      if (keywordId === "https://json-schema.org/keyword/comment") {
-        const node = /** @type SchemaNodeType */ (keyNode.parent);
+/** @type (node: SchemaNodeType) => Generator<KeywordToken> */
+const allKeywords = function* (node) {
+  if (node.type === "property") {
+    const keyNode = node.children[0];
+    if (keyNode.keywordUri) {
+      if (keyNode.keywordUri === "https://json-schema.org/keyword/comment") {
         yield { keywordInstance: node, tokenType: "comment" };
-      } else if (toAbsoluteUri(keywordId) !== "https://json-schema.org/keyword/unknown") {
+      } else if (!keyNode.keywordUri.startsWith("https://json-schema.org/keyword/unknown#")) {
         yield { keywordInstance: keyNode, tokenType: "keyword" };
-        yield* getKeywordHandler(keywordId)(valueNode);
       }
     }
   }
-};
 
-/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
-const schemaMapHandler = function* (schemaResource) {
-  for (const schemaNode of SchemaNode.values(schemaResource)) {
-    yield* schemaHandler(schemaNode);
+  for (const child of node.children) {
+    yield* allKeywords(child);
   }
-};
-
-/** @type (schemaResource: SchemaNodeType) => Generator<KeywordToken> */
-const schemaArrayHandler = function* (schemaResource) {
-  for (const schemaNode of SchemaNode.iter(schemaResource)) {
-    yield* schemaHandler(schemaNode);
-  }
-};
-
-const noopKeywordHandler = function* () {};
-
-/** @type (keywordId: string) => typeof schemaHandler */
-const getKeywordHandler = (keywordId) => keywordId in keywordHandlers ? keywordHandlers[keywordId] : noopKeywordHandler;
-
-/** @type Record<string, schemaHandler> */
-const keywordHandlers = {
-  "https://json-schema.org/keyword/additionalProperties": schemaHandler,
-  "https://json-schema.org/keyword/allOf": schemaArrayHandler,
-  "https://json-schema.org/keyword/anyOf": schemaArrayHandler,
-  "https://json-schema.org/keyword/contains": schemaHandler,
-  "https://json-schema.org/keyword/definitions": schemaMapHandler,
-  "https://json-schema.org/keyword/dependentSchemas": schemaMapHandler,
-  "https://json-schema.org/keyword/if": schemaHandler,
-  "https://json-schema.org/keyword/then": schemaHandler,
-  "https://json-schema.org/keyword/else": schemaHandler,
-  "https://json-schema.org/keyword/items": schemaArrayHandler,
-  "https://json-schema.org/keyword/not": schemaHandler,
-  "https://json-schema.org/keyword/oneOf": schemaArrayHandler,
-  "https://json-schema.org/keyword/patternProperties": schemaMapHandler,
-  "https://json-schema.org/keyword/prefixItems": schemaArrayHandler,
-  "https://json-schema.org/keyword/properties": schemaMapHandler,
-  "https://json-schema.org/keyword/propertyNames": schemaHandler,
-  "https://json-schema.org/keyword/unevaluatedItems": schemaHandler,
-  "https://json-schema.org/keyword/unevaluatedProperties": schemaHandler
 };
