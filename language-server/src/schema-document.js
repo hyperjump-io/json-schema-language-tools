@@ -279,9 +279,9 @@ const nodeLocations = function* (node, pointer) {
   } else if (node.type === "array") {
     let index = 0;
     for (const itemNode of node.children ?? []) {
-      const propertyPointer = JsonPointer.append(`${index++}`, pointer);
+      const itemPointer = JsonPointer.append(`${index++}`, pointer);
 
-      yield* nodeLocations(itemNode, propertyPointer);
+      yield* nodeLocations(itemNode, itemPointer);
     }
   }
 };
@@ -309,8 +309,8 @@ const schemaArrayKeywordHandler = (node, pointer, schemaLocations, knownLocation
 
   knownLocations.add(pointer);
   for (let index = 0; index < node.children.length; index++) {
-    const propertyPointer = JsonPointer.append(`${index++}`, pointer);
-    schemaLocations.add(propertyPointer);
+    const itemPointer = JsonPointer.append(`${index}`, pointer);
+    schemaLocations.add(itemPointer);
   }
 };
 
