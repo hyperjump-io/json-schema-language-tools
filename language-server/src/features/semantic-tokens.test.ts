@@ -349,6 +349,7 @@ describe("Feature - Semantic Tokens", () => {
       ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
       ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["examples", "[]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
       ["readOnly", "true", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
       ["writeOnly", "true", [1, 2, 9, 1, 0, 1, 2, 11, 1, 0]],
       ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
@@ -384,7 +385,9 @@ describe("Feature - Semantic Tokens", () => {
       ["allOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["anyOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
-      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
+      ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]],
+      ["contentMediaType", "\"\"", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
+      ["contentEncoding", "\"\"", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
       documentUri = await client.openDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -400,11 +403,8 @@ describe("Feature - Semantic Tokens", () => {
 
 
     test.each([
-      ["contentMediaType", "\"\"", [1, 2, 9, 1, 0]],
-      ["contentEncoding", "\"\"", [1, 2, 9, 1, 0]],
       ["dependentSchemas", "{}", [1, 2, 9, 1, 0]],
       ["dependentRequired", "{}", [1, 2, 9, 1, 0]],
-      ["examples", "[]", [1, 2, 9, 1, 0]],
       ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
       ["minContains", "1", [1, 2, 9, 1, 0]],
       ["maxContains", "1", [1, 2, 9, 1, 0]],
@@ -442,6 +442,7 @@ describe("Feature - Semantic Tokens", () => {
       ["title", "\"\"", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["description", "\"\"", [1, 2, 9, 1, 0, 1, 2, 13, 1, 0]],
       ["default", "\"\"", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
+      ["examples", "[]", [1, 2, 9, 1, 0, 1, 2, 10, 1, 0]],
       ["multipleOf", "1", [1, 2, 9, 1, 0, 1, 2, 12, 1, 0]],
       ["maximum", "1", [1, 2, 9, 1, 0, 1, 2, 9, 1, 0]],
       ["exclusiveMaximum", "1", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
@@ -489,7 +490,6 @@ describe("Feature - Semantic Tokens", () => {
     test.each([
       ["dependentSchemas", "{}", [1, 2, 9, 1, 0]],
       ["dependentRequired", "{}", [1, 2, 9, 1, 0]],
-      ["examples", "[]", [1, 2, 9, 1, 0]],
       ["prefixItems", "[{}]", [1, 2, 9, 1, 0]],
       ["if", "{}", [1, 2, 9, 1, 0]],
       ["then", "{}", [1, 2, 9, 1, 0]],

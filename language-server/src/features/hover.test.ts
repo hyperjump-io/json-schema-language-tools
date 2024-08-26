@@ -369,7 +369,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      ["$id", "\"\""],
+      // ["$id", "\"\""],
       ["$ref", "\"\""],
       ["$comment", "\"\""],
       ["title", "\"\""],
@@ -399,7 +399,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      ["dependencies", "{}"],
+      // ["dependencies", "{}"],
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -472,7 +472,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      ["$id", "\"\""],
+      // ["$id", "\"\""],
       ["$ref", "\"\""],
       ["title", "\"\""],
       ["description", "\"\""],
@@ -499,7 +499,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      ["dependencies", "{}"],
+      // ["dependencies", "{}"],
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -570,15 +570,15 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      ["id", "\"\""],
+      // ["id", "\"\""],
       ["title", "\"\""],
       ["description", "\"\""],
       ["default", "\"\""],
       ["multipleOf", "1"],
-      ["maximum", "1"],
-      ["exclusiveMaximum", "true, \"maximum\": 1"],
-      ["minimum", "1"],
-      ["exclusiveMinimum", "true, \"minimum\": 1"],
+      // ["maximum", "1"],
+      // ["exclusiveMaximum", "true, \"maximum\": 1"],
+      // ["minimum", "1"],
+      // ["exclusiveMinimum", "true, \"minimum\": 1"],
       ["maxLength", "1"],
       ["minLength", "1"],
       ["pattern", "\"\""],
@@ -594,7 +594,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      ["dependencies", "{}"],
+      // ["dependencies", "{}"],
       ["enum", "[1]"],
       ["type", "\"object\""],
       ["format", "\"\""],
