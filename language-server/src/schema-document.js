@@ -331,6 +331,21 @@ const schemaObjectKeywordHandler = (node, pointer, schemaLocations, knownLocatio
 };
 
 /** @type KeywordHandler */
+const schemaOrSchemaArrayKeywordHandler = (node, pointer, schemaLocations, knownLocations) => {
+  switch (node.type) {
+    case "object":
+    case "boolean":
+      schemaKeywordHandler(node, pointer, schemaLocations, knownLocations);
+      break;
+    case "array":
+      schemaArrayKeywordHandler(node, pointer, schemaLocations, knownLocations);
+      break;
+    default:
+      knownKeywordHandler(node, pointer, schemaLocations, knownLocations);
+  }
+};
+
+/** @type KeywordHandler */
 const schemaObjectObjectKeywordHandler = (node, pointer, schemaLocations, knownLocations) => {
   if (node.type !== "object") {
     knownKeywordHandler(node, pointer, schemaLocations, knownLocations);
@@ -385,6 +400,7 @@ const keywordHandlers = {
   "https://json-schema.org/keyword/exclusiveMaximum": knownKeywordHandler,
   "https://json-schema.org/keyword/exclusiveMinimum": knownKeywordHandler,
   "https://json-schema.org/keyword/format": knownKeywordHandler,
+  "https://json-schema.org/keyword/format-assertion": knownKeywordHandler,
   "https://json-schema.org/keyword/id": knownKeywordHandler,
   "https://json-schema.org/keyword/if": schemaKeywordHandler,
   "https://json-schema.org/keyword/itemPattern": schemaArrayKeywordHandler,
@@ -419,5 +435,28 @@ const keywordHandlers = {
   "https://json-schema.org/keyword/unevaluatedProperties": schemaKeywordHandler,
   "https://json-schema.org/keyword/uniqueItems": knownKeywordHandler,
   "https://json-schema.org/keyword/vocabulary": knownKeywordHandler,
-  "https://json-schema.org/keyword/writeOnly": knownKeywordHandler
+  "https://json-schema.org/keyword/writeOnly": knownKeywordHandler,
+
+  // Draft-04
+  "https://json-schema.org/keyword/draft-04/id": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/ref": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/additionalItems": schemaKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/dependencies": schemaObjectKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/exclusiveMaximum": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/exclusiveMinimum": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/items": schemaOrSchemaArrayKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/maximum": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-04/minimum": knownKeywordHandler,
+
+  // Draft-06
+  "https://json-schema.org/keyword/draft-06/contains": schemaKeywordHandler,
+
+  // Draft-7
+
+  // Draft 2019-09
+  "https://json-schema.org/keyword/draft-2019-09/recursiveAnchor": knownKeywordHandler,
+
+  // Draft 2020-12
+  "https://json-schema.org/keyword/draft-2020-12/dynamicAnchor": knownKeywordHandler,
+  "https://json-schema.org/keyword/draft-2020-12/dynamicRef": knownKeywordHandler
 };
