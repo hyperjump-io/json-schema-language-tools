@@ -275,7 +275,8 @@ const watchWorkspace = (handler, schemaFilePatterns) => {
 
     watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
       if (filename && isMatchedFile(filename, schemaFilePatterns)) {
-        handler(eventType, filename);
+        const fileUri = URI.file(resolve(path, filename)).toString();
+        handler(eventType, fileUri);
       }
     });
   }
