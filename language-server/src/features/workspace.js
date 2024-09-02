@@ -44,7 +44,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
@@ -199,7 +199,7 @@ export default {
     }
   },
 
-  onShutdown() {
+  async onShutdown() {
     removeWorkspaceFolders([...workspaceFolders]);
 
     for (const schemaUri of allRegisteredSchemas()) {

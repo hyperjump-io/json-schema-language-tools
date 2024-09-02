@@ -10,7 +10,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  load() {
+  async load() {
     const trailingHashDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -36,7 +36,7 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
     unsubscribe("completions", subscriptionToken);
   }
 };

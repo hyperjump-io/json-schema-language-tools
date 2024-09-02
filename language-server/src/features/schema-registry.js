@@ -12,7 +12,7 @@ import * as SchemaDocument from "../schema-document.js";
 
 /** @type Feature */
 export default {
-  load(_connection, documents) {
+  async load(_connection, documents) {
     documents.onDidClose(({ document }) => {
       schemaDocuments.delete(document.uri);
     });
@@ -25,7 +25,7 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
     clearSchemaDocuments();
   }
 };

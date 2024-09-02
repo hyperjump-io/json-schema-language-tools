@@ -9,7 +9,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  load() {
+  async load() {
     subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/if") && currentProperty.type === "property") {
@@ -25,7 +25,7 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
     unsubscribe("completions", subscriptionToken);
   }
 };

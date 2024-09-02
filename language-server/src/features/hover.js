@@ -5,13 +5,12 @@ import { isPropertyNode } from "../util.js";
 
 /**
  * @import { Feature } from "../build-server.js"
- * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  */
 
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     connection.onHover(async ({ textDocument, position }) => {
       const document = documents.get(textDocument.uri);
       if (!document) {
@@ -46,7 +45,7 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
   }
 };
 

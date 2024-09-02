@@ -28,7 +28,7 @@ import { getDocumentSettings } from "./document-settings.js";
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     const tokenBuilders = new Map();
 
     documents.onDidClose(({ document }) => {
@@ -105,7 +105,7 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
   }
 };
 

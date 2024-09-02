@@ -8,7 +8,7 @@ import { references } from "./validate-references.js";
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     const highlightBlockDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -76,6 +76,6 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
   }
 };

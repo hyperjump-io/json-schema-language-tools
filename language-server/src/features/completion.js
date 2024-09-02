@@ -9,7 +9,7 @@ import { getSchemaDocument } from "./schema-registry.js";
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     connection.onCompletion(async ({ textDocument, position }) => {
       /** @type CompletionItem[] */
       const completions = [];
@@ -37,6 +37,6 @@ export default {
   async onInitialized() {
   },
 
-  onShutdown() {
+  async onShutdown() {
   }
 };

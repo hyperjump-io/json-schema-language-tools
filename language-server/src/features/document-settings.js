@@ -20,7 +20,7 @@ let hasDidChangeConfigurationCapability = false;
 
 /** @type Feature */
 export default {
-  load(connection, documents) {
+  async load(connection, documents) {
     connection.onDidChangeConfiguration(async () => {
       if (hasConfigurationCapability) {
         documentSettings.clear();
@@ -50,7 +50,7 @@ export default {
     }
   },
 
-  onShutdown() {}
+  async onShutdown() {}
 };
 
 const documentSettings = new Map();

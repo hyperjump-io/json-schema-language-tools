@@ -16,25 +16,25 @@ import "@hyperjump/json-schema/draft-04";
 
 /**
  * @typedef {{
- *   load: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
+ *   load: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
  *   onInitialize: (params: InitializeParams) => ServerCapabilities;
  *   onInitialized: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
- *   onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => void;
+ *   onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
  * }} Feature
  */
 
 removeMediaTypePlugin("http");
 removeMediaTypePlugin("https");
 
-/** @type (connection: Connection, features: Feature[]) => void */
-export const buildServer = (connection, features) => {
+/** @type (connection: Connection, features: Feature[]) => Promise<void> */
+export const buildServer = async (connection, features) => {
   const documents = new TextDocuments(TextDocument);
 
   for (const feature of features) {
-    feature.load(connection, documents);
+    await feature.load(connection, documents);
   }
 
-  connection.onInitialize((params) => {
+  connection.onInitialize(async (params) => {
     connection.console.log("Initializing JSON Schema service ...");
 
     return {
@@ -50,9 +50,9 @@ export const buildServer = (connection, features) => {
     }
   });
 
-  connection.onShutdown(() => {
+  connection.onShutdown(async () => {
     for (const feature of features) {
-      feature.onShutdown(connection, documents);
+      await feature.onShutdown(connection, documents);
     }
   });
 
