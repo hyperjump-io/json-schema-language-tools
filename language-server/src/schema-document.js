@@ -50,6 +50,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
   for (const schemaResource of Object.values(root?.embedded ?? {})) {
     document.schemaResources.push(schemaResource);
 
+    // TODO: Don't validate here?
     // Validate dialect
     if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
       const $schema = SchemaNode.get("#/$schema", schemaResource);
@@ -76,6 +77,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
       continue;
     }
 
+    // TODO: Don't validate here?
     // Validate vocabularies
     const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
     const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
@@ -99,6 +101,7 @@ export const fromTextDocument = async (textDocument, contextDialectUri) => {
       }
     }
 
+    // TODO: Don't validate here
     // Validate schema
     const schema = await getSchema(schemaResource.dialectUri);
     const compiled = await compile(schema);
@@ -224,6 +227,7 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
   return schemaNode;
 };
 
+// TODO: Can we get rid of this?
 // This largely duplicates SchemaNode.get, but we can't use that because the
 // schema document isn't registered yet when we need to call this function.
 /** @type (document: SchemaDocument, instanceLocation: string) => SchemaNodeType | undefined */

@@ -3,7 +3,6 @@ import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import validationErrorsFeature from "./validation-errors.js";
 
@@ -19,7 +18,6 @@ describe("Feature - Validation Errors", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       validationErrorsFeature
     ]);
     await client.start();
@@ -36,10 +34,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": 42
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Expected an object");
@@ -52,10 +51,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": true
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Expected a string or array");
@@ -68,10 +68,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "invalid"
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`);
@@ -84,10 +85,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "maxLength": -1
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must be greater than or equal to 0");
@@ -100,10 +102,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "multipleOf": 0
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must be greater than 0");
@@ -116,12 +119,13 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": { "type": 42 }
       }
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Expected a string or array");
@@ -134,10 +138,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$anchor": "9"
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Must match the pattern /^[A-Za-z_][-A-Za-z0-9._]*$/");
@@ -150,10 +155,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": []
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("A minimum of 1 items are required");
@@ -166,10 +172,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "required": ["item_id", "item_id"] }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`All items must be unique`);
@@ -183,10 +190,11 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "exclusiveMaximum": true
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Property "maximum" is required`);
@@ -199,13 +207,14 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/foo",
   "$defs": {
     "foo": { "type": 42 }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected a string or array`);
@@ -218,7 +227,7 @@ describe("Feature - Validation Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/subject",
   "$dynamicRef": "#foo",
@@ -233,6 +242,7 @@ describe("Feature - Validation Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql(`Expected a string or array`);

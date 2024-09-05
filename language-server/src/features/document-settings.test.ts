@@ -3,7 +3,6 @@ import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import validationErrorsFeature from "./validation-errors.js";
 
@@ -19,7 +18,6 @@ describe("Feature - Document Settings", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       validationErrorsFeature
     ]);
     await client.start();
@@ -38,7 +36,8 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{}`);
+    await client.writeDocument("./subject.schema.json", `{}`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -51,10 +50,11 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{}`);
+    await client.writeDocument("./subject.schema.json", `{}`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("No dialect");
+    expect(diagnostics[0]?.message).to.eql("No dialect");
   });
 
   test("test unknown dialect", async () => {
@@ -64,7 +64,8 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{ "$schema": "" }`);
+    await client.writeDocument("./subject.schema.json", `{ "$schema": "" }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown dialect");
@@ -79,7 +80,8 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{}`);
+    await client.writeDocument("./subject.schema.json", `{}`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown dialect");
@@ -94,8 +96,11 @@ describe("Feature - Document Settings", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", "{}");
-    const documentUriB = await client.openDocument("./subjectB.schema.json", "{}");
+    await client.writeDocument("./subject.schema.json", "{}");
+    await client.writeDocument("./subjectB.schema.json", "{}");
+
+    await client.openDocument("./subject.schema.json");
+    const documentUriB = await client.openDocument("./subjectB.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.equal(documentUriB);

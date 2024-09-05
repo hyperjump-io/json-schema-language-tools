@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ReferencesRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import ReferencesFeature from "./references.js";
 
@@ -16,7 +15,6 @@ describe("Feature - References", () => {
     client = new TestClient([
       workspace,
       documentSettings,
-      schemaRegistry,
       ReferencesFeature
     ]);
     await client.start();
@@ -27,7 +25,8 @@ describe("Feature - References", () => {
   });
 
   test("no references", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{}`);
+    await client.writeDocument("./subject.schema.json", `{}`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUri },
@@ -42,7 +41,7 @@ describe("Feature - References", () => {
   });
 
   test("don't return references that do not match location", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/locations", 
   "$defs":{
@@ -54,6 +53,7 @@ describe("Feature - References", () => {
     }
   },
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUri },
@@ -68,7 +68,7 @@ describe("Feature - References", () => {
   });
 
   test("match one reference", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/names", 
   "$defs":{
@@ -77,6 +77,7 @@ describe("Feature - References", () => {
     }
   },
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUri },
@@ -99,7 +100,7 @@ describe("Feature - References", () => {
   });
 
   test("cross file reference", async () => {
-    const documentUriA = await client.openDocument("./subjectA.schema.json", `{
+    await client.writeDocument("./subjectA.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "person": {
@@ -108,11 +109,14 @@ describe("Feature - References", () => {
   }
 }
 `);
-    const documentUriB = await client.openDocument("./subjectB.schema.json", `{
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$ref": "./subjectA.schema.json#/definitions/person"
 }
 `);
+
+    const documentUriA = await client.openDocument("./subjectA.schema.json");
+    const documentUriB = await client.openDocument("./subjectB.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUriA },
@@ -135,12 +139,11 @@ describe("Feature - References", () => {
   });
 
   test("match self identified externally", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$ref": "https://example.com/schemas/two#/definitions/names", 
 }`);
-
-    const documentUriB = await client.openDocument("./subjectB.schema.json", `{
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#", 
   "$id": "https://example.com/schemas/two", 
   "definitions":{
@@ -149,6 +152,9 @@ describe("Feature - References", () => {
     }
   }
 }`);
+
+    const documentUri = await client.openDocument("./subject.schema.json");
+    const documentUriB = await client.openDocument("./subjectB.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUriB },
@@ -171,7 +177,7 @@ describe("Feature - References", () => {
   });
 
   test("match self identified internally", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$id": "https://example.com/person.json",
   "type": "object",
@@ -179,6 +185,7 @@ describe("Feature - References", () => {
     "names": { "$ref": "https://example.com/person.json" }
    }  
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(ReferencesRequest.type, {
       textDocument: { uri: documentUri },

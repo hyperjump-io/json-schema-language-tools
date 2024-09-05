@@ -1,5 +1,3 @@
-import { TextDocuments } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
 import { removeMediaTypePlugin } from "@hyperjump/browser";
 
 // Hyperjump
@@ -8,6 +6,7 @@ import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
+import { SchemaRegistry } from "./schema-registry.js";
 
 /**
  * @import { Connection, InitializeParams, ServerCapabilities } from "vscode-languageserver"
@@ -16,10 +15,10 @@ import "@hyperjump/json-schema/draft-04";
 
 /**
  * @typedef {{
- *   load: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
- *   onInitialize: (params: InitializeParams) => ServerCapabilities;
- *   onInitialized: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
- *   onShutdown: (connection: Connection, documents: TextDocuments<TextDocument>) => Promise<void>;
+ *   load: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
+ *   onInitialize: (params: InitializeParams, connection: Connection, schemas: SchemaRegistry) => ServerCapabilities;
+ *   onInitialized: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
+ *   onShutdown: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
  * }} Feature
  */
 
@@ -28,10 +27,10 @@ removeMediaTypePlugin("https");
 
 /** @type (connection: Connection, features: Feature[]) => Promise<void> */
 export const buildServer = async (connection, features) => {
-  const documents = new TextDocuments(TextDocument);
+  const schemas = new SchemaRegistry(connection);
 
   for (const feature of features) {
-    await feature.load(connection, documents);
+    await feature.load(connection, schemas);
   }
 
   connection.onInitialize(async (params) => {
@@ -39,23 +38,22 @@ export const buildServer = async (connection, features) => {
 
     return {
       capabilities: features.reduce((serverCapabilities, feature) => {
-        return { ...serverCapabilities, ...feature.onInitialize(params) };
+        return { ...serverCapabilities, ...feature.onInitialize(params, connection, schemas) };
       }, {})
     };
   });
 
   connection.onInitialized(async () => {
     for (const feature of features) {
-      await feature.onInitialized(connection, documents);
+      await feature.onInitialized(connection, schemas);
     }
   });
 
   connection.onShutdown(async () => {
     for (const feature of features) {
-      await feature.onShutdown(connection, documents);
+      await feature.onShutdown(connection, schemas);
     }
   });
 
   connection.listen();
-  documents.listen(connection);
 };

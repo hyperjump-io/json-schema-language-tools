@@ -1,8 +1,5 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
-import { getSchemaDocument } from "./schema-registry.js";
-import { isMatchedFile } from "./workspace.js";
-import { fileURLToPath } from "node:url";
-import { getDocumentSettings } from "./document-settings.js";
+import { isSchema } from "./document-settings.js";
 
 /**
  * @import { SemanticTokensClientCapabilities, SemanticTokensLegend } from "vscode-languageserver"
@@ -28,11 +25,11 @@ import { getDocumentSettings } from "./document-settings.js";
 
 /** @type Feature */
 export default {
-  async load(connection, documents) {
+  async load(connection, schemas) {
     const tokenBuilders = new Map();
 
-    documents.onDidClose(({ document }) => {
-      tokenBuilders.delete(document.uri);
+    schemas.onDidClose(({ document }) => {
+      tokenBuilders.delete(document.textDocument.uri);
     });
 
     /** @type (uri: string) => SemanticTokensBuilder */
@@ -46,16 +43,15 @@ export default {
 
     /** @type (builder: SemanticTokensBuilder, uri: string) => Promise<void> */
     const buildTokens = async (builder, uri) => {
-      const textDocument = documents.get(uri);
-      if (!textDocument) {
+      const schemaDocument = await schemas.getOpen(uri);
+      if (!schemaDocument) {
         return;
       }
 
-      const schemaDocument = await getSchemaDocument(connection, textDocument);
       const semanticTokens = getSemanticTokens(schemaDocument);
       // VSCode requires this list to be in order. Neovim doesn't care.
-      for (const { keywordInstance, tokenType, tokenModifier } of sortSemanticTokens(semanticTokens, textDocument)) {
-        const startPosition = textDocument.positionAt(keywordInstance.offset);
+      for (const { keywordInstance, tokenType, tokenModifier } of sortSemanticTokens(semanticTokens, schemaDocument.textDocument)) {
+        const startPosition = schemaDocument.textDocument.positionAt(keywordInstance.offset);
         builder.push(
           startPosition.line,
           startPosition.character,
@@ -67,10 +63,7 @@ export default {
     };
 
     connection.languages.semanticTokens.on(async ({ textDocument }) => {
-      const filePath = fileURLToPath(textDocument.uri);
-      const settings = await getDocumentSettings(connection);
-      const schemaFilePatterns = settings.schemaFilePatterns;
-      if (!isMatchedFile(filePath, schemaFilePatterns)) {
+      if (!isSchema(textDocument.uri)) {
         return { data: [] };
       }
 

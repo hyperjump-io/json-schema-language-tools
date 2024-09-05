@@ -1,7 +1,3 @@
-import { watch } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   DiagnosticSeverity,
   DidChangeWatchedFilesNotification,
@@ -9,18 +5,12 @@ import {
   SemanticTokensRefreshRequest,
   TextDocumentSyncKind
 } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { URI } from "vscode-uri";
-import { unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { hasDialect } from "@hyperjump/json-schema/experimental";
-import picomatch from "picomatch";
 import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
-import { allRegisteredSchemas, allSchemaDocuments, getSchemaDocument } from "./schema-registry.js";
-import { getDocumentSettings } from "./document-settings.js";
 
 /**
- * @import { FSWatcher, WatchEventType  } from "node:fs"
- * @import { Diagnostic, DiagnosticTag, ServerCapabilities, WorkspaceFolder } from "vscode-languageserver"
+ * @import { Diagnostic, DiagnosticTag, ServerCapabilities } from "vscode-languageserver"
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Feature } from "../build-server.js"
  * @import { SchemaDocument } from "../schema-document.js"
  * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
@@ -44,7 +34,8 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load(connection, documents) {
+  async load(connection, schemas) {
+    // TODO: Move to workspace validation feature
     subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
@@ -56,42 +47,36 @@ export default {
         }
       }
 
-      // Unregister all existing schemas
-      for (const schemaUri of allRegisteredSchemas()) {
-        unregisterSchema(schemaUri);
-      }
+      schemas.clear();
 
       // Load all schemas
-      const settings = await getDocumentSettings(connection);
-      const schemaFilePatterns = settings.schemaFilePatterns;
-      for await (const uri of workspaceSchemas(schemaFilePatterns)) {
-        await loadSchemaDocument(uri);
-      }
-
-      // Rebuild schemas that failed due to a custom dialect that hadn't loaded yet
-      for (const schemaDocument of allSchemaDocuments()) {
+      /** @type string[] */
+      const schemaDocumentsWithErrors = [];
+      for await (const schemaDocument of schemas.all()) {
         for (const error of schemaDocument.errors) {
-          if (error.keyword === "https://json-schema.org/keyword/schema" && hasDialect(error.instanceNode.dialectUri)) {
-            await loadSchemaDocument(schemaDocument.textDocument.uri);
+          if (error.keyword === "https://json-schema.org/keyword/schema" && error.instanceNode.dialectUri && hasDialect(error.instanceNode.dialectUri)) {
+            schemaDocumentsWithErrors.push(schemaDocument.textDocument.uri);
+            break;
           }
         }
       }
 
+      // Rebuild schemas that failed due to a custom dialect that hadn't loaded yet
+      for await (const schemaUri of schemaDocumentsWithErrors) {
+        await schemas.get(schemaUri, true);
+      }
+
       // Re/validate all schemas
-      await Promise.all([...allSchemaDocuments()].map(validateSchema));
+      for await (const schemaDocument of schemas.all()) {
+        await validateSchema(schemaDocument);
+      }
 
       await connection.sendRequest(SemanticTokensRefreshRequest.type);
 
       reporter.done();
     });
 
-    /** @type (uri: string) => Promise<void> */
-    const loadSchemaDocument = async (uri) => {
-      const instanceJson = await readFile(fileURLToPath(uri), "utf8");
-      const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
-
-      await getSchemaDocument(connection, textDocument);
-    };
+    // TODO: Move to diagnostics feature
 
     /** @type (schemaDocument: SchemaDocument) => Promise<void> */
     const validateSchema = async (schemaDocument) => {
@@ -131,24 +116,18 @@ export default {
       };
     };
 
-    connection.onDidChangeWatchedFiles(async (params) => {
+    schemas.onDidChangeWatchedFiles(async (params) => {
       await publishAsync("workspaceChanged", params);
     });
 
-    documents.onDidChangeContent(async ({ document }) => {
-      const settings = await getDocumentSettings(connection);
-      const schemaFilePatterns = settings.schemaFilePatterns;
-      const filePath = fileURLToPath(document.uri);
-      if (isMatchedFile(filePath, schemaFilePatterns)) {
-        const schemaDocument = await getSchemaDocument(connection, document);
-        await validateSchema(schemaDocument);
-      }
+    schemas.onDidChangeContent(async ({ document }) => {
+      await validateSchema(document);
     });
   },
 
-  onInitialize({ capabilities, workspaceFolders }) {
+  onInitialize({ capabilities, workspaceFolders }, _connection, schemas) {
     if (workspaceFolders) {
-      addWorkspaceFolders(workspaceFolders);
+      schemas.addWorkspaceFolders(workspaceFolders);
     }
 
     hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
@@ -171,128 +150,26 @@ export default {
     return serverCapabilities;
   },
 
-  async onInitialized(connection) {
-    const settings = await getDocumentSettings(connection);
-
+  async onInitialized(connection, schemas) {
     if (hasWorkspaceWatchCapability) {
       await connection.client.register(DidChangeWatchedFilesNotification.type, {
-        watchers: settings.schemaFilePatterns.map((pattern) => {
-          return { globPattern: pattern };
-        })
+        watchers: [{ globPattern: "**/*" }]
       });
     } else {
-      watchWorkspace(onWorkspaceChange, settings.schemaFilePatterns);
+      schemas.watch();
     }
 
     if (hasWorkspaceFolderCapability) {
-      connection.workspace.onDidChangeWorkspaceFolders(async ({ added, removed }) => {
-        addWorkspaceFolders(added);
-        removeWorkspaceFolders(removed);
-
-        if (!hasWorkspaceWatchCapability) {
-          const settings = await getDocumentSettings(connection);
-          watchWorkspace(onWorkspaceChange, settings.schemaFilePatterns);
-        }
-
-        await publishAsync("workspaceChanged", { changes: [] });
+      connection.workspace.onDidChangeWorkspaceFolders(({ added, removed }) => {
+        schemas.addWorkspaceFolders(added);
+        schemas.removeWorkspaceFolders(removed);
       });
     }
   },
 
-  async onShutdown() {
-    removeWorkspaceFolders([...workspaceFolders]);
-
-    for (const schemaUri of allRegisteredSchemas()) {
-      unregisterSchema(schemaUri);
-    }
+  async onShutdown(_connection, schemas) {
+    await schemas.stop();
 
     unsubscribe("workspaceChanged", subscriptionToken);
-  }
-};
-
-/** @type (eventType: WatchEventType, filename?: string) => Promise<void> */
-const onWorkspaceChange = async (eventType, filename) => {
-  // eventType === "rename" means file added or deleted (on most platforms?)
-  // eventType === "change" means file saved
-  // filename is not always available (when is it not available?)
-  await publishAsync("workspaceChanged", {
-    changes: [
-      {
-        uri: filename,
-        type: eventType === "change" ? FileChangeType.Changed : FileChangeType.Deleted
-      }
-    ]
-  });
-};
-
-/** @type (uri: string, patterns: string[]) => boolean */
-export const isMatchedFile = (uri, patterns) => {
-  patterns = patterns.map((pattern) => `**/${pattern}`);
-  const matchers = patterns.map((pattern) => {
-    return picomatch(pattern, {
-      noglobstar: false,
-      matchBase: false,
-      dot: true,
-      nonegate: true
-    });
-  });
-  return matchers.some((matcher) => matcher(uri));
-};
-
-/** @type Set<WorkspaceFolder> */
-const workspaceFolders = new Set();
-
-/** @type Record<string, FSWatcher> */
-const watchers = {};
-
-/** @type (folders: WorkspaceFolder[]) => void */
-const addWorkspaceFolders = (folders) => {
-  for (const folder of folders) {
-    workspaceFolders.add(folder);
-  }
-};
-
-/** @type (folders: WorkspaceFolder[]) => void */
-const removeWorkspaceFolders = (folders) => {
-  for (const folder of folders) {
-    const folderPath = fileURLToPath(folder.uri);
-    if (watchers[folderPath]) {
-      watchers[folderPath].close();
-    }
-
-    workspaceFolders.delete(folder);
-  }
-};
-
-/** @type (handler: (eventType: WatchEventType, filename?: string) => void, schemaFilePatterns: string[]) => void */
-const watchWorkspace = (handler, schemaFilePatterns) => {
-  for (const { uri } of workspaceFolders) {
-    const path = fileURLToPath(uri);
-
-    if (watchers[path]) {
-      watchers[path].close();
-    }
-
-    watchers[path] = watch(path, { recursive: true }, (eventType, filename) => {
-      if (filename && isMatchedFile(filename, schemaFilePatterns)) {
-        const fileUri = URI.file(resolve(path, filename)).toString();
-        handler(eventType, fileUri);
-      }
-    });
-  }
-};
-
-/** @type (schemaFilePatterns: string[]) => AsyncGenerator<string> */
-const workspaceSchemas = async function* (schemaFilePatterns) {
-  for (const { uri } of workspaceFolders) {
-    const path = fileURLToPath(uri);
-
-    for (const filename of await readdir(path, { recursive: true })) {
-      if (isMatchedFile(filename, schemaFilePatterns)) {
-        const schemaPath = resolve(path, filename);
-
-        yield URI.file(schemaPath).toString();
-      }
-    }
   }
 };

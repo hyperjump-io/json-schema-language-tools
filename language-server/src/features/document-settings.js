@@ -1,6 +1,7 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
+import { fileURLToPath } from "node:url";
+import picomatch from "picomatch";
 import { publishAsync } from "../pubsub.js";
-import { clearSchemaDocuments } from "./schema-registry.js";
 
 /**
  * @import { Connection } from "vscode-languageserver"
@@ -15,28 +16,27 @@ import { clearSchemaDocuments } from "./schema-registry.js";
  * }} DocumentSettings
  */
 
-let hasConfigurationCapability = false;
 let hasDidChangeConfigurationCapability = false;
 
 /** @type Feature */
 export default {
-  async load(connection, documents) {
-    connection.onDidChangeConfiguration(async () => {
-      if (hasConfigurationCapability) {
-        documentSettings.clear();
-        clearSchemaDocuments();
-      }
+  async load(connection, schemas) {
+    connection.onDidChangeConfiguration(async ({ settings }) => {
+      documentSettings.clear();
+      schemas.clear();
+
+      const fullSettings = { ...defaultSettings, ...settings.jsonSchemaLanguageServer };
+      matcher = picomatch(fullSettings.schemaFilePatterns);
 
       await publishAsync("workspaceChanged", { changes: [] });
     });
 
-    documents.onDidClose(({ document }) => {
-      documentSettings.delete(document.uri);
+    schemas.onDidClose(({ document }) => {
+      documentSettings.delete(document.textDocument.uri);
     });
   },
 
   onInitialize({ capabilities }) {
-    hasConfigurationCapability = !!capabilities.workspace?.configuration;
     hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
 
     return {};
@@ -47,11 +47,15 @@ export default {
       await connection.client.register(DidChangeConfigurationNotification.type, {
         section: "jsonSchemaLanguageServer"
       });
+    } else {
+      matcher = picomatch(defaultSettings.schemaFilePatterns);
     }
   },
 
   async onShutdown() {}
 };
+
+// TODO: DocumentSettings class
 
 const documentSettings = new Map();
 const defaultSettings = {
@@ -60,10 +64,6 @@ const defaultSettings = {
 
 /** @type (connection: Connection, uri?: string) => Promise<DocumentSettings> */
 export const getDocumentSettings = async (connection, uri) => {
-  if (!hasConfigurationCapability) {
-    return defaultSettings;
-  }
-
   if (!documentSettings.has(uri)) {
     const result = await connection.workspace.getConfiguration({
       scopeUri: uri,
@@ -73,4 +73,13 @@ export const getDocumentSettings = async (connection, uri) => {
   }
 
   return documentSettings.get(uri);
+};
+
+/** @type (uri: string) => boolean */
+let matcher;
+
+/** @type (uri: string) => boolean */
+export const isSchema = (uri) => {
+  const path = fileURLToPath(uri);
+  return matcher(path);
 };

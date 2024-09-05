@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TestClient } from "../test-client.js";
-import { setupWorkspace, tearDownWorkspace } from "../test-utils.js";
 import {
   DidChangeWatchedFilesNotification,
   PublishDiagnosticsNotification,
@@ -9,42 +8,24 @@ import {
 } from "vscode-languageserver";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
-import { resolveIri } from "../util.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - workspace", () => {
   let client: TestClient<DocumentSettings>;
-  let workspaceFolder: string;
+  let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      semanticTokens,
-      schemaRegistry
-    ]);
+    client = new TestClient([workspace, documentSettings, semanticTokens]);
 
-    workspaceFolder = await setupWorkspace({
-      "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`
-    });
-
-    await client.start({
-      workspaceFolders: [
-        {
-          name: "root",
-          uri: workspaceFolder
-        }
-      ]
-    });
+    documentUri = await client.writeDocument("./subject.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
+    await client.start();
   });
 
   afterAll(async () => {
     await client.stop();
-    await tearDownWorkspace(workspaceFolder);
   });
 
   test("capabilities", async () => {
@@ -63,7 +44,6 @@ describe("Feature - workspace", () => {
       });
     });
 
-    const documentUri = resolveIri("./subject.schema.json", `${workspaceFolder}/`);
     await client.openDocument(documentUri);
 
     expect(await diagnostics).to.equal(documentUri);
@@ -90,9 +70,7 @@ describe("Feature - workspace", () => {
 
     await client.sendNotification(DidChangeWatchedFilesNotification.type, { changes: [] });
 
-    expect(await validatedSchemas).to.eql([
-      resolveIri("./subject.schema.json", `${workspaceFolder}/`)
-    ]);
+    expect(await validatedSchemas).to.eql([documentUri]);
   });
 
   test.todo("changing the workspace folders should validate the workspace", () => {

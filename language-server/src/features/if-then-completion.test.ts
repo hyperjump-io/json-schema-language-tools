@@ -3,7 +3,6 @@ import { CompletionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
-import schemaRegistry from "./schema-registry.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
@@ -13,7 +12,7 @@ describe("Feature - if/then completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([schemaRegistry, completion, ifThenCompletionFeature]);
+    client = new TestClient([completion, ifThenCompletionFeature]);
     await client.start();
   });
 
@@ -26,9 +25,10 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion with colon", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "if":
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -42,9 +42,10 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion with space", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "if": 
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -58,9 +59,10 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion on property key", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "if":
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -74,9 +76,10 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion on property value", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "if": ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -90,9 +93,10 @@ describe("Feature - if/then completion", () => {
   });
 
   test("if/then completion without colon", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "if"
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },

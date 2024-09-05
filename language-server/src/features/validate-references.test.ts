@@ -3,7 +3,6 @@ import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import validateReferencesFeature from "./validate-references.js";
 
@@ -19,7 +18,6 @@ describe("Feature - Validate References Errors", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       validateReferencesFeature
     ]);
     await client.start();
@@ -36,7 +34,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
     "topics": {
@@ -44,6 +42,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Referenced schema doesn't exist");
@@ -55,10 +54,11 @@ describe("Feature - Validate References Errors", () => {
         resolve(params.diagnostics);
       });
     });
-    await client.openDocument("./subjectB.schema.json", `{
+
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#"
 }`);
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
     "topics": {
@@ -66,6 +66,9 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+
+    await client.openDocument("./subjectB.schema.json");
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -77,11 +80,12 @@ describe("Feature - Validate References Errors", () => {
         resolve(params.diagnostics);
       });
     });
-    await client.openDocument("./subjectB.schema.json", `{
+
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://example.com/schemas/person.json"
 }`);
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
     "topics": {
@@ -89,6 +93,9 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+
+    await client.openDocument("./subjectB.schema.json");
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -101,7 +108,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
     "topics": {
@@ -117,6 +124,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -129,7 +137,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
     "topics": {
@@ -140,6 +148,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Referenced schema doesn't exist");
@@ -152,7 +161,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "/embedded",
   "$defs": {
@@ -161,6 +170,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -173,7 +183,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/main",
   "$ref": "/embedded",
@@ -183,6 +193,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -195,7 +206,7 @@ describe("Feature - Validate References Errors", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/main",
   "$ref": "/embedded",
@@ -205,6 +216,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -216,17 +228,21 @@ describe("Feature - Validate References Errors", () => {
         resolve(params.diagnostics);
       });
     });
-    await client.openDocument("./subject.schema.json", `{
+
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "a": {}
   }
 }`);
-    await client.openDocument("./subjectB.schema.json", `{
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "./subject.schema.json#/$defs/a"
   }
 }`);
+
+    await client.openDocument("./subject.schema.json");
+    await client.openDocument("./subjectB.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);
@@ -238,7 +254,8 @@ describe("Feature - Validate References Errors", () => {
         resolve(params.diagnostics);
       });
     });
-    await client.openDocument("./subject.schema.json", `{
+
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/subject",
   "$ref": "./external#/$defs/b",
@@ -251,6 +268,7 @@ describe("Feature - Validate References Errors", () => {
     }
   }
 }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics).to.eql([]);

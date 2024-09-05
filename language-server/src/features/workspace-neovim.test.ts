@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TestClient } from "../test-client.js";
-import { setupWorkspace, tearDownWorkspace } from "../test-utils.js";
 import {
   PublishDiagnosticsNotification,
   WorkDoneProgress,
@@ -10,22 +9,18 @@ import { utimes } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import workspace from "./workspace.js";
 import documentSettings from "./document-settings.js";
-import schemaRegistry from "./schema-registry.js";
-import { resolveIri } from "../util.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - workspace (neovim)", () => {
   let client: TestClient<DocumentSettings>;
-  let workspaceFolder: string;
+  let subjectSchemaUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([workspace, documentSettings, schemaRegistry]);
+    client = new TestClient([workspace, documentSettings]);
 
-    workspaceFolder = await setupWorkspace({
-      "subject.schema.json": `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`
-    });
+    subjectSchemaUri = await client.writeDocument("./subject.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`);
 
     await client.start({
       capabilities: {
@@ -34,19 +29,12 @@ describe("Feature - workspace (neovim)", () => {
             dynamicRegistration: false
           }
         }
-      },
-      workspaceFolders: [
-        {
-          name: "root",
-          uri: workspaceFolder
-        }
-      ]
+      }
     });
   });
 
   afterAll(async () => {
     await client.stop();
-    await tearDownWorkspace(workspaceFolder);
   });
 
   test("capabilities", async () => {
@@ -77,7 +65,6 @@ describe("Feature - workspace (neovim)", () => {
       });
     });
 
-    const subjectSchemaUri = resolveIri("./subject.schema.json", `${workspaceFolder}/`);
     await touch(fileURLToPath(subjectSchemaUri));
 
     expect(await validatedSchemas).to.include(subjectSchemaUri);

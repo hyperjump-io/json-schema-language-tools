@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DefinitionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import definitionFeature from "./definition.js";
 
@@ -16,7 +15,6 @@ describe("Feature - Goto Definition", () => {
     client = new TestClient([
       workspace,
       documentSettings,
-      schemaRegistry,
       definitionFeature
     ]);
     await client.start();
@@ -27,7 +25,8 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("no defintions", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{}`);
+    await client.writeDocument("./subject.schema.json", `{}`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
@@ -41,7 +40,7 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("don't return definitions that do not match location", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/locations", 
   "$defs": {
@@ -53,6 +52,7 @@ describe("Feature - Goto Definition", () => {
     }
   },
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
@@ -72,7 +72,7 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("match one reference", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/names", 
   "$defs":{
@@ -81,6 +81,7 @@ describe("Feature - Goto Definition", () => {
     }
   },
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
@@ -101,7 +102,7 @@ describe("Feature - Goto Definition", () => {
     ]);
   });
   test("match one definition", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/names", 
   "$defs":{
@@ -110,6 +111,7 @@ describe("Feature - Goto Definition", () => {
     }
   },
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
@@ -131,7 +133,7 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("cross file definition", async () => {
-    const documentUriA = await client.openDocument("./subjectA.schema.json", `{
+    await client.writeDocument("./subjectA.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "person": {
@@ -140,11 +142,14 @@ describe("Feature - Goto Definition", () => {
   }
 }
 `);
-    const documentUriB = await client.openDocument("./subjectB.schema.json", `{
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$ref": "./subjectA.schema.json#/definitions/person"
 }
 `);
+
+    const documentUriA = await client.openDocument("./subjectA.schema.json");
+    const documentUriB = await client.openDocument("./subjectB.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUriB },
@@ -166,12 +171,11 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("match self identified externally", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$ref": "https://example.com/schemas/two#/definitions/names", 
 }`);
-
-    const documentUriB = await client.openDocument("./subjectB.schema.json", `{
+    await client.writeDocument("./subjectB.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#", 
   "$id": "https://example.com/schemas/two", 
   "definitions":{
@@ -180,6 +184,9 @@ describe("Feature - Goto Definition", () => {
     }
   }
 }`);
+
+    const documentUri = await client.openDocument("./subject.schema.json");
+    const documentUriB = await client.openDocument("./subjectB.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },
@@ -201,7 +208,7 @@ describe("Feature - Goto Definition", () => {
   });
 
   test("match self identified internally", async () => {
-    const documentUri = await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$id": "https://example.com/person.json",
   "type": "object",
@@ -209,6 +216,7 @@ describe("Feature - Goto Definition", () => {
     "names": { "$ref": "https://example.com/person.json" }
    }  
 }`);
+    const documentUri = await client.openDocument("./subject.schema.json");
 
     const response = await client.sendRequest(DefinitionRequest.type, {
       textDocument: { uri: documentUri },

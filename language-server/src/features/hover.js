@@ -1,6 +1,5 @@
 import { MarkupKind } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
-import { getSchemaDocument } from "./schema-registry.js";
 import { isPropertyNode } from "../util.js";
 
 /**
@@ -10,15 +9,14 @@ import { isPropertyNode } from "../util.js";
 
 /** @type Feature */
 export default {
-  async load(connection, documents) {
+  async load(connection, schemas) {
     connection.onHover(async ({ textDocument, position }) => {
-      const document = documents.get(textDocument.uri);
-      if (!document) {
+      const schemaDocument = await schemas.getOpen(textDocument.uri);
+      if (!schemaDocument) {
         return;
       }
 
-      const schemaDocument = await getSchemaDocument(connection, document);
-      const offset = document.offsetAt(position);
+      const offset = schemaDocument.textDocument.offsetAt(position);
       const keywordNode = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
 
       if (keywordNode?.keywordUri && isPropertyNode(keywordNode) && descriptions[keywordNode.keywordUri]) {
@@ -28,8 +26,8 @@ export default {
             value: descriptions[keywordNode.keywordUri]
           },
           range: {
-            start: document.positionAt(keywordNode.offset),
-            end: document.positionAt(keywordNode.offset + keywordNode.textLength - 1)
+            start: schemaDocument.textDocument.positionAt(keywordNode.offset),
+            end: schemaDocument.textDocument.positionAt(keywordNode.offset + keywordNode.textLength - 1)
           }
         };
       }

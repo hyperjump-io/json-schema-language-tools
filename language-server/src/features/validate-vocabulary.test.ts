@@ -4,7 +4,6 @@ import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import workspace from "./workspace.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import validationErrors from "./validation-errors.js";
 
 import type { DocumentSettings } from "./document-settings.js";
@@ -19,7 +18,6 @@ describe("Feature - Validate $vocabulary", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       validationErrors
     ]);
     await client.start();
@@ -36,7 +34,7 @@ describe("Feature - Validate $vocabulary", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
       "$vocabulary": {
@@ -44,6 +42,7 @@ describe("Feature - Validate $vocabulary", () => {
         "https://example.com/my-vocabulary": true
       }
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown vocabulary");
@@ -57,7 +56,7 @@ describe("Feature - Validate $vocabulary", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
       "$vocabulary": {
@@ -65,6 +64,7 @@ describe("Feature - Validate $vocabulary", () => {
         "https://example.com/my-vocabulary": false
       }
     }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown optional vocabulary");
@@ -78,7 +78,7 @@ describe("Feature - Validate $vocabulary", () => {
       });
     });
 
-    await client.openDocument("./my-dialect.schema.json", `{
+    await client.writeDocument("./my-dialect.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
       "$vocabulary": {
@@ -86,6 +86,11 @@ describe("Feature - Validate $vocabulary", () => {
         "https://example.com/my-vocabulary": true
       }
     }`);
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://example.com/my-dialect"
+    }`);
+
+    await client.openDocument("./my-dialect.schema.json");
     await diagnosticsPromise;
 
     diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
@@ -94,9 +99,7 @@ describe("Feature - Validate $vocabulary", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
-      "$schema": "https://example.com/my-dialect"
-    }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Unknown dialect");

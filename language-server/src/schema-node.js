@@ -1,7 +1,6 @@
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { reduce } from "@hyperjump/pact";
 import * as JsonNode from "./json-node.js";
-import { allSchemaDocuments } from "./features/schema-registry.js";
 import { toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js";
 
 /**
@@ -93,11 +92,12 @@ const getSchemaResource = (uri, node) => {
     }
   }
 
-  for (const schemaDocument of allSchemaDocuments()) {
-    if (schemaDocument.schemaResources[0]?.baseUri === uri) {
-      return schemaDocument.schemaResources[0];
-    }
-  }
+  // TODO: Enable external reference support
+  // for (const schemaDocument of schemas.all()) {
+  //   if (schemaDocument.schemaResources[0]?.baseUri === uri) {
+  //     return schemaDocument.schemaResources[0];
+  //   }
+  // }
 };
 
 export {

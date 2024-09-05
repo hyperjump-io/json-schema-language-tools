@@ -2,7 +2,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import hover from "./hover.js";
-import schemaRegistry from "./schema-registry.js";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
 import type { DocumentSettings } from "./document-settings.js";
@@ -12,7 +11,7 @@ describe("Feature - Hover", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeAll(async () => {
-    client = new TestClient([schemaRegistry, hover]);
+    client = new TestClient([hover]);
     await client.start();
   });
 
@@ -29,9 +28,10 @@ describe("Feature - Hover", () => {
     let documentUri: string;
 
     beforeAll(async () => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema"
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -64,10 +64,11 @@ describe("Feature - Hover", () => {
     let documentUri: string;
 
     beforeAll(async () => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Foo"
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -92,12 +93,13 @@ describe("Feature - Hover", () => {
     let documentUri: string;
 
     beforeAll(async () => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "title": {}
   }
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -195,10 +197,11 @@ describe("Feature - Hover", () => {
       ["enum", "[]"],
       ["type", "\"object\""]
     ])("%s should have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      documentUri = await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -223,10 +226,11 @@ describe("Feature - Hover", () => {
       ["$recursiveAnchor", "true"],
       ["definitions", "{}"]
     ])("%s should not have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -316,10 +320,11 @@ describe("Feature - Hover", () => {
       ["enum", "[]"],
       ["type", "\"object\""]
     ])("%s should have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2019-09/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -344,10 +349,11 @@ describe("Feature - Hover", () => {
       ["$dynamicAnchor", "\"foo\""],
       ["definitions", "{}"]
     ])("%s should not have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -369,7 +375,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["$id", "\"\""],
+      // ["$id", "\"\""], // TODO: Add missing description
       ["$ref", "\"\""],
       ["$comment", "\"\""],
       ["title", "\"\""],
@@ -399,7 +405,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"],
+      // ["dependencies", "{}"], // TODO: Add missing description
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -415,10 +421,11 @@ describe("Feature - Hover", () => {
       ["oneOf", "[{}]"],
       ["not", "{}"]
     ])("%s should have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -447,10 +454,11 @@ describe("Feature - Hover", () => {
       ["unevaluatedItems", "true"],
       ["$defs", "{}"]
     ])("%s should not have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -472,7 +480,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["$id", "\"\""],
+      // ["$id", "\"\""], // TODO: Add missing description
       ["$ref", "\"\""],
       ["title", "\"\""],
       ["description", "\"\""],
@@ -499,7 +507,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"],
+      // ["dependencies", "{}"], // TODO: Add missing description
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -510,10 +518,11 @@ describe("Feature - Hover", () => {
       ["oneOf", "[{}]"],
       ["not", "{}"]
     ])("%s should have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-06/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -545,10 +554,11 @@ describe("Feature - Hover", () => {
       ["unevaluatedItems", "true"],
       ["$defs", "{}"]
     ])("%s should not have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-06/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -570,15 +580,15 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["id", "\"\""],
+      // ["id", "\"\""], // TODO: Add missing description
       ["title", "\"\""],
       ["description", "\"\""],
       ["default", "\"\""],
       ["multipleOf", "1"],
       // ["maximum", "1"],
-      // ["exclusiveMaximum", "true, \"maximum\": 1"],
+      // ["exclusiveMaximum", "true, \"maximum\": 1"], // TODO: Add missing description
       // ["minimum", "1"],
-      // ["exclusiveMinimum", "true, \"minimum\": 1"],
+      // ["exclusiveMinimum", "true, \"minimum\": 1"], // TODO: Add missing description
       ["maxLength", "1"],
       ["minLength", "1"],
       ["pattern", "\"\""],
@@ -594,7 +604,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"],
+      // ["dependencies", "{}"], // TODO: Add missing description
       ["enum", "[1]"],
       ["type", "\"object\""],
       ["format", "\"\""],
@@ -603,10 +613,11 @@ describe("Feature - Hover", () => {
       ["oneOf", "[{}]"],
       ["not", "{}"]
     ])("%s should have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },
@@ -639,10 +650,11 @@ describe("Feature - Hover", () => {
       ["unevaluatedItems", "true"],
       ["$defs", "{}"]
     ])("%s should not have a message", async (keyword, value) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(HoverRequest.type, {
         textDocument: { uri: documentUri },

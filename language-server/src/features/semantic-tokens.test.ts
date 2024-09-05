@@ -5,7 +5,6 @@ import semanticTokensFeature from "./semantic-tokens.js";
 import workspace from "./workspace.js";
 import type { DocumentSettings } from "./document-settings.js";
 import documentSettings from "./document-settings.js";
-import schemaRegistry from "./schema-registry.js";
 
 
 describe("Feature - Semantic Tokens", () => {
@@ -14,10 +13,9 @@ describe("Feature - Semantic Tokens", () => {
 
   beforeAll(async () => {
     client = new TestClient([
+      workspace,
       documentSettings,
-      schemaRegistry,
-      semanticTokensFeature,
-      workspace
+      semanticTokensFeature
     ]);
 
     await client.start();
@@ -33,11 +31,12 @@ describe("Feature - Semantic Tokens", () => {
 
   test("semantic tokens on a watched file", async () => {
     await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
-    documentUri = await client.openDocument("subject.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
+    await client.writeDocument("subject.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
 "type": "string",
 "minLength": 10,
 "maxLength": 5
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: { uri: documentUri }
@@ -47,10 +46,11 @@ describe("Feature - Semantic Tokens", () => {
   });
 
   test("no semantic tokens", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
 "type": "string",
 "minLength": 10,
 "maxLength": 5}`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: { uri: documentUri }
@@ -61,11 +61,12 @@ describe("Feature - Semantic Tokens", () => {
 
   test("no semantic tokens on an unwatched file", async () => {
     await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
-    documentUri = await client.openDocument("subjectB.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
+    await client.writeDocument("subjectB.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
       "type": "string",
       "minLength": 10,
       "maxLength": 5
       }`);
+    documentUri = await client.openDocument("subjectB.schema.json");
 
     const response = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: { uri: documentUri }
@@ -75,11 +76,12 @@ describe("Feature - Semantic Tokens", () => {
   });
 
   test("change in watch file patterns refreshes tokens", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
+    await client.writeDocument("subject.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
 "type": "string",
 "minLength": 10,
 "maxLength": 5
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     await client.changeConfiguration({ "schemaFilePatterns": ["**/subjectC.schema.json"] });
 
@@ -92,12 +94,13 @@ describe("Feature - Semantic Tokens", () => {
 
   test("a property in not in a schema should not be highlighted", async () => {
     await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
 "$schema":"http://json-schema.org/draft-07/schema#",
 "properties": {
 "items": {}
 }
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: { uri: documentUri }
@@ -185,10 +188,11 @@ describe("Feature - Semantic Tokens", () => {
       ["enum", "[]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
       ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -209,10 +213,11 @@ describe("Feature - Semantic Tokens", () => {
       ["$recursiveAnchor", "true", [1, 2, 9, 1, 0]],
       ["definitions", "{}", [1, 2, 9, 1, 0]]
     ])("%s should not be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -298,10 +303,11 @@ describe("Feature - Semantic Tokens", () => {
       ["enum", "[]", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]],
       ["type", "\"object\"", [1, 2, 9, 1, 0, 1, 2, 6, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2019-09/schema",${keyword === "$vocabulary" ? `"$id": "https://example.com/schema",` : ""}
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -322,10 +328,11 @@ describe("Feature - Semantic Tokens", () => {
       ["$dynamicAnchor", "\"foo\"", [1, 2, 9, 1, 0]],
       ["definitions", "{}", [1, 2, 9, 1, 0]]
     ])("%s should not be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -389,10 +396,11 @@ describe("Feature - Semantic Tokens", () => {
       ["contentMediaType", "\"\"", [1, 2, 9, 1, 0, 1, 2, 18, 1, 0]],
       ["contentEncoding", "\"\"", [1, 2, 9, 1, 0, 1, 2, 17, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -417,10 +425,11 @@ describe("Feature - Semantic Tokens", () => {
       ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
       ["$defs", "{}", [1, 2, 9, 1, 0]]
     ])("%s should not be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -475,10 +484,11 @@ describe("Feature - Semantic Tokens", () => {
       ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-06/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -505,10 +515,11 @@ describe("Feature - Semantic Tokens", () => {
       ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
       ["$defs", "{}", [1, 2, 9, 1, 0]]
     ])("%s should not be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-06/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -559,10 +570,11 @@ describe("Feature - Semantic Tokens", () => {
       ["oneOf", "[{}]", [1, 2, 9, 1, 0, 1, 2, 7, 1, 0]],
       ["not", "{}", [1, 2, 9, 1, 0, 1, 2, 5, 1, 0]]
     ])("%s should be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }
@@ -591,10 +603,11 @@ describe("Feature - Semantic Tokens", () => {
       ["unevaluatedItems", "true", [1, 2, 9, 1, 0]],
       ["$defs", "{}", [1, 2, 9, 1, 0]]
     ])("%s should not be highlighted", async (keyword, value, expected) => {
-      documentUri = await client.openDocument("./subject.schema.json", `{
+      await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "${keyword}": ${value}
 }`);
+      documentUri = await client.openDocument("./subject.schema.json");
 
       const response = await client.sendRequest(SemanticTokensRequest.type, {
         textDocument: { uri: documentUri }

@@ -3,7 +3,6 @@ import { CompletionRequest, CompletionItemKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 import keywordsCompletionFeature from "./keywords-completion.js";
-import schemaRegistry from "./schema-registry.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 
@@ -13,7 +12,7 @@ describe("Feature - if/then completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([schemaRegistry, completion, keywordsCompletionFeature]);
+    client = new TestClient([completion, keywordsCompletionFeature]);
     await client.start();
   });
 
@@ -26,10 +25,11 @@ describe("Feature - if/then completion", () => {
   });
 
   test("Keyword Completion 2020-12", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -99,10 +99,11 @@ describe("Feature - if/then completion", () => {
     ]);
   });
   test("Keyword Completion 2019-09", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -173,10 +174,11 @@ describe("Feature - if/then completion", () => {
   });
 
   test("Keyword Completion draft-07", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -236,10 +238,11 @@ describe("Feature - if/then completion", () => {
   });
 
   test("Keyword Completion draft-06", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-06/schema#",
   ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -291,10 +294,11 @@ describe("Feature - if/then completion", () => {
   });
 
   test("Keyword Completion draft-04", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-04/schema#",
   ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -342,10 +346,11 @@ describe("Feature - if/then completion", () => {
   });
 
   test("No completions when the node is not a property", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": ""
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },
@@ -359,12 +364,13 @@ describe("Feature - if/then completion", () => {
   });
 
   test("No completions when the parent is not a schema", async () => {
-    documentUri = await client.openDocument("subject.schema.json", `{
+    await client.writeDocument("subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     ""
   }
 }`);
+    documentUri = await client.openDocument("subject.schema.json");
 
     const response = await client.sendRequest(CompletionRequest.type, {
       textDocument: { uri: documentUri },

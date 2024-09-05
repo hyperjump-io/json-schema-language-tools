@@ -3,7 +3,6 @@ import { DiagnosticSeverity, DiagnosticTag, PublishDiagnosticsNotification } fro
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import DeprecatedFeature from "./deprecated.js";
 
@@ -19,7 +18,6 @@ describe("Feature - Deprecated", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       DeprecatedFeature
     ]);
     await client.start();
@@ -36,10 +34,11 @@ describe("Feature - Deprecated", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "definitions": {}
   }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
@@ -52,10 +51,11 @@ describe("Feature - Deprecated", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "definitions": {}
   }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
@@ -68,10 +68,11 @@ describe("Feature - Deprecated", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "definitions": {}
   }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].severity).to.eql(DiagnosticSeverity.Warning);
@@ -84,10 +85,11 @@ describe("Feature - Deprecated", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "definitions": {}
   }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0].tags).to.eql([DiagnosticTag.Deprecated]);
@@ -100,10 +102,11 @@ describe("Feature - Deprecated", () => {
       });
     });
 
-    await client.openDocument("./subject.schema.json", `{
+    await client.writeDocument("./subject.schema.json", `{
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "definitions": {}
   }`);
+    await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
     const range = {

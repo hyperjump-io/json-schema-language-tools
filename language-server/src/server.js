@@ -5,7 +5,6 @@ import { buildServer } from "./build-server.js";
 
 // Features
 import documentSettingFeature from "./features/document-settings.js";
-import schemaRegistryFeature from "./features/schema-registry.js";
 import workspaceFeature from "./features/workspace.js";
 import semanticTokensFeature from "./features/semantic-tokens.js";
 import validationErrorsFeature from "./features/validation-errors.js";
@@ -21,8 +20,8 @@ import definitionFeature from "./features/definition.js";
 
 
 const features = [
+  workspaceFeature, // Must be first
   documentSettingFeature,
-  schemaRegistryFeature,
   semanticTokensFeature,
   validationErrorsFeature,
   validateReferencesFeature,
@@ -33,8 +32,7 @@ const features = [
   keywordsCompletion,
   hoverFeature,
   definitionFeature,
-  referencesFeature,
-  workspaceFeature
+  referencesFeature
 ];
 
 const connection = createConnection(ProposedFeatures.all);

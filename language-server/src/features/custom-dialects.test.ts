@@ -5,16 +5,13 @@ import {
   WorkDoneProgress,
   WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
-import { resolveIri } from "@hyperjump/uri";
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
-import schemaRegistry from "./schema-registry.js";
 import workspace from "./workspace.js";
 import validationErrorsFeature from "./validation-errors.js";
-import { setupWorkspace, tearDownWorkspace } from "../test-utils.js";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "./document-settings.js";
@@ -22,7 +19,6 @@ import type { DocumentSettings } from "./document-settings.js";
 
 describe("Feature - Custom Dialects", () => {
   let client: TestClient<DocumentSettings>;
-  let workspaceFolder: string;
   let documentUriB: string;
   let documentUri: string;
 
@@ -31,41 +27,29 @@ describe("Feature - Custom Dialects", () => {
       workspace,
       documentSettings,
       semanticTokens,
-      schemaRegistry,
       validationErrorsFeature
     ]);
-    workspaceFolder = await setupWorkspace({
-      "subjectB.schema.json": `{
-        "$id": "https://example.com/my-dialect",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$dynamicAnchor": "meta",
 
-        "$vocabulary": {
-          "https://json-schema.org/draft/2020-12/vocab/core": true,
-          "https://json-schema.org/draft/2020-12/vocab/applicator": true,
-          "https://json-schema.org/draft/2020-12/vocab/validation": true
-        }
-      }`,
-      "subject.schema.json": `{
-        "$schema": "https://example.com/my-dialect"
-      }`
-    });
-    documentUriB = resolveIri("./subjectB.schema.json", `${workspaceFolder}/`);
-    documentUri = resolveIri("./subject.schema.json", `${workspaceFolder}/`);
+    documentUriB = await client.writeDocument("./subjectB.schema.json", `{
+      "$id": "https://example.com/my-dialect",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$dynamicAnchor": "meta",
 
-    await client.start({
-      workspaceFolders: [
-        {
-          name: "root",
-          uri: workspaceFolder
-        }
-      ]
-    });
+      "$vocabulary": {
+        "https://json-schema.org/draft/2020-12/vocab/core": true,
+        "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+        "https://json-schema.org/draft/2020-12/vocab/validation": true
+      }
+    }`);
+    documentUri = await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://example.com/my-dialect"
+    }`);
+
+    await client.start();
   });
 
   afterEach(async () => {
     await client.stop();
-    await tearDownWorkspace(workspaceFolder);
   });
 
   test("Registered dialect schema", async () => {

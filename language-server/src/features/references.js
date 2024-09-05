@@ -1,6 +1,5 @@
 import * as SchemaDocument from "../schema-document.js";
 import * as SchemaNode from "../schema-node.js";
-import { getSchemaDocument, allSchemaDocuments } from "./schema-registry.js";
 import { references } from "./validate-references.js";
 
 /** @import { Feature } from "../build-server.js" */
@@ -8,7 +7,7 @@ import { references } from "./validate-references.js";
 
 /** @type Feature */
 export default {
-  async load(connection, documents) {
+  async load(connection, schemas) {
     const highlightBlockDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -22,13 +21,12 @@ export default {
     };
 
     connection.onReferences(async ({ textDocument, position }) => {
-      const document = documents.get(textDocument.uri);
-      if (!document) {
+      const schemaDocument = await schemas.getOpen(textDocument.uri);
+      if (!schemaDocument) {
         return [];
       }
 
-      const schemaDocument = await getSchemaDocument(connection, document);
-      const offset = document.offsetAt(position);
+      const offset = schemaDocument.textDocument.offsetAt(position);
       const node = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
 
       if (!node) {
@@ -38,7 +36,7 @@ export default {
       const targetSchemaUri = SchemaNode.uri(node);
       const schemaReferences = [];
 
-      for (const schemaDocument of allSchemaDocuments()) {
+      for await (const schemaDocument of schemas.all()) {
         for (const schemaResource of schemaDocument.schemaResources) {
           for (const referenceNode of references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
