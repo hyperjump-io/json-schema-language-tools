@@ -6,6 +6,7 @@ import { toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "./util.js"
 /**
  * @import { Json } from "@hyperjump/json-pointer"
  * @import { JsonType } from "./json-node.js"
+ * @import { SchemaRegistry } from "./schema-registry.js";
  */
 
 
@@ -60,10 +61,10 @@ export const cons = (uri, pointer, value, type, parent, offset, textLength, dial
   return node;
 };
 
-/** @type (url: string, context: SchemaNode) => SchemaNode | undefined */
-export const get = (uri, node) => {
-  const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri));
-  const schemaResource = getSchemaResource(schemaId, node);
+/** @type (url: string, node: SchemaNode | undefined, schemas: SchemaRegistry) => Promise<SchemaNode | undefined> */
+export const get = async (uri, node, schemas) => {
+  const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri ?? ""));
+  const schemaResource = await getSchemaResource(schemaId, node, schemas);
   if (!schemaResource) {
     return;
   }
@@ -84,20 +85,19 @@ export const get = (uri, node) => {
   }, schemaResource.root, JsonPointer.pointerSegments(pointer));
 };
 
-/** @type (uri: string, node: SchemaNode) => SchemaNode | undefined */
-const getSchemaResource = (uri, node) => {
-  for (const embeddedSchemaUri in node.embedded) {
+/** @type (uri: string, node: SchemaNode | undefined, schemas: SchemaRegistry) => Promise<SchemaNode | undefined> */
+const getSchemaResource = async (uri, node, schemas) => {
+  for (const embeddedSchemaUri in node?.embedded) {
     if (embeddedSchemaUri === uri) {
       return node.embedded[embeddedSchemaUri];
     }
   }
 
-  // TODO: Enable external reference support
-  // for (const schemaDocument of schemas.all()) {
-  //   if (schemaDocument.schemaResources[0]?.baseUri === uri) {
-  //     return schemaDocument.schemaResources[0];
-  //   }
-  // }
+  for await (const schemaDocument of schemas.all()) {
+    if (schemaDocument.schemaResources[0]?.baseUri === uri) {
+      return schemaDocument.schemaResources[0];
+    }
+  }
 };
 
 export {

@@ -40,7 +40,7 @@ export default {
         for (const schemaResource of schemaDocument.schemaResources) {
           for (const referenceNode of references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
-            const referencedSchema = SchemaNode.get(reference, schemaResource);
+            const referencedSchema = await SchemaNode.get(reference, schemaResource, schemas);
             if (!referencedSchema) {
               continue;
             }

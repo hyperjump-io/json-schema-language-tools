@@ -16,8 +16,8 @@ describe("Feature - Deprecated", () => {
   beforeEach(async () => {
     client = new TestClient([
       workspace,
-      validateSchema,
       documentSettings,
+      validateSchema,
       deprecated
     ]);
     await client.start();
@@ -41,7 +41,7 @@ describe("Feature - Deprecated", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
+    expect(diagnostics[0]?.message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
   });
 
   test("test deprecated 2019-09", async () => {
@@ -58,7 +58,7 @@ describe("Feature - Deprecated", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
+    expect(diagnostics[0]?.message).to.eql("Use '$defs'. 'definitions' was replaced with '$defs' in 2019-09");
   });
 
   test("test diganostics type", async () => {
@@ -75,7 +75,7 @@ describe("Feature - Deprecated", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].severity).to.eql(DiagnosticSeverity.Warning);
+    expect(diagnostics[0]?.severity).to.eql(DiagnosticSeverity.Warning);
   });
 
   test("test diganostics tag", async () => {
@@ -92,7 +92,7 @@ describe("Feature - Deprecated", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].tags).to.eql([DiagnosticTag.Deprecated]);
+    expect(diagnostics[0]?.tags).to.eql([DiagnosticTag.Deprecated]);
   });
 
   test("test diganostics range", async () => {
@@ -114,6 +114,6 @@ describe("Feature - Deprecated", () => {
       "end": { "line": 2, "character": 21 }
     };
 
-    expect(diagnostics[0].range).to.eql(range);
+    expect(diagnostics[0]?.range).to.eql(range);
   });
 });

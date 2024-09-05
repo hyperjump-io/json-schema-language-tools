@@ -1,13 +1,12 @@
-import { DiagnosticSeverity } from "vscode-languageserver";
-import { getSchema, compile, interpret, hasDialect, BASIC, hasVocabulary } from "@hyperjump/json-schema/experimental";
+import { randomUUID } from "node:crypto";
+import { hasDialect } from "@hyperjump/json-schema/experimental";
 import * as JsonPointer from "@hyperjump/json-pointer";
-import { reduce } from "@hyperjump/pact";
 import { getNodeValue, parseTree } from "jsonc-parser";
 import * as SchemaNode from "./schema-node.js";
-import { keywordNameFor, keywordIdFor, toAbsoluteUri, uriFragment, resolveIri } from "./util.js";
-import { randomUUID } from "node:crypto";
+import { keywordNameFor, keywordIdFor, toAbsoluteUri, resolveIri } from "./util.js";
 
 /**
+ * @import { DiagnosticSeverity } from "vscode-languageserver";
  * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Node } from "jsonc-parser"
  * @import { Browser } from "@hyperjump/browser"
@@ -41,83 +40,17 @@ const cons = (textDocument) => {
   };
 };
 
-/** @type (textDocument: TextDocument, contextDialectUri?: string) => Promise<SchemaDocument> */
-export const fromTextDocument = async (textDocument, contextDialectUri) => {
-  const document = cons(textDocument);
+/** @type (textDocument: TextDocument, contextDialectUri?: string) => SchemaDocument */
+export const fromTextDocument = (textDocument, contextDialectUri) => {
+  const schemaDocument = cons(textDocument);
 
   const root = fromJson(textDocument.getText(), textDocument.uri, contextDialectUri);
 
   for (const schemaResource of Object.values(root?.embedded ?? {})) {
-    document.schemaResources.push(schemaResource);
-
-    // TODO: Don't validate here?
-    // Validate dialect
-    if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
-      const $schema = SchemaNode.get("#/$schema", schemaResource);
-      if ($schema && SchemaNode.typeOf($schema) === "string") {
-        document.errors.push({
-          keyword: "https://json-schema.org/keyword/schema",
-          instanceNode: $schema,
-          message: "Unknown dialect"
-        });
-      } else if (schemaResource.dialectUri !== undefined) {
-        document.errors.push({
-          keyword: "https://json-schema.org/keyword/schema",
-          instanceNode: schemaResource,
-          message: "Unknown dialect"
-        });
-      } else {
-        document.errors.push({
-          keyword: "https://json-schema.org/keyword/schema",
-          instanceNode: schemaResource,
-          message: "No dialect"
-        });
-      }
-
-      continue;
-    }
-
-    // TODO: Don't validate here?
-    // Validate vocabularies
-    const vocabToken = schemaResource.dialectUri && keywordNameFor("https://json-schema.org/keyword/vocabulary", schemaResource.dialectUri);
-    const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
-    if (vocabularyNode) {
-      for (const [vocabularyUriNode, isRequiredNode] of SchemaNode.entries(vocabularyNode)) {
-        const vocabularyUri = SchemaNode.value(vocabularyUriNode);
-        const isRequired = SchemaNode.value(isRequiredNode);
-
-        if (!hasVocabulary(vocabularyUri)) {
-          document.errors.push({
-            keyword: "https://json-schema.org/keyword/vocabulary",
-            instanceNode: vocabularyUriNode,
-            message: isRequired ? "Unknown vocabulary" : "Unknown optional vocabulary",
-            severity: isRequired ? undefined : DiagnosticSeverity.Warning
-          });
-        }
-      }
-
-      if (document.errors.some((error) => error.severity !== DiagnosticSeverity.Warning)) {
-        continue;
-      }
-    }
-
-    // TODO: Don't validate here
-    // Validate schema
-    const schema = await getSchema(schemaResource.dialectUri);
-    const compiled = await compile(schema);
-    const output = interpret(compiled, schemaResource, BASIC);
-    if (output.errors) {
-      for (const error of output.errors) {
-        document.errors.push({
-          keyword: error.keyword,
-          keywordNode: await getSchema(error.absoluteKeywordLocation),
-          instanceNode: /** @type SchemaNodeType */ (fromInstanceLocation(document, error.instanceLocation))
-        });
-      }
-    }
+    schemaDocument.schemaResources.push(schemaResource);
   }
 
-  return document;
+  return schemaDocument;
 };
 
 /** @type (json: string, retrievalUri: string, contextDialectUri?: string) => SchemaNodeType | undefined */
@@ -225,28 +158,6 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
   }
 
   return schemaNode;
-};
-
-// TODO: Can we get rid of this?
-// This largely duplicates SchemaNode.get, but we can't use that because the
-// schema document isn't registered yet when we need to call this function.
-/** @type (document: SchemaDocument, instanceLocation: string) => SchemaNodeType | undefined */
-const fromInstanceLocation = (document, instanceLocation) => {
-  const schemaUri = toAbsoluteUri(instanceLocation);
-  for (const schemaResource of document.schemaResources) {
-    if (schemaUri === schemaResource.baseUri) {
-      const pointer = uriFragment(instanceLocation);
-
-      return reduce((/** @type SchemaNodeType | undefined */ node, segment) => {
-        if (node === undefined) {
-          return;
-        }
-
-        segment = segment === "-" && SchemaNode.typeOf(node) === "array" ? `${SchemaNode.length(node)}` : segment;
-        return SchemaNode.step(segment, node);
-      }, schemaResource, JsonPointer.pointerSegments(pointer));
-    }
-  }
 };
 
 /** @type (node: Node) => boolean */

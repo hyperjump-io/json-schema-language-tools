@@ -133,7 +133,7 @@ export class SchemaRegistry {
       const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
 
       const settings = await getDocumentSettings(this.#connection);
-      schemaDocument = await SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
+      schemaDocument = SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
 
       this.#savedSchemaDocuments.set(uri, schemaDocument);
 
@@ -178,7 +178,7 @@ export class SchemaRegistry {
     let schemaDocument = this.#openSchemaDocuments.get(uri);
     if (schemaDocument?.textDocument.version !== textDocument.version) {
       const settings = await getDocumentSettings(this.#connection);
-      schemaDocument = await SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
+      schemaDocument = SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
       this.#openSchemaDocuments.set(uri, schemaDocument);
     }
 

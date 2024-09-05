@@ -14,14 +14,14 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load() {
+  async load(_connnection, schemas) {
     subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const node of references(schemaResource)) {
           const reference = SchemaNode.value(node);
           let referencedSchema;
           try {
-            referencedSchema = SchemaNode.get(reference, schemaResource) ?? await getSchema(reference);
+            referencedSchema = await SchemaNode.get(reference, schemaResource, schemas) ?? await getSchema(reference);
           } catch (error) {
             // Ignore for now
           }

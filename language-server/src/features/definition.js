@@ -56,7 +56,7 @@ export default {
       }
 
       const reference = SchemaNode.value(node);
-      const targetSchema = SchemaNode.get(reference, node);
+      const targetSchema = await SchemaNode.get(reference, node, schemas);
 
       if (!targetSchema) {
         return [];
