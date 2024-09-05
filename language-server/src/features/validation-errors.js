@@ -7,7 +7,7 @@ import { subscribe, unsubscribe } from "../pubsub.js";
  * @import { Feature } from "../build-server.js"
  * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  * @import { SchemaError } from "../schema-document.js"
- * @import { ValidationDiagnostic } from "./workspace.js"
+ * @import { ValidationDiagnostic } from "./validate-schema.js"
  */
 
 

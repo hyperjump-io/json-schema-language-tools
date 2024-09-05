@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
-import semanticTokens from "./semantic-tokens.js";
 import workspace from "./workspace.js";
+import validateSchema from "./validate-schema.js";
 import validationErrorsFeature from "./validation-errors.js";
 
 import type { Diagnostic } from "vscode-languageserver";
@@ -17,7 +17,7 @@ describe("Feature - Validation Errors", () => {
     client = new TestClient([
       workspace,
       documentSettings,
-      semanticTokens,
+      validateSchema,
       validationErrorsFeature
     ]);
     await client.start();

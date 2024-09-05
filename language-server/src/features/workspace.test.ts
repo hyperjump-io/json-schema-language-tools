@@ -8,6 +8,8 @@ import {
 } from "vscode-languageserver";
 import documentSettings from "./document-settings.js";
 import semanticTokens from "./semantic-tokens.js";
+import validateSchema from "./validate-schema.js";
+import validateWorkspace from "./validate-workspace.js";
 import workspace from "./workspace.js";
 
 import type { DocumentSettings } from "./document-settings.js";
@@ -18,7 +20,13 @@ describe("Feature - workspace", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([workspace, documentSettings, semanticTokens]);
+    client = new TestClient([
+      workspace,
+      documentSettings,
+      validateSchema,
+      validateWorkspace,
+      semanticTokens
+    ]);
 
     documentUri = await client.writeDocument("./subject.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
     await client.start();

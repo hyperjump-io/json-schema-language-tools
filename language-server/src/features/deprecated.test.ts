@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DiagnosticSeverity, DiagnosticTag, PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
+import deprecated from "./deprecated.js";
 import documentSettings from "./document-settings.js";
-import semanticTokens from "./semantic-tokens.js";
+import validateSchema from "./validate-schema.js";
 import workspace from "./workspace.js";
-import DeprecatedFeature from "./deprecated.js";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "./document-settings.js";
@@ -16,9 +16,9 @@ describe("Feature - Deprecated", () => {
   beforeEach(async () => {
     client = new TestClient([
       workspace,
+      validateSchema,
       documentSettings,
-      semanticTokens,
-      DeprecatedFeature
+      deprecated
     ]);
     await client.start();
   });

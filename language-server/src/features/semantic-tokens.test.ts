@@ -1,10 +1,11 @@
 import { beforeAll, afterAll, afterEach, describe, expect, test } from "vitest";
 import { SemanticTokensRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import semanticTokensFeature from "./semantic-tokens.js";
-import workspace from "./workspace.js";
-import type { DocumentSettings } from "./document-settings.js";
 import documentSettings from "./document-settings.js";
+import semanticTokens from "./semantic-tokens.js";
+import workspace from "./workspace.js";
+
+import type { DocumentSettings } from "./document-settings.js";
 
 
 describe("Feature - Semantic Tokens", () => {
@@ -15,7 +16,7 @@ describe("Feature - Semantic Tokens", () => {
     client = new TestClient([
       workspace,
       documentSettings,
-      semanticTokensFeature
+      semanticTokens
     ]);
 
     await client.start();

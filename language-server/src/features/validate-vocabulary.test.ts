@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DiagnosticSeverity, PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
 import documentSettings from "./document-settings.js";
-import workspace from "./workspace.js";
-import semanticTokens from "./semantic-tokens.js";
+import validateSchema from "./validate-schema.js";
 import validationErrors from "./validation-errors.js";
+import workspace from "./workspace.js";
 
 import type { DocumentSettings } from "./document-settings.js";
 import type { Diagnostic } from "vscode-languageserver";
@@ -17,7 +17,7 @@ describe("Feature - Validate $vocabulary", () => {
     client = new TestClient([
       workspace,
       documentSettings,
-      semanticTokens,
+      validateSchema,
       validationErrors
     ]);
     await client.start();
