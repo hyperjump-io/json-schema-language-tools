@@ -20,7 +20,7 @@ let hasDidChangeConfigurationCapability = false;
 
 /** @type Feature */
 export default {
-  async load(connection, schemas) {
+  load(connection, schemas) {
     connection.onDidChangeConfiguration(async ({ settings }) => {
       documentSettings.clear();
       schemas.clear();
@@ -52,7 +52,8 @@ export default {
     }
   },
 
-  async onShutdown() {}
+  async onShutdown() {
+  }
 };
 
 // TODO: DocumentSettings class

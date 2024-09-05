@@ -15,7 +15,7 @@ import { SchemaRegistry } from "./schema-registry.js";
 
 /**
  * @typedef {{
- *   load: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
+ *   load: (connection: Connection, schemas: SchemaRegistry) => void;
  *   onInitialize: (params: InitializeParams, connection: Connection, schemas: SchemaRegistry) => ServerCapabilities;
  *   onInitialized: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
  *   onShutdown: (connection: Connection, schemas: SchemaRegistry) => Promise<void>;
@@ -25,12 +25,12 @@ import { SchemaRegistry } from "./schema-registry.js";
 removeMediaTypePlugin("http");
 removeMediaTypePlugin("https");
 
-/** @type (connection: Connection, features: Feature[]) => Promise<void> */
-export const buildServer = async (connection, features) => {
+/** @type (connection: Connection, features: Feature[]) => void */
+export const buildServer = (connection, features) => {
   const schemas = new SchemaRegistry(connection);
 
   for (const feature of features) {
-    await feature.load(connection, schemas);
+    feature.load(connection, schemas);
   }
 
   connection.onInitialize(async (params) => {

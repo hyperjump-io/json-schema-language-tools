@@ -11,7 +11,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load() {
+  load() {
     subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const deprecated of SchemaNode.annotatedWith(schemaResource, "deprecated", annotationDialectUri)) {

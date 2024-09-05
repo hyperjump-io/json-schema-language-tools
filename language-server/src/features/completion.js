@@ -8,7 +8,7 @@ import { publishAsync } from "../pubsub.js";
 
 /** @type Feature */
 export default {
-  async load(connection, schemas) {
+  load(connection, schemas) {
     connection.onCompletion(async ({ textDocument, position }) => {
       /** @type CompletionItem[] */
       const completions = [];

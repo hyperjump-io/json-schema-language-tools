@@ -9,7 +9,7 @@ import { isPropertyNode } from "../util.js";
 
 /** @type Feature */
 export default {
-  async load(connection, schemas) {
+  load(connection, schemas) {
     connection.onHover(async ({ textDocument, position }) => {
       const schemaDocument = await schemas.getOpen(textDocument.uri);
       if (!schemaDocument) {

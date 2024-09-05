@@ -16,7 +16,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load() {
+  load() {
     subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for await (const diagnostic of invalidNodes(schemaDocument.errors)) {
         diagnostics.push(diagnostic);

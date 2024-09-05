@@ -12,7 +12,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load(connection, schemas) {
+  load(connection, schemas) {
     subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");

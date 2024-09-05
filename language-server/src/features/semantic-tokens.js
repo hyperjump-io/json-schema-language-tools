@@ -25,7 +25,7 @@ import { isSchema } from "./document-settings.js";
 
 /** @type Feature */
 export default {
-  async load(connection, schemas) {
+  load(connection, schemas) {
     const tokenBuilders = new Map();
 
     schemas.onDidClose(({ document }) => {

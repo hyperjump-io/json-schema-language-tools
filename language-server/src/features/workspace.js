@@ -12,7 +12,7 @@ let hasWorkspaceWatchCapability = false;
 
 /** @type Feature */
 export default {
-  async load(_connection, schemas) {
+  load(_connection, schemas) {
     schemas.onDidChangeWatchedFiles(async (params) => {
       await publishAsync("workspaceChanged", params);
     });

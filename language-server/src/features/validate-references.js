@@ -14,7 +14,7 @@ let subscriptionToken;
 
 /** @type Feature */
 export default {
-  async load(_connnection, schemas) {
+  load(_connnection, schemas) {
     subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const node of references(schemaResource)) {
