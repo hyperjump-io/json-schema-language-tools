@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { watch } from "chokidar";
 import * as SchemaDocument from "./schema-document.js";
 import { getDocumentSettings, isSchema } from "./features/document-settings.js";
+import { asyncCollectArray, asyncFilter, pipe } from "@hyperjump/pact";
 
 /**
  * @import {
@@ -41,8 +42,8 @@ export class SchemaRegistry {
   #promise;
   #watchEnabled;
 
-  /** @type Set<NotificationHandler<DidChangeWatchedFilesParams>> */
-  #didChangeWatchedFilesHandlers;
+  /** @type NotificationHandler<DidChangeWatchedFilesParams> */
+  #didChangeWatchedFilesHandler;
 
   /**
    * @param {Connection} connection
@@ -51,17 +52,29 @@ export class SchemaRegistry {
     this.#connection = connection;
     this.#documents = new TextDocuments(TextDocument);
     this.#documents.listen(connection);
+
     this.#openSchemaDocuments = new Map();
     this.#savedSchemaDocuments = new Map();
     this.#registeredSchemas = new Set();
 
-    this.#connection.onDidChangeWatchedFiles(({ changes }) => {
-      for (const change of changes) {
+    this.#didChangeWatchedFilesHandler = () => {};
+    this.#connection.onDidChangeWatchedFiles((params) => {
+      for (const change of params.changes) {
         this.#savedSchemaDocuments.delete(change.uri);
       }
+
+      if (params.changes.length === 0) {
+        this.#savedSchemaDocuments.clear();
+      }
+
+      this.#didChangeWatchedFilesHandler(params);
     });
 
     this.#documents.onDidChangeContent(({ document }) => {
+      this.#openSchemaDocuments.delete(document.uri);
+    });
+
+    this.#documents.onDidClose(({ document }) => {
       this.#openSchemaDocuments.delete(document.uri);
     });
 
@@ -88,8 +101,6 @@ export class SchemaRegistry {
         this.#promise.resolve(this.#changes);
         this.#promise = createPromise();
       });
-
-    this.#didChangeWatchedFilesHandlers = new Set();
   }
 
   async watch() {
@@ -109,9 +120,7 @@ export class SchemaRegistry {
         });
       }
 
-      for (const handler of this.#didChangeWatchedFilesHandlers) {
-        handler({ changes: fileEvents });
-      }
+      this.#didChangeWatchedFilesHandler({ changes: fileEvents });
     }
   }
 
@@ -168,15 +177,15 @@ export class SchemaRegistry {
     }
   }
 
-  /** @type (uri: string) => Promise<SchemaDocumentType> */
-  async getOpen(uri) {
+  /** @type (uri: string, noCache?: boolean) => Promise<SchemaDocumentType | undefined> */
+  async getOpen(uri, noCache = false) {
     const textDocument = this.#documents.get(uri);
     if (!textDocument) {
-      throw Error(`Document not open: ${uri}`);
+      return;
     }
 
     let schemaDocument = this.#openSchemaDocuments.get(uri);
-    if (schemaDocument?.textDocument.version !== textDocument.version) {
+    if (schemaDocument?.textDocument.version !== textDocument.version || noCache) {
       const settings = await getDocumentSettings(this.#connection);
       schemaDocument = SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
       this.#openSchemaDocuments.set(uri, schemaDocument);
@@ -203,7 +212,7 @@ export class SchemaRegistry {
         const path = resolve(directory, file);
         if (!(path in watched)) {
           const uri = URI.file(path).toString();
-          if (isSchema(uri)) {
+          if (await isSchema(uri)) {
             yield await this.get(uri);
           }
         }
@@ -227,25 +236,28 @@ export class SchemaRegistry {
     }
   }
 
-  /** @type (handler: NotificationHandler<DidChangeWatchedFilesParams>) => Disposable */
+  /** @type (handler: NotificationHandler<DidChangeWatchedFilesParams>) => void */
   onDidChangeWatchedFiles(handler) {
-    /** @type (params: DidChangeWatchedFilesParams) => void */
-    const filteredHandler = ({ changes }) => {
-      const filteredChanges = changes.filter((fileEvent) => isSchema(fileEvent.uri));
+    this.#didChangeWatchedFilesHandler = async ({ changes }) => {
+      const filteredChanges = await pipe(
+        changes,
+        asyncFilter(async (fileEvent) => await isSchema(fileEvent.uri)),
+        asyncCollectArray
+      );
       if (filteredChanges) {
         handler({ changes: filteredChanges });
       }
     };
-
-    this.#didChangeWatchedFilesHandlers.add(filteredHandler);
-    return this.#connection.onDidChangeWatchedFiles(filteredHandler);
   }
 
   /** @type (handler: NotificationHandler<TextDocumentChangeEvent<SchemaDocumentType>>) => Disposable */
   onDidChangeContent(handler) {
     return this.#documents.onDidChangeContent(async ({ document }) => {
-      if (isSchema(document.uri)) {
-        handler({ document: await this.getOpen(document.uri) });
+      if (await isSchema(document.uri)) {
+        const schemaDocument = await this.getOpen(document.uri);
+        if (schemaDocument) {
+          handler({ document: schemaDocument });
+        }
       }
     });
   }
@@ -253,7 +265,7 @@ export class SchemaRegistry {
   /** @type (handler: NotificationHandler<TextDocumentChangeEvent<SchemaDocumentType>>) => Disposable */
   onDidClose(handler) {
     return this.#documents.onDidClose(async ({ document }) => {
-      if (isSchema(document.uri)) {
+      if (await isSchema(document.uri)) {
         handler({ document: await this.get(document.uri) });
       }
     });

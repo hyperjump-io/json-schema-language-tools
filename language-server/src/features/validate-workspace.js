@@ -14,6 +14,8 @@ let subscriptionToken;
 export default {
   load(connection, schemas) {
     subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
+      connection.console.log("Validating Workspace");
+
       const reporter = await connection.window.createWorkDoneProgress();
       reporter.begin("JSON Schema: Indexing workspace");
 
@@ -30,8 +32,8 @@ export default {
       /** @type string[] */
       const schemaDocumentsWithErrors = [];
       for await (const schemaDocument of schemas.all()) {
-        for (const error of schemaDocument.errors) {
-          if (error.keyword === "https://json-schema.org/keyword/schema" && error.instanceNode.dialectUri && hasDialect(error.instanceNode.dialectUri)) {
+        for (const schemaResource of schemaDocument.schemaResources) {
+          if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
             schemaDocumentsWithErrors.push(schemaDocument.textDocument.uri);
             break;
           }
@@ -39,8 +41,9 @@ export default {
       }
 
       // Rebuild schemas that failed due to a custom dialect that hadn't loaded yet
-      for await (const schemaUri of schemaDocumentsWithErrors) {
+      for (const schemaUri of schemaDocumentsWithErrors) {
         await schemas.get(schemaUri, true);
+        await schemas.getOpen(schemaUri, true);
       }
 
       // Re/validate all schemas

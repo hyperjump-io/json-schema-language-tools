@@ -17,11 +17,15 @@ import keywordsCompletion from "./features/keywords-completion.js";
 import hoverFeature from "./features/hover.js";
 import referencesFeature from "./features/references.js";
 import definitionFeature from "./features/definition.js";
+import validateSchemaFeature from "./features/validate-schema.js";
+import validateWorkspaceFeature from "./features/validate-workspace.js";
 
 
 const features = [
   workspaceFeature, // Must be first
   documentSettingFeature,
+  validateSchemaFeature,
+  validateWorkspaceFeature,
   semanticTokensFeature,
   validationErrorsFeature,
   validateReferencesFeature,

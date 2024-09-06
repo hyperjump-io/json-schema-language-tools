@@ -21,14 +21,17 @@ let hasDidChangeConfigurationCapability = false;
 /** @type Feature */
 export default {
   load(connection, schemas) {
-    connection.onDidChangeConfiguration(async ({ settings }) => {
-      documentSettings.clear();
-      schemas.clear();
+    matcher = new Promise((resolve) => {
+      connection.onDidChangeConfiguration(async ({ settings }) => {
+        documentSettings.clear();
+        schemas.clear();
 
-      const fullSettings = { ...defaultSettings, ...settings.jsonSchemaLanguageServer };
-      matcher = picomatch(fullSettings.schemaFilePatterns);
+        const fullSettings = { ...defaultSettings, ...settings.jsonSchemaLanguageServer };
+        matcher = Promise.resolve(picomatch(fullSettings.schemaFilePatterns));
+        resolve(matcher);
 
-      await publishAsync("workspaceChanged", { changes: [] });
+        await publishAsync("workspaceChanged", { changes: [] });
+      });
     });
 
     schemas.onDidClose(({ document }) => {
@@ -48,7 +51,7 @@ export default {
         section: "jsonSchemaLanguageServer"
       });
     } else {
-      matcher = picomatch(defaultSettings.schemaFilePatterns);
+      matcher = Promise.resolve(picomatch(defaultSettings.schemaFilePatterns));
     }
   },
 
@@ -76,11 +79,11 @@ export const getDocumentSettings = async (connection, uri) => {
   return documentSettings.get(uri);
 };
 
-/** @type (uri: string) => boolean */
+/** @type Promise<(uri: string) => boolean> */
 let matcher;
 
-/** @type (uri: string) => boolean */
-export const isSchema = (uri) => {
+/** @type (uri: string) => Promise<boolean> */
+export const isSchema = async (uri) => {
   const path = fileURLToPath(uri);
-  return matcher(path);
+  return (await matcher)(path);
 };

@@ -63,7 +63,7 @@ export default {
     };
 
     connection.languages.semanticTokens.on(async ({ textDocument }) => {
-      if (!isSchema(textDocument.uri)) {
+      if (!await isSchema(textDocument.uri)) {
         return { data: [] };
       }
 
