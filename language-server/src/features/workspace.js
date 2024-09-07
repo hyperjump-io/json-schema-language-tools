@@ -1,5 +1,4 @@
 import { DidChangeWatchedFilesNotification, TextDocumentSyncKind } from "vscode-languageserver";
-import { publishAsync } from "../pubsub.js";
 
 /**
  * @import { ServerCapabilities } from "vscode-languageserver"
@@ -12,14 +11,7 @@ let hasWorkspaceWatchCapability = false;
 
 /** @type Feature */
 export default {
-  load(_connection, schemas) {
-    schemas.onDidChangeWatchedFiles(async (params) => {
-      await publishAsync("workspaceChanged", params);
-    });
-
-    schemas.onDidChangeContent(async ({ document }) => {
-      await publishAsync("validateSchema", document);
-    });
+  load() {
   },
 
   onInitialize({ capabilities, workspaceFolders }, _connection, schemas) {

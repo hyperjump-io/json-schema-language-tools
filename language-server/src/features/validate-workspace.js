@@ -13,6 +13,10 @@ let subscriptionToken;
 /** @type Feature */
 export default {
   load(connection, schemas) {
+    schemas.onDidChangeWatchedFiles(async (params) => {
+      await publishAsync("workspaceChanged", params);
+    });
+
     subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
       connection.console.log("Validating Workspace");
 

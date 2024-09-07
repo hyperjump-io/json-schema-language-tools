@@ -27,6 +27,10 @@ let subscriptionToken;
 /** @type Feature */
 export default {
   load(connection, schemas) {
+    schemas.onDidChangeContent(async ({ document }) => {
+      await publishAsync("validateSchema", document);
+    });
+
     subscriptionToken = subscribe("validateSchema", async (_message, /** @type SchemaDocumentType */ schemaDocument) => {
       connection.console.log(`Validate Schema: ${schemaDocument.textDocument.uri}`);
 
