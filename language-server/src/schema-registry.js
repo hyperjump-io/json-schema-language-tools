@@ -2,7 +2,7 @@ import { FileChangeType, TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { watch } from "chokidar";
@@ -28,6 +28,9 @@ export class SchemaRegistry {
   #connection;
   #documents;
 
+  /** @type Set<string> */
+  #workspaceFolders;
+
   /** @type Map<string, SchemaDocumentType> */
   #openSchemaDocuments;
   /** @type Map<string, SchemaDocumentType> */
@@ -52,6 +55,8 @@ export class SchemaRegistry {
     this.#connection = connection;
     this.#documents = new TextDocuments(TextDocument);
     this.#documents.listen(connection);
+
+    this.#workspaceFolders = new Set();
 
     this.#openSchemaDocuments = new Map();
     this.#savedSchemaDocuments = new Map();
@@ -205,16 +210,12 @@ export class SchemaRegistry {
 
   /** @type () => AsyncGenerator<SchemaDocumentType> */
   async* all() {
-    const watched = this.#watcher.getWatched();
-
-    for (const directory in watched) {
-      for (const file of watched[directory]) {
-        const path = resolve(directory, file);
-        if (!(path in watched)) {
-          const uri = URI.file(path).toString();
-          if (await isSchema(uri)) {
-            yield await this.get(uri);
-          }
+    for (const folderPath of this.#workspaceFolders) {
+      for (const relativePath of await readdir(folderPath, { recursive: true })) {
+        const path = resolve(folderPath, relativePath);
+        const uri = URI.file(path).toString();
+        if (await isSchema(uri)) {
+          yield await this.get(uri);
         }
       }
     }
@@ -224,6 +225,7 @@ export class SchemaRegistry {
   addWorkspaceFolders(folders) {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
+      this.#workspaceFolders.add(folderPath);
       this.#watcher.add(folderPath);
     }
   }
@@ -232,6 +234,7 @@ export class SchemaRegistry {
   removeWorkspaceFolders(folders) {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
+      this.#workspaceFolders.delete(folderPath);
       this.#watcher.unwatch(folderPath);
     }
   }
