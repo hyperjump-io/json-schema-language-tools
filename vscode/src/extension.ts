@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { LanguageClient, TransportKind, MarkupKind } from "vscode-languageclient/node.js";
+import { LanguageClient, TransportKind } from "vscode-languageclient/node.js";
 
 import type { ExtensionContext } from "vscode";
 
@@ -23,14 +23,7 @@ const activate = async (context: ExtensionContext) => {
   };
 
   const clientOptions = {
-    documentSelector: [{ scheme: "file", language: "json" }],
-    capabilities: {
-      textDocument: {
-        hover: {
-          contentFormat: [MarkupKind.Markdown, MarkupKind.PlainText]
-        }
-      }
-    }
+    documentSelector: [{ scheme: "file", language: "json" }]
   };
 
   client = new LanguageClient("jsonSchemaLanguageServer", "JSON Schema Language Server", serverOptions, clientOptions);
