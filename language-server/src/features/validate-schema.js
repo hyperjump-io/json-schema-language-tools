@@ -31,6 +31,7 @@ export default {
       await publishAsync("validateSchema", document);
     });
 
+    // TODO: Can this be done without pubsub?
     subscriptionToken = subscribe("validateSchema", async (_message, /** @type SchemaDocumentType */ schemaDocument) => {
       connection.console.log(`Validate Schema: ${schemaDocument.textDocument.uri}`);
 

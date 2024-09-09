@@ -1,14 +1,14 @@
+import { readdir, readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { FileChangeType, TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { readdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { asyncCollectArray, asyncFilter, pipe } from "@hyperjump/pact";
 import { watch } from "chokidar";
 import * as SchemaDocument from "./schema-document.js";
-import { getDocumentSettings, isSchema } from "./features/document-settings.js";
-import { asyncCollectArray, asyncFilter, pipe } from "@hyperjump/pact";
+import { createPromise } from "./util.js";
 
 /**
  * @import {
@@ -20,12 +20,16 @@ import { asyncCollectArray, asyncFilter, pipe } from "@hyperjump/pact";
  *   TextDocumentChangeEvent,
  *   WorkspaceFolder
  * } from "vscode-languageserver"
+ * @import { FSWatcher } from "chokidar";
  * @import { SchemaDocument as SchemaDocumentType } from "./schema-document.js"
+ * @import { Configuration } from "./configuration.js";
+ * @import { MyPromise } from "./util.js"
  */
 
 
 export class SchemaRegistry {
   #connection;
+  #configuration;
   #documents;
 
   /** @type Set<string> */
@@ -38,11 +42,8 @@ export class SchemaRegistry {
   /** @type Set<string> */
   #registeredSchemas;
 
+  /** @type FSWatcher | undefined */
   #watcher;
-  /** @type Record<string, FileChangeType> */
-  #changes;
-  /** @type MyPromise<Record<string, FileChangeType>> */
-  #promise;
   #watchEnabled;
 
   /** @type NotificationHandler<DidChangeWatchedFilesParams> */
@@ -50,9 +51,12 @@ export class SchemaRegistry {
 
   /**
    * @param {Connection} connection
+   * @param {Configuration} configuration
    */
-  constructor(connection) {
+  constructor(connection, configuration) {
     this.#connection = connection;
+    this.#configuration = configuration;
+
     this.#documents = new TextDocuments(TextDocument);
     this.#documents.listen(connection);
 
@@ -62,15 +66,12 @@ export class SchemaRegistry {
     this.#savedSchemaDocuments = new Map();
     this.#registeredSchemas = new Set();
 
+    this.#watchEnabled = false;
+
     this.#didChangeWatchedFilesHandler = () => {};
     this.#connection.onDidChangeWatchedFiles((params) => {
-      for (const change of params.changes) {
-        this.#savedSchemaDocuments.delete(change.uri);
-      }
-
-      if (params.changes.length === 0) {
-        this.#savedSchemaDocuments.clear();
-      }
+      // TODO: Only clear changed files, their dependencies, and their dependents
+      this.#clear();
 
       this.#didChangeWatchedFilesHandler(params);
     });
@@ -83,36 +84,42 @@ export class SchemaRegistry {
       this.#openSchemaDocuments.delete(document.uri);
     });
 
-    this.#changes = {};
-    this.#promise = createPromise();
-    this.#watchEnabled = false;
+    this.#configuration.onDidChangeConfiguration(() => {
+      this.#clear();
+    });
+  }
 
-    this.#watcher = watch([], { ignoreInitial: true })
+  async watch() {
+    /** @type Record<string, FileChangeType> */
+    let changes = {};
+
+    /** @type MyPromise<Record<string, FileChangeType>> */
+    let promise = createPromise();
+
+    this.#watcher = watch([...this.#workspaceFolders], { ignoreInitial: true })
       .on("all", (event, path) => {
         if (event === "add") {
-          this.#changes[path] = this.#changes[path] === FileChangeType.Deleted ? FileChangeType.Changed : FileChangeType.Created;
+          changes[path] = changes[path] === FileChangeType.Deleted ? FileChangeType.Changed : FileChangeType.Created;
         } else if (event === "change") {
-          this.#changes[path] = this.#changes[path] === FileChangeType.Created ? FileChangeType.Created : FileChangeType.Changed;
+          changes[path] = changes[path] === FileChangeType.Created ? FileChangeType.Created : FileChangeType.Changed;
         } else if (event === "unlink") {
-          if (this.#changes[path] === FileChangeType.Created) {
-            delete this.#changes[path];
+          if (changes[path] === FileChangeType.Created) {
+            delete changes[path];
           } else {
-            this.#changes[path] = FileChangeType.Deleted;
+            changes[path] = FileChangeType.Deleted;
           }
         } else {
           return;
         }
 
-        this.#promise.resolve(this.#changes);
-        this.#promise = createPromise();
+        promise.resolve(changes);
+        promise = createPromise();
       });
-  }
 
-  async watch() {
     this.#watchEnabled = true;
     while (this.#watchEnabled) {
-      const value = await this.#promise.promise;
-      this.#changes = {};
+      const value = await promise.promise;
+      changes = {};
 
       /** @type FileEvent[] */
       const fileEvents = [];
@@ -132,7 +139,7 @@ export class SchemaRegistry {
   /** @type () => Promise<void> */
   async stop() {
     this.#watchEnabled = false;
-    await this.#watcher.close();
+    await this.#watcher?.close();
 
     for (const schemaUri of this.#registeredSchemas) {
       unregisterSchema(schemaUri);
@@ -146,7 +153,7 @@ export class SchemaRegistry {
       const instanceJson = await readFile(fileURLToPath(uri), "utf8");
       const textDocument = TextDocument.create(uri, "json", -1, instanceJson);
 
-      const settings = await getDocumentSettings(this.#connection);
+      const settings = await this.#configuration.get();
       schemaDocument = SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
 
       this.#savedSchemaDocuments.set(uri, schemaDocument);
@@ -191,7 +198,7 @@ export class SchemaRegistry {
 
     let schemaDocument = this.#openSchemaDocuments.get(uri);
     if (schemaDocument?.textDocument.version !== textDocument.version || noCache) {
-      const settings = await getDocumentSettings(this.#connection);
+      const settings = await this.#configuration.get();
       schemaDocument = SchemaDocument.fromTextDocument(textDocument, settings.defaultDialect);
       this.#openSchemaDocuments.set(uri, schemaDocument);
     }
@@ -199,7 +206,7 @@ export class SchemaRegistry {
     return schemaDocument;
   }
 
-  clear() {
+  #clear() {
     this.#savedSchemaDocuments.clear();
     this.#openSchemaDocuments.clear();
     for (const schemaUri of this.#registeredSchemas) {
@@ -214,7 +221,7 @@ export class SchemaRegistry {
       for (const relativePath of await readdir(folderPath, { recursive: true })) {
         const path = resolve(folderPath, relativePath);
         const uri = URI.file(path).toString();
-        if (await isSchema(uri)) {
+        if (await this.#configuration.isSchema(uri)) {
           yield await this.get(uri);
         }
       }
@@ -226,7 +233,7 @@ export class SchemaRegistry {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
       this.#workspaceFolders.add(folderPath);
-      this.#watcher.add(folderPath);
+      this.#watcher?.add(folderPath);
     }
   }
 
@@ -235,7 +242,7 @@ export class SchemaRegistry {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
       this.#workspaceFolders.delete(folderPath);
-      this.#watcher.unwatch(folderPath);
+      this.#watcher?.unwatch(folderPath);
     }
   }
 
@@ -244,7 +251,7 @@ export class SchemaRegistry {
     this.#didChangeWatchedFilesHandler = async ({ changes }) => {
       const filteredChanges = await pipe(
         changes,
-        asyncFilter(async (fileEvent) => await isSchema(fileEvent.uri)),
+        asyncFilter(async (fileEvent) => await this.#configuration.isSchema(fileEvent.uri)),
         asyncCollectArray
       );
       if (filteredChanges) {
@@ -256,7 +263,7 @@ export class SchemaRegistry {
   /** @type (handler: NotificationHandler<TextDocumentChangeEvent<SchemaDocumentType>>) => Disposable */
   onDidChangeContent(handler) {
     return this.#documents.onDidChangeContent(async ({ document }) => {
-      if (await isSchema(document.uri)) {
+      if (await this.#configuration.isSchema(document.uri)) {
         const schemaDocument = await this.getOpen(document.uri);
         if (schemaDocument) {
           handler({ document: schemaDocument });
@@ -268,39 +275,9 @@ export class SchemaRegistry {
   /** @type (handler: NotificationHandler<TextDocumentChangeEvent<SchemaDocumentType>>) => Disposable */
   onDidClose(handler) {
     return this.#documents.onDidClose(async ({ document }) => {
-      if (await isSchema(document.uri)) {
+      if (await this.#configuration.isSchema(document.uri)) {
         handler({ document: await this.get(document.uri) });
       }
     });
   }
 }
-
-/**
- * @template T
- * @typedef {{
- *   promise: Promise<T>;
- *   resolve: (value: T) => void;
- *   reject: (error: Error) => void;
- * }} MyPromise
- */
-
-/**
- * @template T
- * @returns MyPromise<T>
- */
-const createPromise = () => {
-  let resolve;
-  let reject;
-
-  /** @type Promise<T> */
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return {
-    promise,
-    resolve: /** @type (value: T) => void */ (/** @type unknown */ (resolve)),
-    reject: /** @type (error: Error) => void */ (/** @type unknown */ (reject))
-  };
-};

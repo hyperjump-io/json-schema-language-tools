@@ -1,23 +1,26 @@
 import { FileChangeType, SemanticTokensRefreshRequest } from "vscode-languageserver";
 import { hasDialect } from "@hyperjump/json-schema/experimental";
-import { publishAsync, subscribe, unsubscribe } from "../pubsub.js";
+import { publishAsync } from "../pubsub.js";
 
 /**
  * @import { Feature } from "../build-server.js"
+ * @import { DidChangeWatchedFilesParams } from "vscode-languageserver"
  */
 
 
-/** @type string */
-let subscriptionToken;
-
 /** @type Feature */
 export default {
-  load(connection, schemas) {
+  load(connection, schemas, configuration) {
     schemas.onDidChangeWatchedFiles(async (params) => {
-      await publishAsync("workspaceChanged", params);
+      await workspaceChanged(params);
     });
 
-    subscriptionToken = subscribe("workspaceChanged", async (_message, { changes }) => {
+    configuration.onDidChangeConfiguration(async () => {
+      await workspaceChanged({ changes: [] });
+    });
+
+    /** @type (params: DidChangeWatchedFilesParams) => Promise<void> */
+    const workspaceChanged = async ({ changes }) => {
       connection.console.log("Validating Workspace");
 
       const reporter = await connection.window.createWorkDoneProgress();
@@ -29,8 +32,6 @@ export default {
           await connection.sendDiagnostics({ uri: change.uri, diagnostics: [] });
         }
       }
-
-      schemas.clear();
 
       // Load all schemas
       /** @type string[] */
@@ -58,7 +59,7 @@ export default {
       await connection.sendRequest(SemanticTokensRefreshRequest.type);
 
       reporter.done();
-    });
+    };
   },
 
   onInitialize() {
@@ -69,6 +70,5 @@ export default {
   },
 
   async onShutdown() {
-    unsubscribe("workspaceChanged", subscriptionToken);
   }
 };

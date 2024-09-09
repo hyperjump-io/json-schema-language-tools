@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { TextDocumentSyncKind } from "vscode-languageserver";
 import { TestClient } from "./test-client.js";
 
-import type { DocumentSettings } from "./features/document-settings.js";
+import type { DocumentSettings } from "./configuration.js";
 
 
 describe("JSON Schema Language Server", () => {

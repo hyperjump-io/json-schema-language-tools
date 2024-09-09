@@ -12,7 +12,7 @@ import validateSchema from "./validate-schema.js";
 import validateWorkspace from "./validate-workspace.js";
 import workspace from "./workspace.js";
 
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - workspace", () => {

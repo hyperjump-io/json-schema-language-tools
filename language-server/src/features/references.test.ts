@@ -5,7 +5,7 @@ import documentSettings from "./document-settings.js";
 import workspace from "./workspace.js";
 import ReferencesFeature from "./references.js";
 
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - References", () => {

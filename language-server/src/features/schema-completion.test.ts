@@ -4,7 +4,7 @@ import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 import schemaCompletion from "./schema-completion.js";
 
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - $schema completion", () => {

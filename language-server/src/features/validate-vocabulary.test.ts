@@ -6,8 +6,8 @@ import validateSchema from "./validate-schema.js";
 import validationErrors from "./validation-errors.js";
 import workspace from "./workspace.js";
 
-import type { DocumentSettings } from "./document-settings.js";
 import type { Diagnostic } from "vscode-languageserver";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - Validate $vocabulary", () => {

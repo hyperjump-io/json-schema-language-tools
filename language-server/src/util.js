@@ -54,3 +54,33 @@ export const normalizeUri = (uri) => {
 export const isPropertyNode = (node) => {
   return node.parent?.type === "property" && node.parent.children[0] === node;
 };
+
+/**
+ * @template T
+ * @typedef {{
+ *   promise: Promise<T>;
+ *   resolve: (value: T) => void;
+ *   reject: (error: Error) => void;
+ * }} MyPromise
+ */
+
+/**
+ * @template T
+ * @returns MyPromise<T>
+ */
+export const createPromise = () => {
+  let resolve;
+  let reject;
+
+  /** @type Promise<T> */
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return {
+    promise,
+    resolve: /** @type (value: T) => void */ (/** @type unknown */ (resolve)),
+    reject: /** @type (error: Error) => void */ (/** @type unknown */ (reject))
+  };
+};

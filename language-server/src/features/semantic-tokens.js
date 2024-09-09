@@ -1,5 +1,4 @@
 import { SemanticTokensBuilder } from "vscode-languageserver";
-import { isSchema } from "./document-settings.js";
 
 /**
  * @import { SemanticTokensClientCapabilities, SemanticTokensLegend } from "vscode-languageserver"
@@ -25,7 +24,7 @@ import { isSchema } from "./document-settings.js";
 
 /** @type Feature */
 export default {
-  load(connection, schemas) {
+  load(connection, schemas, configuration) {
     const tokenBuilders = new Map();
 
     schemas.onDidClose(({ document }) => {
@@ -63,7 +62,7 @@ export default {
     };
 
     connection.languages.semanticTokens.on(async ({ textDocument }) => {
-      if (!await isSchema(textDocument.uri)) {
+      if (!await configuration.isSchema(textDocument.uri)) {
         return { data: [] };
       }
 

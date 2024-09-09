@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TestClient } from "../test-client.js";
 import completion from "./completion.js";
 
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - Completion", () => {

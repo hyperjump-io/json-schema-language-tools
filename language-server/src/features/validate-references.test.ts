@@ -7,7 +7,7 @@ import validateSchema from "./validate-schema.js";
 import validateReferencesFeature from "./validate-references.js";
 
 import type { Diagnostic } from "vscode-languageserver";
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - Validate References Errors", () => {

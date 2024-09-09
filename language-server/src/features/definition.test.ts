@@ -5,7 +5,7 @@ import documentSettings from "./document-settings.js";
 import workspace from "./workspace.js";
 import definitionFeature from "./definition.js";
 
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - Goto Definition", () => {

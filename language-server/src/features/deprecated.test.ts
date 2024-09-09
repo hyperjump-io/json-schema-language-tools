@@ -7,7 +7,7 @@ import validateSchema from "./validate-schema.js";
 import workspace from "./workspace.js";
 
 import type { Diagnostic } from "vscode-languageserver";
-import type { DocumentSettings } from "./document-settings.js";
+import type { DocumentSettings } from "../configuration.js";
 
 
 describe("Feature - Deprecated", () => {
