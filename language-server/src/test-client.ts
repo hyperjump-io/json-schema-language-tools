@@ -92,6 +92,10 @@ export class TestClient<Configuration> {
       }
     });
 
+    this.client.onRequest(SemanticTokensRequest.type, () => {
+      return { data: [] };
+    });
+
     this.client.onRequest(WorkDoneProgressCreateRequest.type, () => {
       // Nothing to do
     });
