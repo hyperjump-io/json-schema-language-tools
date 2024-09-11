@@ -1,4 +1,5 @@
-import { removeMediaTypePlugin } from "@hyperjump/browser";
+import { SchemaRegistry } from "./schema-registry.js";
+import { Configuration } from "./configuration.js";
 
 // Hyperjump
 import "@hyperjump/json-schema/draft-2020-12";
@@ -6,8 +7,6 @@ import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
 import "@hyperjump/json-schema/draft-06";
 import "@hyperjump/json-schema/draft-04";
-import { SchemaRegistry } from "./schema-registry.js";
-import { Configuration } from "./configuration.js";
 
 /**
  * @import { Connection, InitializeParams, ServerCapabilities } from "vscode-languageserver"
@@ -23,9 +22,6 @@ import { Configuration } from "./configuration.js";
  * }} Feature
  */
 
-removeMediaTypePlugin("http");
-removeMediaTypePlugin("https");
-
 /** @type (connection: Connection, features: Feature[]) => void */
 export const buildServer = (connection, features) => {
   const configuration = new Configuration(connection);
@@ -35,7 +31,7 @@ export const buildServer = (connection, features) => {
     feature.load(connection, schemas, configuration);
   }
 
-  connection.onInitialize(async (params) => {
+  connection.onInitialize((params) => {
     connection.console.log("Initializing JSON Schema service ...");
 
     return {

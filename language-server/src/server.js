@@ -1,6 +1,7 @@
 // Language Server
 import { ProposedFeatures } from "vscode-languageserver";
 import { createConnection } from "vscode-languageserver/node.js";
+import { removeMediaTypePlugin } from "@hyperjump/browser";
 import { buildServer } from "./build-server.js";
 
 // Features
@@ -20,6 +21,9 @@ import definitionFeature from "./features/definition.js";
 import validateSchemaFeature from "./features/validate-schema.js";
 import validateWorkspaceFeature from "./features/validate-workspace.js";
 
+
+removeMediaTypePlugin("http");
+removeMediaTypePlugin("https");
 
 const features = [
   workspaceFeature, // Must be first

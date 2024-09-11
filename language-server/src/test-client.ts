@@ -60,6 +60,11 @@ export class TestClient<Configuration> {
     const down = new TestStream();
 
     this.server = createConnection(up, down);
+
+    this.server.onRequest(SemanticTokensRequest.type, () => {
+      return { data: [] };
+    });
+
     buildServer(this.server, features);
 
     this.client = createConnection(down, up);
@@ -90,10 +95,6 @@ export class TestClient<Configuration> {
           textDocument: { uri }
         });
       }
-    });
-
-    this.client.onRequest(SemanticTokensRequest.type, () => {
-      return { data: [] };
     });
 
     this.client.onRequest(WorkDoneProgressCreateRequest.type, () => {
