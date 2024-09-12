@@ -3,12 +3,26 @@ import * as SchemaDocument from "../schema-document.js";
 import * as SchemaNode from "../schema-node.js";
 import { keywordNameFor } from "../util.js";
 
-/** @import { Feature } from "../build-server.js" */
-/** @import { SchemaNode as SchemaNodeType } from "../schema-node.js" */
+/**
+ * @import { Server } from "../build-server.js"
+ * @import { SchemaRegistry } from "../schema-registry.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ */
 
-/** @type Feature */
-export default {
-  load(connection, schemas) {
+export class GotoDefinitionFeature {
+  /**
+   * @param {Server} server
+   * @param {SchemaRegistry} schemas
+   */
+  constructor(server, schemas) {
+    server.onInitialize(() => {
+      return {
+        capabilities: {
+          definitionProvider: true
+        }
+      };
+    });
+
     const highlightBlockDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -42,7 +56,7 @@ export default {
       }
     };
 
-    connection.onDefinition(async ({ textDocument, position }) => {
+    server.onDefinition(async ({ textDocument, position }) => {
       const schemaDocument = await schemas.get(textDocument.uri);
       if (!schemaDocument) {
         return [];
@@ -77,17 +91,5 @@ export default {
 
       return gotoDefinitions;
     });
-  },
-
-  onInitialize() {
-    return {
-      definitionProvider: true
-    };
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
   }
-};
+}

@@ -8,11 +8,6 @@ import {
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { TestClient } from "../test-client.js";
-import documentSettings from "./document-settings.js";
-import validateSchema from "./validate-schema.js";
-import validateWorkspace from "./validate-workspace.js";
-import validationErrorsFeature from "./validation-errors.js";
-import workspace from "./workspace.js";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "../configuration.js";
@@ -24,13 +19,7 @@ describe("Feature - Custom Dialects", () => {
   let documentUri: string;
 
   beforeEach(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      validateSchema,
-      validateWorkspace,
-      validationErrorsFeature
-    ]);
+    client = new TestClient();
 
     documentUriB = await client.writeDocument("./subjectB.schema.json", `{
       "$id": "https://example.com/my-dialect",

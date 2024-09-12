@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DiagnosticSeverity, PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import documentSettings from "./document-settings.js";
-import validateSchema from "./validate-schema.js";
-import validationErrors from "./validation-errors.js";
-import workspace from "./workspace.js";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "../configuration.js";
@@ -14,12 +10,7 @@ describe("Feature - Validate $vocabulary", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeEach(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      validateSchema,
-      validationErrors
-    ]);
+    client = new TestClient();
     await client.start();
   });
 

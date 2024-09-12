@@ -4,20 +4,25 @@ import * as SchemaNode from "../schema-node.js";
 import { subscribe, unsubscribe } from "../pubsub.js";
 
 /**
- * @import { Feature } from "../build-server.js"
+ * @import { Server } from "../build-server.js"
  * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  * @import { SchemaError } from "../schema-document.js"
  * @import { ValidationDiagnostic } from "./validate-schema.js"
  */
 
 
-/** @type string */
-let subscriptionToken;
+export class ValidationErrorsFeature {
+  #subscriptionToken;
 
-/** @type Feature */
-export default {
-  load() {
-    subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
+  /**
+   * @param {Server} server
+   */
+  constructor(server) {
+    server.onShutdown(async () => {
+      unsubscribe("diagnostics", this.#subscriptionToken);
+    });
+
+    this.#subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for await (const diagnostic of invalidNodes(schemaDocument.errors)) {
         diagnostics.push(diagnostic);
       }
@@ -248,19 +253,8 @@ export default {
         }
       }
     };
-  },
-
-  onInitialize() {
-    return {};
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
-    unsubscribe("diagnostics", subscriptionToken);
   }
-};
+}
 
 /** @type (list: string[]) => string */
 const toListMessage = (list) => {

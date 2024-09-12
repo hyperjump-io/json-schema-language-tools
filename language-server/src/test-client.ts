@@ -31,12 +31,10 @@ import type {
   InitializeParams,
   ServerCapabilities
 } from "vscode-languageserver";
-import type { Feature } from "./build-server.js";
 
 
 export class TestClient<Configuration> {
   private client: Connection;
-  private server: Connection;
   private serverName: string;
   private _serverCapabilities: ServerCapabilities | undefined;
   private _settings: Partial<Configuration> | undefined;
@@ -51,7 +49,7 @@ export class TestClient<Configuration> {
   onProgress: Connection["onProgress"];
   sendProgress: Connection["sendProgress"];
 
-  constructor(features: Feature[], serverName: string = "jsonSchemaLanguageServer") {
+  constructor(serverName: string = "jsonSchemaLanguageServer") {
     this.serverName = serverName;
     this.workspaceFolder = mkdtemp(join(tmpdir(), "test-workspace-"))
       .then((path) => URI.file(path).toString() + "/");
@@ -59,13 +57,10 @@ export class TestClient<Configuration> {
     const up = new TestStream();
     const down = new TestStream();
 
-    this.server = createConnection(up, down);
+    const connection = createConnection(up, down);
 
-    this.server.onRequest(SemanticTokensRequest.type, () => {
-      return { data: [] };
-    });
-
-    buildServer(this.server, features);
+    const server = buildServer(connection);
+    server.listen();
 
     this.client = createConnection(down, up);
     this.onRequest = this.client.onRequest.bind(this.client);

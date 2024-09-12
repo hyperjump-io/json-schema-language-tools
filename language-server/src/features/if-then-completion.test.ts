@@ -1,8 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { CompletionRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import completion from "./completion.js";
-import ifThenCompletionFeature, { ifThenPatternCompletion } from "./if-then-completion.js";
+import { ifThenPatternCompletion } from "./if-then-completion.js";
 
 import type { DocumentSettings } from "../configuration.js";
 
@@ -12,7 +11,7 @@ describe("Feature - if/then completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([completion, ifThenCompletionFeature]);
+    client = new TestClient();
     await client.start();
   });
 

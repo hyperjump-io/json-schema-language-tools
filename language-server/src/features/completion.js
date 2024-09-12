@@ -2,14 +2,30 @@ import { publishAsync } from "../pubsub.js";
 
 /**
  * @import { CompletionItem } from "vscode-languageserver"
- * @import { Feature } from "../build-server.js"
+ * @import { Server } from "../build-server.js"
+ * @import { SchemaRegistry } from "../schema-registry.js";
  */
 
 
-/** @type Feature */
-export default {
-  load(connection, schemas) {
-    connection.onCompletion(async ({ textDocument, position }) => {
+export class CompletionFeature {
+  /**
+   * @param {Server} server
+   * @param {SchemaRegistry} schemas
+   */
+  constructor(server, schemas) {
+    server.onInitialize(() => {
+      return {
+        capabilities: {
+          completionProvider: {
+            resolveProvider: false,
+            triggerCharacters: ["\"", ":", " "]
+          }
+        }
+      };
+    });
+
+    // TODO: Remove pubsub
+    server.onCompletion(async ({ textDocument, position }) => {
       /** @type CompletionItem[] */
       const completions = [];
 
@@ -21,20 +37,5 @@ export default {
 
       return completions;
     });
-  },
-
-  onInitialize() {
-    return {
-      completionProvider: {
-        resolveProvider: false,
-        triggerCharacters: ["\"", ":", " "]
-      }
-    };
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
   }
-};
+}

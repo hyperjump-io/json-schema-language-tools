@@ -7,11 +7,6 @@ import {
 } from "vscode-languageserver";
 import { utimes } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import documentSettings from "./document-settings.js";
-import semanticTokens from "./semantic-tokens.js";
-import validateSchema from "./validate-schema.js";
-import validateWorkspace from "./validate-workspace.js";
-import workspace from "./workspace.js";
 
 import type { DocumentSettings } from "../configuration.js";
 
@@ -21,13 +16,7 @@ describe("Feature - workspace (neovim)", () => {
   let subjectSchemaUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      validateSchema,
-      validateWorkspace,
-      semanticTokens
-    ]);
+    client = new TestClient();
 
     subjectSchemaUri = await client.writeDocument("./subject.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`);
 

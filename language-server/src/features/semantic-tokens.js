@@ -2,10 +2,12 @@ import { SemanticTokensBuilder } from "vscode-languageserver";
 
 /**
  * @import { SemanticTokensClientCapabilities, SemanticTokensLegend } from "vscode-languageserver"
- * @import { TextDocument } from "vscode-languageserver-textdocument";
- * @import { Feature } from "../build-server.js"
- * @import { SchemaDocument } from "../schema-document.js";
- * @import { SchemaNode as SchemaNodeType } from "../schema-node.js";
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
+ * @import { Server } from "../build-server.js"
+ * @import { SchemaRegistry } from "../schema-registry.js"
+ * @import { Configuration } from "../configuration.js"
+ * @import { SchemaDocument } from "../schema-document.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
  */
 
 
@@ -22,9 +24,36 @@ import { SemanticTokensBuilder } from "vscode-languageserver";
  * }} KeywordToken
  */
 
-/** @type Feature */
-export default {
-  load(connection, schemas, configuration) {
+export class SemanticTokensFeature {
+  /** @type Legend */
+  #semanticTokensLegend;
+
+  /**
+   * @param {Server} server
+   * @param {SchemaRegistry} schemas
+   * @param {Configuration} configuration
+   */
+  constructor(server, schemas, configuration) {
+    this.#semanticTokensLegend = {
+      tokenTypes: {},
+      tokenModifiers: {}
+    };
+
+    server.onInitialize(({ capabilities }) => {
+      const semanticTokens = capabilities.textDocument?.semanticTokens;
+      return {
+        capabilities: semanticTokens ? {
+          semanticTokensProvider: {
+            legend: this.#buildSemanticTokensLegend(semanticTokens),
+            range: false,
+            full: {
+              delta: true
+            }
+          }
+        } : {}
+      };
+    });
+
     const tokenBuilders = new Map();
 
     schemas.onDidClose(({ document }) => {
@@ -47,21 +76,21 @@ export default {
         return;
       }
 
-      const semanticTokens = getSemanticTokens(schemaDocument);
+      const semanticTokens = this.#getSemanticTokens(schemaDocument);
       // VSCode requires this list to be in order. Neovim doesn't care.
-      for (const { keywordInstance, tokenType, tokenModifier } of sortSemanticTokens(semanticTokens, schemaDocument.textDocument)) {
+      for (const { keywordInstance, tokenType, tokenModifier } of this.#sortSemanticTokens(semanticTokens, schemaDocument.textDocument)) {
         const startPosition = schemaDocument.textDocument.positionAt(keywordInstance.offset);
         builder.push(
           startPosition.line,
           startPosition.character,
           keywordInstance.textLength,
-          semanticTokensLegend.tokenTypes[tokenType] ?? 0,
-          tokenModifier !== undefined ? semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0 : 0
+          this.#semanticTokensLegend.tokenTypes[tokenType] ?? 0,
+          tokenModifier !== undefined ? this.#semanticTokensLegend.tokenModifiers[tokenModifier] ?? 0 : 0
         );
       }
     };
 
-    connection.languages.semanticTokens.on(async ({ textDocument }) => {
+    server.languages.semanticTokens.on(async ({ textDocument }) => {
       if (!await configuration.isSchema(textDocument.uri)) {
         return { data: [] };
       }
@@ -72,109 +101,84 @@ export default {
       return builder.build();
     });
 
-    connection.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
+    server.languages.semanticTokens.onDelta(async ({ textDocument, previousResultId }) => {
       const builder = getTokenBuilder(textDocument.uri);
       builder.previousResult(previousResultId);
       await buildTokens(builder, textDocument.uri);
 
       return builder.buildEdits();
     });
-  },
+  }
 
-  onInitialize({ capabilities }) {
-    const semanticTokens = capabilities.textDocument?.semanticTokens;
-    return semanticTokens ? {
-      semanticTokensProvider: {
-        legend: buildSemanticTokensLegend(semanticTokens),
-        range: false,
-        full: {
-          delta: true
+  /** @type (capability: SemanticTokensClientCapabilities) => SemanticTokensLegend */
+  #buildSemanticTokensLegend(capability) {
+    const clientTokenTypes = new Set(capability.tokenTypes);
+    const serverTokenTypes = [
+      "property",
+      "keyword",
+      "comment",
+      "string",
+      "regexp"
+    ];
+
+    const tokenTypes = [];
+    for (const tokenType of serverTokenTypes) {
+      if (clientTokenTypes.has(tokenType)) {
+        this.#semanticTokensLegend.tokenTypes[tokenType] = tokenTypes.length;
+        tokenTypes.push(tokenType);
+      }
+    }
+
+    const clientTokenModifiers = new Set(capability.tokenModifiers);
+    /** @type string[] */
+    const serverTokenModifiers = [
+    ];
+
+    const tokenModifiers = [];
+    for (const tokenModifier of serverTokenModifiers) {
+      if (clientTokenModifiers.has(tokenModifier)) {
+        this.#semanticTokensLegend.tokenModifiers[tokenModifier] = tokenModifiers.length;
+        tokenModifiers.push(tokenModifier);
+      }
+    }
+
+    return { tokenTypes, tokenModifiers };
+  }
+
+  /** @type (semanticTokens: Generator<KeywordToken>, textDocument: TextDocument) => KeywordToken[] */
+  #sortSemanticTokens(semanticTokens, textDocument) {
+    return [...semanticTokens].sort((a, b) => {
+      const aStartPosition = textDocument.positionAt(a.keywordInstance.offset);
+      const bStartPosition = textDocument.positionAt(b.keywordInstance.offset);
+
+      return aStartPosition.line === bStartPosition.line
+        ? aStartPosition.character - bStartPosition.character
+        : aStartPosition.line - bStartPosition.line;
+    });
+  }
+
+  /** @type (schemaDocument: SchemaDocument) => Generator<KeywordToken> */
+  * #getSemanticTokens(schemaDocument) {
+    for (const schemaResource of schemaDocument.schemaResources) {
+      yield* this.#allKeywords(schemaResource);
+    }
+  }
+
+  /** @type (node: SchemaNodeType) => Generator<KeywordToken> */
+  * #allKeywords(node) {
+    if (node.type === "property") {
+      const keyNode = node.children[0];
+      if (keyNode.keywordUri) {
+        if (keyNode.keywordUri === "https://json-schema.org/keyword/comment") {
+          yield { keywordInstance: node, tokenType: "comment" };
+        } else if (!keyNode.keywordUri.startsWith("https://json-schema.org/keyword/unknown#")) {
+          yield { keywordInstance: keyNode, tokenType: "keyword" };
         }
       }
-    } : {};
-  },
+    }
 
-  async onInitialized() {
-  },
-
-  async onShutdown() {
-  }
-};
-
-/** @type Legend */
-const semanticTokensLegend = {
-  tokenTypes: {},
-  tokenModifiers: {}
-};
-
-/** @type (capability: SemanticTokensClientCapabilities) => SemanticTokensLegend */
-const buildSemanticTokensLegend = (capability) => {
-  const clientTokenTypes = new Set(capability.tokenTypes);
-  const serverTokenTypes = [
-    "property",
-    "keyword",
-    "comment",
-    "string",
-    "regexp"
-  ];
-
-  const tokenTypes = [];
-  for (const tokenType of serverTokenTypes) {
-    if (clientTokenTypes.has(tokenType)) {
-      semanticTokensLegend.tokenTypes[tokenType] = tokenTypes.length;
-      tokenTypes.push(tokenType);
+    for (const child of node.children) {
+      yield* this.#allKeywords(child);
     }
   }
-
-  const clientTokenModifiers = new Set(capability.tokenModifiers);
-  /** @type string[] */
-  const serverTokenModifiers = [
-  ];
-
-  const tokenModifiers = [];
-  for (const tokenModifier of serverTokenModifiers) {
-    if (clientTokenModifiers.has(tokenModifier)) {
-      semanticTokensLegend.tokenModifiers[tokenModifier] = tokenModifiers.length;
-      tokenModifiers.push(tokenModifier);
-    }
-  }
-
-  return { tokenTypes, tokenModifiers };
-};
-
-/** @type (semanticTokens: Generator<KeywordToken>, textDocument: TextDocument) => KeywordToken[] */
-const sortSemanticTokens = (semanticTokens, textDocument) => {
-  return [...semanticTokens].sort((a, b) => {
-    const aStartPosition = textDocument.positionAt(a.keywordInstance.offset);
-    const bStartPosition = textDocument.positionAt(b.keywordInstance.offset);
-
-    return aStartPosition.line === bStartPosition.line
-      ? aStartPosition.character - bStartPosition.character
-      : aStartPosition.line - bStartPosition.line;
-  });
-};
-
-/** @type (schemaDocument: SchemaDocument) => Generator<KeywordToken> */
-const getSemanticTokens = function* (schemaDocument) {
-  for (const schemaResource of schemaDocument.schemaResources) {
-    yield* allKeywords(schemaResource);
-  }
-};
-
-/** @type (node: SchemaNodeType) => Generator<KeywordToken> */
-const allKeywords = function* (node) {
-  if (node.type === "property") {
-    const keyNode = node.children[0];
-    if (keyNode.keywordUri) {
-      if (keyNode.keywordUri === "https://json-schema.org/keyword/comment") {
-        yield { keywordInstance: node, tokenType: "comment" };
-      } else if (!keyNode.keywordUri.startsWith("https://json-schema.org/keyword/unknown#")) {
-        yield { keywordInstance: keyNode, tokenType: "keyword" };
-      }
-    }
-  }
-
-  for (const child of node.children) {
-    yield* allKeywords(child);
-  }
-};
+}

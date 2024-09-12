@@ -2,33 +2,31 @@ import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
 import * as SchemaDocument from "../schema-document.js";
 import { subscribe, unsubscribe } from "../pubsub.js";
 
-/** @import { Feature } from "../build-server.js" */
+/**
+ * @import { Server } from "../build-server.js"
+ */
 
-/** @type string */
-let subscriptionToken;
 
-/** @type Feature */
-export default {
-  load() {
-    subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
+export class IfThenCompletionFeature {
+  #subscriptionToken;
+
+  /**
+   * @param {Server} server
+   */
+  constructor(server) {
+    server.onShutdown(async () => {
+      unsubscribe("completions", this.#subscriptionToken);
+    });
+
+    // TODO: Eliminate pubsub
+    this.#subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && currentProperty.pointer.endsWith("/if") && currentProperty.type === "property") {
         completions.push(...ifThenPatternCompletion);
       }
     });
-  },
-
-  onInitialize() {
-    return {};
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
-    unsubscribe("completions", subscriptionToken);
   }
-};
+}
 
 export const ifThenPatternCompletion = [
   {

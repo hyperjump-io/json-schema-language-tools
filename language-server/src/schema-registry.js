@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FileChangeType, TextDocuments } from "vscode-languageserver";
+import { DidChangeWatchedFilesNotification, FileChangeType, TextDocuments, TextDocumentSyncKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
@@ -12,15 +12,16 @@ import { createPromise } from "./util.js";
 
 /**
  * @import {
- *   Connection,
  *   DidChangeWatchedFilesParams,
  *   Disposable,
  *   FileEvent,
  *   NotificationHandler,
+ *   ServerCapabilities,
  *   TextDocumentChangeEvent,
  *   WorkspaceFolder
  * } from "vscode-languageserver"
  * @import { FSWatcher } from "chokidar";
+ * @import { Server } from "./build-server.js";
  * @import { SchemaDocument as SchemaDocumentType } from "./schema-document.js"
  * @import { Configuration } from "./configuration.js";
  * @import { MyPromise } from "./util.js"
@@ -28,7 +29,7 @@ import { createPromise } from "./util.js";
 
 
 export class SchemaRegistry {
-  #connection;
+  #server;
   #configuration;
   #documents;
 
@@ -50,15 +51,66 @@ export class SchemaRegistry {
   #didChangeWatchedFilesHandler;
 
   /**
-   * @param {Connection} connection
+   * @param {Server} server
    * @param {Configuration} configuration
    */
-  constructor(connection, configuration) {
-    this.#connection = connection;
+  constructor(server, configuration) {
+    this.#server = server;
     this.#configuration = configuration;
 
     this.#documents = new TextDocuments(TextDocument);
-    this.#documents.listen(connection);
+    this.#documents.listen(server);
+
+    let hasWorkspaceFolderCapability = false;
+    let hasWorkspaceWatchCapability = false;
+
+    this.#server.onInitialize(({ capabilities, workspaceFolders }) => {
+      if (workspaceFolders) {
+        this.addWorkspaceFolders(workspaceFolders);
+      }
+
+      hasWorkspaceFolderCapability = !!capabilities.workspace?.workspaceFolders;
+      hasWorkspaceWatchCapability = !!capabilities.workspace?.didChangeWatchedFiles?.dynamicRegistration;
+
+      /** @type ServerCapabilities */
+      const serverCapabilities = {
+        textDocumentSync: TextDocumentSyncKind.Incremental
+      };
+
+      if (hasWorkspaceFolderCapability) {
+        serverCapabilities.workspace = {
+          workspaceFolders: {
+            supported: true,
+            changeNotifications: true
+          }
+        };
+      }
+
+      return {
+        capabilities: serverCapabilities
+      };
+    });
+
+    this.#server.onInitialized(async () => {
+      if (hasWorkspaceWatchCapability) {
+        await this.#server.client.register(DidChangeWatchedFilesNotification.type, {
+          watchers: [{ globPattern: "**/*" }]
+        });
+      } else {
+        this.watch();
+      }
+
+      if (hasWorkspaceFolderCapability) {
+        this.#server.workspace.onDidChangeWorkspaceFolders(({ added, removed }) => {
+          this.addWorkspaceFolders(added);
+          this.removeWorkspaceFolders(removed);
+        });
+      }
+    });
+
+    this.#server.onShutdown(async () => {
+      await this.stop();
+    });
 
     this.#workspaceFolders = new Set();
 
@@ -69,7 +121,7 @@ export class SchemaRegistry {
     this.#watchEnabled = false;
 
     this.#didChangeWatchedFilesHandler = () => {};
-    this.#connection.onDidChangeWatchedFiles((params) => {
+    this.#server.onDidChangeWatchedFiles((params) => {
       // TODO: Only clear changed files, their dependencies, and their dependents
       this.#clear();
 

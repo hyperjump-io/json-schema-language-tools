@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import documentSettings from "./document-settings.js";
-import workspace from "./workspace.js";
-import validateSchema from "./validate-schema.js";
-import validationErrorsFeature from "./validation-errors.js";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "../configuration.js";
@@ -14,12 +10,7 @@ describe("Feature - Validation Errors", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeEach(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      validateSchema,
-      validationErrorsFeature
-    ]);
+    client = new TestClient();
     await client.start();
   });
 

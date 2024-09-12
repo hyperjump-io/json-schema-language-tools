@@ -1,9 +1,6 @@
 import { beforeAll, afterAll, afterEach, describe, expect, test } from "vitest";
 import { SemanticTokensRequest } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import documentSettings from "./document-settings.js";
-import semanticTokens from "./semantic-tokens.js";
-import workspace from "./workspace.js";
 
 import type { DocumentSettings } from "../configuration.js";
 
@@ -13,11 +10,7 @@ describe("Feature - Semantic Tokens", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([
-      workspace,
-      documentSettings,
-      semanticTokens
-    ]);
+    client = new TestClient();
 
     await client.start();
   });

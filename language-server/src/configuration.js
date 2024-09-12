@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
+import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import picomatch from "picomatch";
 
 /**
- * @import { Connection, DidChangeConfigurationParams, NotificationHandler } from "vscode-languageserver"
+ * @import { DidChangeConfigurationParams, NotificationHandler } from "vscode-languageserver"
+ * @import { Server } from "./build-server.js";
  */
 
 
@@ -14,7 +16,7 @@ import picomatch from "picomatch";
  */
 
 export class Configuration {
-  #connection;
+  #server;
 
   /** @type DocumentSettings | undefined */
   #settings;
@@ -28,18 +30,34 @@ export class Configuration {
   #didChangeConfigurationHandlers;
 
   /**
-   * @param {Connection} connection
+   * @param {Server} server
    */
-  constructor(connection) {
-    this.#connection = connection;
+  constructor(server) {
+    this.#server = server;
 
     this.#defaultSettings = {
       schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
     };
 
+    let hasDidChangeConfigurationCapability = false;
+
+    this.#server.onInitialize(({ capabilities }) => {
+      hasDidChangeConfigurationCapability = !!capabilities.workspace?.didChangeConfiguration?.dynamicRegistration;
+
+      return { capabilities: {} };
+    });
+
+    this.#server.onInitialized(async () => {
+      if (hasDidChangeConfigurationCapability) {
+        await this.#server.client.register(DidChangeConfigurationNotification.type, {
+          section: "jsonSchemaLanguageServer"
+        });
+      }
+    });
+
     this.#didChangeConfigurationHandlers = [];
 
-    this.#connection.onDidChangeConfiguration((params) => {
+    this.#server.onDidChangeConfiguration((params) => {
       this.#settings = { ...this.#defaultSettings, ...params.settings.jsonSchemaLanguageServer };
       this.#matcher = undefined;
 
@@ -52,7 +70,7 @@ export class Configuration {
   /** @type () => Promise<DocumentSettings> */
   async get() {
     if (!this.#settings) {
-      const result = await this.#connection.workspace.getConfiguration({
+      const result = await this.#server.workspace.getConfiguration({
         section: "jsonSchemaLanguageServer"
       }) ?? {};
       this.#settings = { ...this.#defaultSettings, ...result };

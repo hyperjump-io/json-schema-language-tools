@@ -2,17 +2,25 @@ import { DiagnosticSeverity, DiagnosticTag } from "vscode-languageserver";
 import * as SchemaNode from "../schema-node.js";
 import { subscribe, unsubscribe } from "../pubsub.js";
 
-/** @import { Feature } from "../build-server.js" */
+/**
+ * @import { Server } from "../build-server.js"
+ */
 
 
-const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
-/** @type string */
-let subscriptionToken;
+export class DeprecatedFeature {
+  #subscriptionToken;
 
-/** @type Feature */
-export default {
-  load() {
-    subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
+  /**
+   * @param {Server} server
+   */
+  constructor(server) {
+    server.onShutdown(async () => {
+      unsubscribe("diagnostics", this.#subscriptionToken);
+    });
+
+    // TODO: Eliminate pubsub
+    const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
+    this.#subscriptionToken = subscribe("diagnostics", async (_message, { schemaDocument, diagnostics }) => {
       for (const schemaResource of schemaDocument.schemaResources) {
         for (const deprecated of SchemaNode.annotatedWith(schemaResource, "deprecated", annotationDialectUri)) {
           if (SchemaNode.annotation(deprecated, "deprecated", annotationDialectUri).some((deprecated) => deprecated)) {
@@ -26,16 +34,5 @@ export default {
         }
       }
     });
-  },
-
-  onInitialize() {
-    return {};
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
-    unsubscribe("diagnostics", subscriptionToken);
   }
-};
+}

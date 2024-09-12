@@ -3,14 +3,26 @@ import * as SchemaDocument from "../schema-document.js";
 import { isPropertyNode } from "../util.js";
 
 /**
- * @import { Feature } from "../build-server.js"
+ * @import { Server } from "../build-server.js"
+ * @import { SchemaRegistry } from "../schema-registry.js"
  */
 
 
-/** @type Feature */
-export default {
-  load(connection, schemas) {
-    connection.onHover(async ({ textDocument, position }) => {
+export class HoverFeature {
+  /**
+   * @param {Server} server
+   * @param {SchemaRegistry} schemas
+   */
+  constructor(server, schemas) {
+    server.onInitialize(() => {
+      return {
+        capabilities: {
+          hoverProvider: true
+        }
+      };
+    });
+
+    server.onHover(async ({ textDocument, position }) => {
       const schemaDocument = await schemas.getOpen(textDocument.uri);
       if (!schemaDocument) {
         return;
@@ -32,20 +44,8 @@ export default {
         };
       }
     });
-  },
-
-  onInitialize() {
-    return {
-      hoverProvider: true
-    };
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
   }
-};
+}
 
 /** @type Record<string, string> */
 const descriptions = {

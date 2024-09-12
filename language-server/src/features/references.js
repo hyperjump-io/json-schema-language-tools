@@ -1,13 +1,29 @@
 import * as SchemaDocument from "../schema-document.js";
 import * as SchemaNode from "../schema-node.js";
-import { references } from "./validate-references.js";
 
-/** @import { Feature } from "../build-server.js" */
-/** @import { SchemaNode as SchemaNodeType } from "../schema-node.js" */
+/**
+ * @import { Server } from "../build-server.js"
+ * @import { SchemaRegistry } from "../schema-registry.js"
+ * @import { ValidateReferencesFeature } from "./validate-references.js"
+ * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ */
 
-/** @type Feature */
-export default {
-  load(connection, schemas) {
+
+export class GotoReferencesFeature {
+  /**
+   * @param {Server} server
+   * @param {SchemaRegistry} schemas
+   * @param {ValidateReferencesFeature} references
+   */
+  constructor(server, schemas, references) {
+    server.onInitialize(() => {
+      return {
+        capabilities: {
+          referencesProvider: true
+        }
+      };
+    });
+
     const highlightBlockDialects = new Set([
       "http://json-schema.org/draft-04/schema",
       "http://json-schema.org/draft-06/schema",
@@ -20,7 +36,7 @@ export default {
       return highlightBlockDialects.has(uri);
     };
 
-    connection.onReferences(async ({ textDocument, position }) => {
+    server.onReferences(async ({ textDocument, position }) => {
       const schemaDocument = await schemas.getOpen(textDocument.uri);
       if (!schemaDocument) {
         return [];
@@ -38,7 +54,7 @@ export default {
 
       for await (const schemaDocument of schemas.all()) {
         for (const schemaResource of schemaDocument.schemaResources) {
-          for (const referenceNode of references(schemaResource)) {
+          for (const referenceNode of references.references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
             const referencedSchema = await SchemaNode.get(reference, schemaResource, schemas);
             if (!referencedSchema) {
@@ -63,17 +79,5 @@ export default {
 
       return schemaReferences;
     });
-  },
-
-  onInitialize() {
-    return {
-      referencesProvider: true
-    };
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
   }
-};
+}

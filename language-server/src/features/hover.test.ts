@@ -1,7 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import hover from "./hover.js";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
 import type { DocumentSettings } from "../configuration.js";
@@ -11,7 +10,7 @@ describe("Feature - Hover", () => {
   let client: TestClient<DocumentSettings>;
 
   beforeAll(async () => {
-    client = new TestClient([hover]);
+    client = new TestClient();
     await client.start();
   });
 

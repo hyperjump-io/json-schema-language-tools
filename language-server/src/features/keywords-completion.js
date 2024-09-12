@@ -6,17 +6,22 @@ import * as SchemaDocument from "../schema-document.js";
 import { isPropertyNode } from "../util.js";
 
 /**
- * @import { Feature } from "../build-server.js"
+ * @import { Server } from "../build-server.js"
  */
 
 
-/** @type string */
-let subscriptionToken;
+export class KeywordCompletionFeature {
+  #subscriptionToken;
 
-/** @type Feature */
-export default {
-  load() {
-    subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
+  /**
+  * @param {Server} server
+  */
+  constructor(server) {
+    server.onShutdown(async () => {
+      unsubscribe("completions", this.#subscriptionToken);
+    });
+
+    this.#subscriptionToken = subscribe("completions", async (_message, { schemaDocument, offset, completions }) => {
       const currentProperty = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (currentProperty && !isPropertyNode(currentProperty)) {
         return;
@@ -36,16 +41,5 @@ export default {
         })));
       }
     });
-  },
-
-  onInitialize() {
-    return {};
-  },
-
-  async onInitialized() {
-  },
-
-  async onShutdown() {
-    unsubscribe("completions", subscriptionToken);
   }
-};
+}

@@ -1,8 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { CompletionRequest, CompletionItemKind } from "vscode-languageserver";
 import { TestClient } from "../test-client.js";
-import completion from "./completion.js";
-import keywordsCompletionFeature from "./keywords-completion.js";
 
 import type { DocumentSettings } from "../configuration.js";
 
@@ -12,7 +10,7 @@ describe("Feature - if/then completion", () => {
   let documentUri: string;
 
   beforeAll(async () => {
-    client = new TestClient([completion, keywordsCompletionFeature]);
+    client = new TestClient();
     await client.start();
   });
 
