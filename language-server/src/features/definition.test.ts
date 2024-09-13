@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DefinitionRequest } from "vscode-languageserver";
-import { TestClient } from "../test-client.js";
+import { TestClient } from "../test/test-client.js";
 
-import type { DocumentSettings } from "../configuration.js";
+import type { DocumentSettings } from "../services/configuration.js";
 
 
 describe("Feature - Goto Definition", () => {

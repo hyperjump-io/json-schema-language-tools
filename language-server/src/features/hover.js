@@ -1,17 +1,17 @@
 import { MarkupKind } from "vscode-languageserver";
-import * as SchemaDocument from "../schema-document.js";
-import { isPropertyNode } from "../util.js";
+import * as SchemaDocument from "../model/schema-document.js";
+import { isPropertyNode } from "../util/util.js";
 
 /**
- * @import { Server } from "../build-server.js"
- * @import { SchemaRegistry } from "../schema-registry.js"
+ * @import { Server } from "../services/server.js"
+ * @import { Schemas } from "../services/schemas.js"
  */
 
 
 export class HoverFeature {
   /**
    * @param {Server} server
-   * @param {SchemaRegistry} schemas
+   * @param {Schemas} schemas
    */
   constructor(server, schemas) {
     server.onInitialize(() => {

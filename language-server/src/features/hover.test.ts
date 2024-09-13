@@ -1,9 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
-import { TestClient } from "../test-client.js";
+import { TestClient } from "../test/test-client.js";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
-import type { DocumentSettings } from "../configuration.js";
+import type { DocumentSettings } from "../services/configuration.js";
 
 
 describe("Feature - Hover", () => {

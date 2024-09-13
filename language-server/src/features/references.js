@@ -1,21 +1,20 @@
-import * as SchemaDocument from "../schema-document.js";
-import * as SchemaNode from "../schema-node.js";
+import * as SchemaDocument from "../model/schema-document.js";
+import * as SchemaNode from "../model/schema-node.js";
+import { keywordNameFor } from "../util/util.js";
 
 /**
- * @import { Server } from "../build-server.js"
- * @import { SchemaRegistry } from "../schema-registry.js"
- * @import { ValidateReferencesFeature } from "./validate-references.js"
- * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ * @import { Server } from "../services/server.js"
+ * @import { Schemas } from "../services/schemas.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
 
 export class GotoReferencesFeature {
   /**
    * @param {Server} server
-   * @param {SchemaRegistry} schemas
-   * @param {ValidateReferencesFeature} references
+   * @param {Schemas} schemas
    */
-  constructor(server, schemas, references) {
+  constructor(server, schemas) {
     server.onInitialize(() => {
       return {
         capabilities: {
@@ -54,7 +53,7 @@ export class GotoReferencesFeature {
 
       for await (const schemaDocument of schemas.all()) {
         for (const schemaResource of schemaDocument.schemaResources) {
-          for (const referenceNode of references.references(schemaResource)) {
+          for (const referenceNode of this.references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
             const referencedSchema = await SchemaNode.get(reference, schemaResource, schemas);
             if (!referencedSchema) {
@@ -79,5 +78,20 @@ export class GotoReferencesFeature {
 
       return schemaReferences;
     });
+  }
+
+  /** @type (schemaResource: SchemaNodeType) => Generator<SchemaNodeType> */
+  * references(schemaResource) {
+    const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri ?? "");
+    const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri ?? "");
+
+    for (const node of SchemaNode.allNodes(schemaResource)) {
+      if (node.parent && SchemaNode.typeOf(node.parent) === "property") {
+        const keyword = SchemaNode.value(node.parent.children[0]);
+        if (keyword === refToken || keyword === legacyRefToken) {
+          yield node;
+        }
+      }
+    }
   }
 }

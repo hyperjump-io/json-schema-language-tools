@@ -1,18 +1,18 @@
 import { some } from "@hyperjump/pact";
-import * as SchemaDocument from "../schema-document.js";
-import * as SchemaNode from "../schema-node.js";
-import { keywordNameFor } from "../util.js";
+import * as SchemaDocument from "../model/schema-document.js";
+import * as SchemaNode from "../model/schema-node.js";
+import { keywordNameFor } from "../util/util.js";
 
 /**
- * @import { Server } from "../build-server.js"
- * @import { SchemaRegistry } from "../schema-registry.js"
- * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ * @import { Server } from "../services/server.js"
+ * @import { Schemas } from "../services/schemas.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
 export class GotoDefinitionFeature {
   /**
    * @param {Server} server
-   * @param {SchemaRegistry} schemas
+   * @param {Schemas} schemas
    */
   constructor(server, schemas) {
     server.onInitialize(() => {

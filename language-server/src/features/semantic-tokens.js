@@ -3,11 +3,11 @@ import { SemanticTokensBuilder } from "vscode-languageserver";
 /**
  * @import { SemanticTokensClientCapabilities, SemanticTokensLegend } from "vscode-languageserver"
  * @import { TextDocument } from "vscode-languageserver-textdocument"
- * @import { Server } from "../build-server.js"
- * @import { SchemaRegistry } from "../schema-registry.js"
- * @import { Configuration } from "../configuration.js"
- * @import { SchemaDocument } from "../schema-document.js"
- * @import { SchemaNode as SchemaNodeType } from "../schema-node.js"
+ * @import { Server } from "../services/server.js"
+ * @import { Schemas } from "../services/schemas.js"
+ * @import { Configuration } from "../services/configuration.js"
+ * @import { SchemaDocument } from "../model/schema-document.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
 
@@ -30,7 +30,7 @@ export class SemanticTokensFeature {
 
   /**
    * @param {Server} server
-   * @param {SchemaRegistry} schemas
+   * @param {Schemas} schemas
    * @param {Configuration} configuration
    */
   constructor(server, schemas, configuration) {
