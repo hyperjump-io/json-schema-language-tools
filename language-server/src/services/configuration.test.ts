@@ -59,7 +59,7 @@ describe("Feature - Document Settings", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Unknown dialect");
+    expect(diagnostics[0]?.message).to.eql("Unknown dialect");
   });
 
   test("test unknown dialect when default dialect is unknown", async () => {
@@ -75,7 +75,7 @@ describe("Feature - Document Settings", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Unknown dialect");
+    expect(diagnostics[0]?.message).to.eql("Unknown dialect");
   });
 
   test("watches only specified files", async () => {

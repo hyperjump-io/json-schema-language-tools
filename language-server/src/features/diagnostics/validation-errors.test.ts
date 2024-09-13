@@ -32,7 +32,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Expected an object");
+    expect(diagnostics[0]?.message).to.eql("Expected an object");
   });
 
   test("type (array)", async () => {
@@ -49,7 +49,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Expected a string or array");
+    expect(diagnostics[0]?.message).to.eql("Expected a string or array");
   });
 
   test("enum", async () => {
@@ -66,7 +66,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`);
+    expect(diagnostics[0]?.message).to.eql(`Expected one of: "array", "boolean", "integer", "null", "number", "object", or "string"`);
   });
 
   test("minimum", async () => {
@@ -83,7 +83,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Must be greater than or equal to 0");
+    expect(diagnostics[0]?.message).to.eql("Must be greater than or equal to 0");
   });
 
   test("exclusiveMinimum", async () => {
@@ -100,7 +100,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Must be greater than 0");
+    expect(diagnostics[0]?.message).to.eql("Must be greater than 0");
   });
 
   test("additionalProperties", async () => {
@@ -119,7 +119,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Expected a string or array");
+    expect(diagnostics[0]?.message).to.eql("Expected a string or array");
   });
 
   test("pattern", async () => {
@@ -136,7 +136,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Must match the pattern /^[A-Za-z_][-A-Za-z0-9._]*$/");
+    expect(diagnostics[0]?.message).to.eql("Must match the pattern /^[A-Za-z_][-A-Za-z0-9._]*$/");
   });
 
   test("minItems", async () => {
@@ -153,7 +153,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("A minimum of 1 items are required");
+    expect(diagnostics[0]?.message).to.eql("A minimum of 1 items are required");
   });
 
   test("uniqueItems", async () => {
@@ -170,8 +170,8 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`All items must be unique`);
-    expect(diagnostics[1].message).to.eql(`All items must be unique`);
+    expect(diagnostics[0]?.message).to.eql(`All items must be unique`);
+    expect(diagnostics[1]?.message).to.eql(`All items must be unique`);
   });
 
   test("dependencies", async () => {
@@ -188,7 +188,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`Property "maximum" is required`);
+    expect(diagnostics[0]?.message).to.eql(`Property "maximum" is required`);
   });
 
   test("$ref", async () => {
@@ -208,7 +208,7 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`Expected a string or array`);
+    expect(diagnostics[0]?.message).to.eql(`Expected a string or array`);
   });
 
   test("$dynamicRef", async () => {
@@ -236,6 +236,6 @@ describe("Feature - Validation Errors", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql(`Expected a string or array`);
+    expect(diagnostics[0]?.message).to.eql(`Expected a string or array`);
   });
 });

@@ -36,8 +36,8 @@ describe("Feature - Validate $vocabulary", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Unknown vocabulary");
-    expect(diagnostics[0].severity).to.eql(DiagnosticSeverity.Error);
+    expect(diagnostics[0]?.message).to.eql("Unknown vocabulary");
+    expect(diagnostics[0]?.severity).to.eql(DiagnosticSeverity.Error);
   });
 
   test("a custom dialect with an unknown optional vocabulary should include a warning diagnostic", async () => {
@@ -58,8 +58,8 @@ describe("Feature - Validate $vocabulary", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Unknown optional vocabulary");
-    expect(diagnostics[0].severity).to.eql(DiagnosticSeverity.Warning);
+    expect(diagnostics[0]?.message).to.eql("Unknown optional vocabulary");
+    expect(diagnostics[0]?.severity).to.eql(DiagnosticSeverity.Warning);
   });
 
   test("a custom dialect with an unknown vocabulary should not be registered", async () => {
@@ -93,6 +93,6 @@ describe("Feature - Validate $vocabulary", () => {
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    expect(diagnostics[0].message).to.eql("Unknown dialect");
+    expect(diagnostics[0]?.message).to.eql("Unknown dialect");
   });
 });
