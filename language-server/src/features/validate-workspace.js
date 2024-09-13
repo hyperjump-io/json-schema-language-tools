@@ -6,7 +6,7 @@ import { hasDialect } from "@hyperjump/json-schema/experimental";
  * @import { Server } from "../services/server.js"
  * @import { Schemas } from "../services/schemas.js";
  * @import { Configuration } from "../services/configuration.js";
- * @import { ValidateSchemaFeature } from "./diagnostics/validate-schema.js";
+ * @import { ValidateSchemaFeature } from "./validate-schema.js";
  */
 
 

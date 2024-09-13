@@ -6,21 +6,21 @@ import { Schemas } from "./services/schemas.js";
 // Features
 import { CompletionFeature } from "./features/completion/completion.js";
 import { DiagnosticsFeature } from "./features/diagnostics/diagnostics.js";
-import { GotoDefinitionFeature } from "./features/definition.js";
-import { GotoReferencesFeature } from "./features/references.js";
+import { GotoDefinitionFeature } from "./features/goto-definition.js";
+import { FindReferencesFeature } from "./features/find-references.js";
 import { HoverFeature } from "./features/hover.js";
 import { SemanticTokensFeature } from "./features/semantic-tokens.js";
+import { ValidateSchemaFeature } from "./features/validate-schema.js";
 import { ValidateWorkspaceFeature } from "./features/validate-workspace.js";
 
 // Diagnostics
 import { DeprecatedDiagnosticsProvider } from "./features/diagnostics/deprecated.js";
 import { ValidateReferencesDiagnosticsProvider } from "./features/diagnostics/validate-references.js";
-import { ValidateSchemaFeature } from "./features/diagnostics/validate-schema.js";
 import { ValidationErrorsDiagnosticsProvider } from "./features/diagnostics/validation-errors.js";
 
 // Completions
 import { IfThenCompletionProvider } from "./features/completion/if-then-completion.js";
-import { KeywordCompletionProvider } from "./features/completion/keywords-completion.js";
+import { KeywordCompletionProvider } from "./features/completion/keyword-completion.js";
 import { SchemaCompletionProvider } from "./features/completion/schema-completion.js";
 
 // Hyperjump
@@ -47,7 +47,7 @@ export const buildServer = (connection) => {
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);
-  const references = new GotoReferencesFeature(server, schemas);
+  const references = new FindReferencesFeature(server, schemas);
   new HoverFeature(server, schemas);
 
   const diagnostics = new DiagnosticsFeature(server, [
@@ -56,6 +56,8 @@ export const buildServer = (connection) => {
     new ValidateReferencesDiagnosticsProvider(schemas, references)
   ]);
 
+  // TODO: It's awkward that validateSchema and references need variables
+  // TODO: Decouple from diagnostics
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
 

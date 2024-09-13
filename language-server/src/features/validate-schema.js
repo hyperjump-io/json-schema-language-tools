@@ -1,14 +1,14 @@
 import { DiagnosticSeverity } from "vscode-languageserver";
 import { BASIC, compile, getSchema, hasDialect, hasVocabulary, interpret } from "@hyperjump/json-schema/experimental";
-import * as SchemaNode from "../../model/schema-node.js";
-import { keywordNameFor } from "../../util/util.js";
+import * as SchemaNode from "../model/schema-node.js";
+import { keywordNameFor } from "../util/util.js";
 
 /**
- * @import { Server } from "../../services/server.js";
- * @import { Schemas } from "../../services/schemas.js"
- * @import { DiagnosticsFeature } from "./diagnostics.js"
- * @import { SchemaNode as SchemaNodeType } from "../../model/schema-node.js"
- * @import { SchemaDocument as SchemaDocumentType } from "../../model/schema-document.js"
+ * @import { Server } from "../services/server.js";
+ * @import { Schemas } from "../services/schemas.js"
+ * @import { DiagnosticsFeature } from "./diagnostics/diagnostics.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
+ * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
  */
 
 

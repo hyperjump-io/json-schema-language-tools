@@ -3,7 +3,7 @@ import * as SchemaNode from "../../model/schema-node.js";
 
 /**
  * @import { Schemas } from "../../services/schemas.js"
- * @import { GotoReferencesFeature } from "../references.js"
+ * @import { FindReferencesFeature } from "../find-references.js"
  * @import { DiagnosticsProvider } from "./diagnostics.js"
  */
 
@@ -15,7 +15,7 @@ export class ValidateReferencesDiagnosticsProvider {
 
   /**
    * @param {Schemas} schemas
-   * @param {GotoReferencesFeature} references
+   * @param {FindReferencesFeature} references
    */
   constructor(schemas, references) {
     this.#schemas = schemas;

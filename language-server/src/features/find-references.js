@@ -9,7 +9,7 @@ import { keywordNameFor } from "../util/util.js";
  */
 
 
-export class GotoReferencesFeature {
+export class FindReferencesFeature {
   /**
    * @param {Server} server
    * @param {Schemas} schemas

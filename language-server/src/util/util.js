@@ -7,6 +7,8 @@ import { URI } from "vscode-uri";
  */
 
 
+// TODO: Needs review
+
 /** @type (uri: string) => string */
 export const toAbsoluteUri = (uri) => {
   const position = uri.indexOf("#");
