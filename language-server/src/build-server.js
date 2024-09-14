@@ -47,16 +47,17 @@ export const buildServer = (connection) => {
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);
-  const references = new FindReferencesFeature(server, schemas);
+  new FindReferencesFeature(server, schemas);
   new HoverFeature(server, schemas);
 
+  // TODO: It's awkward that diagnostics needs a variable
   const diagnostics = new DiagnosticsFeature(server, [
     new DeprecatedDiagnosticsProvider(),
     new ValidationErrorsDiagnosticsProvider(),
-    new ValidateReferencesDiagnosticsProvider(schemas, references)
+    new ValidateReferencesDiagnosticsProvider(schemas)
   ]);
 
-  // TODO: It's awkward that diagnostics and references need variables
+  // TODO: It's awkward that validateSchema needs a variable
   // TODO: Decouple from diagnostics
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);

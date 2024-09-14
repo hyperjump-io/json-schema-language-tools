@@ -10,7 +10,7 @@ import * as JsonPointer from "@hyperjump/json-pointer";
 import { watch } from "chokidar";
 import * as SchemaDocument from "../model/schema-document.js";
 import * as SchemaNode from "../model/schema-node.js";
-import { createPromise, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
+import { createPromise, keywordNameFor, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
 
 /**
  * @import {
@@ -196,9 +196,16 @@ export class Schemas {
     this.#watchEnabled = false;
     await this.#watcher?.close();
 
+    this.#clear();
+  }
+
+  #clear() {
+    this.#savedSchemaDocuments.clear();
+    this.#openSchemaDocuments.clear();
     for (const schemaUri of this.#registeredSchemas) {
       unregisterSchema(schemaUri);
     }
+    this.#registeredSchemas.clear();
   }
 
   /** @type (uri: string, noCache?: boolean) => Promise<SchemaDocumentType> */
@@ -300,15 +307,6 @@ export class Schemas {
     }
   }
 
-  #clear() {
-    this.#savedSchemaDocuments.clear();
-    this.#openSchemaDocuments.clear();
-    for (const schemaUri of this.#registeredSchemas) {
-      unregisterSchema(schemaUri);
-    }
-    this.#registeredSchemas.clear();
-  }
-
   /** @type () => AsyncGenerator<SchemaDocumentType> */
   async* all() {
     for (const folderPath of this.#workspaceFolders) {
@@ -317,6 +315,21 @@ export class Schemas {
         const uri = URI.file(path).toString();
         if (await this.#configuration.isSchema(uri)) {
           yield await this.get(uri);
+        }
+      }
+    }
+  }
+
+  /** @type (schemaResource: SchemaNodeType) => Generator<SchemaNodeType> */
+  * references(schemaResource) {
+    const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri ?? "");
+    const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri ?? "");
+
+    for (const node of SchemaNode.allNodes(schemaResource)) {
+      if (node.parent && SchemaNode.typeOf(node.parent) === "property") {
+        const keyword = SchemaNode.value(node.parent.children[0]);
+        if (keyword === refToken || keyword === legacyRefToken) {
+          yield node;
         }
       }
     }

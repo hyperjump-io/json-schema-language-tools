@@ -1,6 +1,5 @@
 import * as SchemaDocument from "../model/schema-document.js";
 import * as SchemaNode from "../model/schema-node.js";
-import { keywordNameFor } from "../util/util.js";
 
 /**
  * @import { Server } from "../services/server.js"
@@ -53,7 +52,7 @@ export class FindReferencesFeature {
 
       for await (const schemaDocument of schemas.all()) {
         for (const schemaResource of schemaDocument.schemaResources) {
-          for (const referenceNode of this.references(schemaResource)) {
+          for (const referenceNode of schemas.references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
             const referencedSchema = schemas.getSchemaNode(reference, schemaResource);
             if (!referencedSchema) {
@@ -78,20 +77,5 @@ export class FindReferencesFeature {
 
       return schemaReferences;
     });
-  }
-
-  /** @type (schemaResource: SchemaNodeType) => Generator<SchemaNodeType> */
-  * references(schemaResource) {
-    const refToken = keywordNameFor("https://json-schema.org/keyword/ref", schemaResource.dialectUri ?? "");
-    const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", schemaResource.dialectUri ?? "");
-
-    for (const node of SchemaNode.allNodes(schemaResource)) {
-      if (node.parent && SchemaNode.typeOf(node.parent) === "property") {
-        const keyword = SchemaNode.value(node.parent.children[0]);
-        if (keyword === refToken || keyword === legacyRefToken) {
-          yield node;
-        }
-      }
-    }
   }
 }

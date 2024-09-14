@@ -3,7 +3,6 @@ import * as SchemaNode from "../../model/schema-node.js";
 
 /**
  * @import { Schemas } from "../../services/schemas.js"
- * @import { FindReferencesFeature } from "../find-references.js"
  * @import { DiagnosticsProvider } from "./diagnostics.js"
  */
 
@@ -11,15 +10,12 @@ import * as SchemaNode from "../../model/schema-node.js";
 /** @implements DiagnosticsProvider */
 export class ValidateReferencesDiagnosticsProvider {
   #schemas;
-  #references;
 
   /**
    * @param {Schemas} schemas
-   * @param {FindReferencesFeature} references
    */
-  constructor(schemas, references) {
+  constructor(schemas) {
     this.#schemas = schemas;
-    this.#references = references;
   }
 
   /** @type DiagnosticsProvider["getDiagnostics"] */
@@ -27,7 +23,7 @@ export class ValidateReferencesDiagnosticsProvider {
     const diagnostics = [];
 
     for (const schemaResource of schemaDocument.schemaResources) {
-      for (const node of this.#references.references(schemaResource)) {
+      for (const node of this.#schemas.references(schemaResource)) {
         const reference = SchemaNode.value(node);
         let referencedSchema;
         try {
