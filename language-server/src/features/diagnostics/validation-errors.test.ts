@@ -19,16 +19,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("type (singular)", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": 42
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "properties": 42
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -36,16 +36,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("type (array)", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": true
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": true
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -53,16 +53,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("enum", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "invalid"
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "invalid"
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -70,16 +70,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("minimum", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "maxLength": -1
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "maxLength": -1
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -87,16 +87,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("exclusiveMinimum", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "multipleOf": 0
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "multipleOf": 0
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -104,18 +104,18 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("additionalProperties", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": { "type": 42 }
       }
     }`);
+
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -123,16 +123,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("pattern", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$anchor": "9"
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$anchor": "9"
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -140,16 +140,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("minItems", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": []
+    }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": []
-    }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -157,16 +157,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("uniqueItems", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": ["item_id", "item_id"] }
+}`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "required": ["item_id", "item_id"] }
-}`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -175,16 +175,16 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("dependencies", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "exclusiveMaximum": true
+}`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "exclusiveMaximum": true
-}`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -192,12 +192,6 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("$ref", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/foo",
@@ -205,6 +199,12 @@ describe("Feature - Validation Errors", () => {
     "foo": { "type": 42 }
   }
 }`);
+
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -212,12 +212,6 @@ describe("Feature - Validation Errors", () => {
   });
 
   test("$dynamicRef", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./subject.schema.json", `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/subject",
@@ -233,6 +227,12 @@ describe("Feature - Validation Errors", () => {
     }
   }
 }`);
+
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;

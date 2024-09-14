@@ -1,12 +1,9 @@
-import * as JsonPointer from "@hyperjump/json-pointer";
-import { reduce } from "@hyperjump/pact";
 import * as JsonNode from "./json-node.js";
-import { toAbsoluteUri, uriFragment, resolveIri, normalizeUri } from "../util/util.js";
+import { normalizeUri } from "../util/util.js";
 
 /**
  * @import { Json } from "@hyperjump/json-pointer"
  * @import { JsonType } from "./json-node.js"
- * @import { Schemas } from "../services/schemas.js";
  */
 
 
@@ -59,45 +56,6 @@ export const cons = (uri, pointer, value, type, parent, offset, textLength, dial
   }
 
   return node;
-};
-
-/** @type (url: string, node: SchemaNode | undefined, schemas: Schemas) => Promise<SchemaNode | undefined> */
-export const get = async (uri, node, schemas) => {
-  const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri ?? ""));
-  const schemaResource = await getSchemaResource(schemaId, node, schemas);
-  if (!schemaResource) {
-    return;
-  }
-
-  const fragment = uriFragment(uri);
-  const pointer = fragment === "" || fragment[0] === "/" ? fragment : schemaResource.anchors[fragment];
-  if (typeof pointer !== "string") {
-    return;
-  }
-
-  return reduce((/** @type SchemaNode | undefined */ node, segment) => {
-    if (node === undefined) {
-      return;
-    }
-
-    segment = segment === "-" && JsonNode.typeOf(node) === "array" ? `${JsonNode.length(node)}` : segment;
-    return JsonNode.step(segment, node);
-  }, schemaResource.root, JsonPointer.pointerSegments(pointer));
-};
-
-/** @type (uri: string, node: SchemaNode | undefined, schemas: Schemas) => Promise<SchemaNode | undefined> */
-const getSchemaResource = async (uri, node, schemas) => {
-  for (const embeddedSchemaUri in node?.embedded) {
-    if (embeddedSchemaUri === uri) {
-      return node.embedded[embeddedSchemaUri];
-    }
-  }
-
-  for await (const schemaDocument of schemas.all()) {
-    if (schemaDocument.schemaResources[0]?.baseUri === uri) {
-      return schemaDocument.schemaResources[0];
-    }
-  }
 };
 
 export {

@@ -55,7 +55,7 @@ export class FindReferencesFeature {
         for (const schemaResource of schemaDocument.schemaResources) {
           for (const referenceNode of this.references(schemaResource)) {
             const reference = SchemaNode.value(referenceNode);
-            const referencedSchema = await SchemaNode.get(reference, schemaResource, schemas);
+            const referencedSchema = schemas.getSchemaNode(reference, schemaResource);
             if (!referencedSchema) {
               continue;
             }

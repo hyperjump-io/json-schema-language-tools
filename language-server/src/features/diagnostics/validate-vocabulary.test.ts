@@ -19,12 +19,6 @@ describe("Feature - Validate $vocabulary", () => {
   });
 
   test("a custom dialect with an unknown vocabulary should include an error diagnostic", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
@@ -33,6 +27,12 @@ describe("Feature - Validate $vocabulary", () => {
         "https://example.com/my-vocabulary": true
       }
     }`);
+
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -41,12 +41,6 @@ describe("Feature - Validate $vocabulary", () => {
   });
 
   test("a custom dialect with an unknown optional vocabulary should include a warning diagnostic", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
@@ -55,6 +49,12 @@ describe("Feature - Validate $vocabulary", () => {
         "https://example.com/my-vocabulary": false
       }
     }`);
+
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+        resolve(params.diagnostics);
+      });
+    });
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -63,12 +63,6 @@ describe("Feature - Validate $vocabulary", () => {
   });
 
   test("a custom dialect with an unknown vocabulary should not be registered", async () => {
-    let diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        resolve(params.diagnostics);
-      });
-    });
-
     await client.writeDocument("./my-dialect.schema.json", `{
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "https://example.com/my-dialect",
@@ -81,10 +75,7 @@ describe("Feature - Validate $vocabulary", () => {
       "$schema": "https://example.com/my-dialect"
     }`);
 
-    await client.openDocument("./my-dialect.schema.json");
-    await diagnosticsPromise;
-
-    diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
+    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });

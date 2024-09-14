@@ -56,7 +56,7 @@ export const buildServer = (connection) => {
     new ValidateReferencesDiagnosticsProvider(schemas, references)
   ]);
 
-  // TODO: It's awkward that validateSchema and references need variables
+  // TODO: It's awkward that diagnostics and references need variables
   // TODO: Decouple from diagnostics
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);

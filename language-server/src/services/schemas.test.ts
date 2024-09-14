@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { DidChangeWatchedFilesNotification, PublishDiagnosticsNotification, TextDocumentSyncKind, WorkDoneProgress, WorkDoneProgressCreateRequest } from "vscode-languageserver";
+import { PublishDiagnosticsNotification, TextDocumentSyncKind } from "vscode-languageserver";
 import { TestClient } from "../test/test-client.js";
 
 import type { DocumentSettings } from "./configuration.js";
@@ -7,13 +7,15 @@ import type { DocumentSettings } from "./configuration.js";
 
 describe("JSON Schema Language Server", () => {
   let client: TestClient<DocumentSettings>;
-  let documentUri: string;
+  let documentUriA: string;
+  let documentUriB: string;
 
   beforeAll(async () => {
     client = new TestClient();
-    documentUri = await client.writeDocument("./subject.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
-
     await client.start();
+
+    documentUriA = await client.writeDocument("./subjectA.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
+    documentUriB = await client.writeDocument("./subjectB.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
   });
 
   afterAll(async () => {
@@ -40,33 +42,21 @@ describe("JSON Schema Language Server", () => {
       });
     });
 
-    await client.openDocument(documentUri);
+    await client.openDocument(documentUriA);
 
-    expect(await diagnostics).to.equal(documentUri);
+    expect(await diagnostics).to.equal(documentUriA);
   });
 
   test("a change to a watched file should validate the workspace", async () => {
-    const validatedSchemas = new Promise((resolve) => {
-      let schemaUris: string[];
+    const schemaUris: string[] = [];
 
-      client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {
-        client.onProgress(WorkDoneProgress.type, token, ({ kind }) => {
-          if (kind === "begin") {
-            schemaUris = [];
-          } else if (kind === "end") {
-            resolve(schemaUris);
-          }
-        });
-      });
-
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        schemaUris.push(params.uri);
-      });
+    client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+      schemaUris.push(params.uri);
     });
 
-    await client.sendNotification(DidChangeWatchedFilesNotification.type, { changes: [] });
+    await client.writeDocument("./subjectB.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`);
 
-    expect(await validatedSchemas).to.eql([documentUri]);
+    expect(schemaUris).to.eql([documentUriA, documentUriB]);
   });
 
   test.todo("changing the workspace folders should validate the workspace", () => {

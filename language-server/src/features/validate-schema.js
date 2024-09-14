@@ -39,7 +39,7 @@ export class ValidateSchemaFeature {
     for (const schemaResource of schemaDocument.schemaResources) {
       // Validate dialect
       if (!schemaResource.dialectUri || !hasDialect(schemaResource.dialectUri)) {
-        const $schema = await SchemaNode.get("#/$schema", schemaResource, this.#schemas);
+        const $schema = this.#schemas.getSchemaNode("#/$schema", schemaResource);
         if ($schema && SchemaNode.typeOf($schema) === "string") {
           schemaDocument.errors.push({
             keyword: "https://json-schema.org/keyword/schema",
@@ -95,7 +95,7 @@ export class ValidateSchemaFeature {
           schemaDocument.errors.push({
             keyword: error.keyword,
             keywordNode: await getSchema(error.absoluteKeywordLocation),
-            instanceNode: /** @type SchemaNodeType */ (await SchemaNode.get(error.instanceLocation, schemaResource, this.#schemas))
+            instanceNode: /** @type SchemaNodeType */ (this.#schemas.getSchemaNode(error.instanceLocation, schemaResource))
           });
         }
       }

@@ -20,14 +20,13 @@ describe("Feature - Document Settings", () => {
 
   test("test default dialect", async () => {
     await client.changeConfiguration({ defaultDialect: "https://json-schema.org/draft/2020-12/schema" });
+    await client.writeDocument("./subject.schema.json", `{}`);
 
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{}`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -35,13 +34,13 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test no dialect", async () => {
+    await client.writeDocument("./subject.schema.json", `{}`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{}`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -49,13 +48,13 @@ describe("Feature - Document Settings", () => {
   });
 
   test("test unknown dialect", async () => {
+    await client.writeDocument("./subject.schema.json", `{ "$schema": "" }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{ "$schema": "" }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -64,14 +63,13 @@ describe("Feature - Document Settings", () => {
 
   test("test unknown dialect when default dialect is unknown", async () => {
     await client.changeConfiguration({ defaultDialect: "https://example.com/unknown-dialect" });
+    await client.writeDocument("./subject.schema.json", `{}`);
 
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{}`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -80,16 +78,14 @@ describe("Feature - Document Settings", () => {
 
   test("watches only specified files", async () => {
     await client.changeConfiguration({ "schemaFilePatterns": ["**/subjectB.schema.json"] });
+    await client.writeDocument("./subject.schema.json", "{}");
+    await client.writeDocument("./subjectB.schema.json", "{}");
 
     const diagnosticsPromise = new Promise<string>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.uri);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", "{}");
-    await client.writeDocument("./subjectB.schema.json", "{}");
-
     await client.openDocument("./subject.schema.json");
     const documentUriB = await client.openDocument("./subjectB.schema.json");
 

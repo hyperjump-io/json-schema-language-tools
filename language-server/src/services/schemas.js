@@ -5,10 +5,12 @@ import { DidChangeWatchedFilesNotification, FileChangeType, TextDocuments, TextD
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
-import { asyncCollectArray, asyncFilter, pipe } from "@hyperjump/pact";
+import { asyncCollectArray, asyncFilter, pipe, reduce } from "@hyperjump/pact";
+import * as JsonPointer from "@hyperjump/json-pointer";
 import { watch } from "chokidar";
 import * as SchemaDocument from "../model/schema-document.js";
-import { createPromise } from "../util/util.js";
+import * as SchemaNode from "../model/schema-node.js";
+import { createPromise, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
 
 /**
  * @import {
@@ -23,6 +25,7 @@ import { createPromise } from "../util/util.js";
  * @import { FSWatcher } from "chokidar";
  * @import { Server } from "../services/server.js";
  * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { Configuration } from "./configuration.js";
  * @import { MyPromise } from "../util/util.js"
  */
@@ -232,7 +235,7 @@ export class Schemas {
 
   /** @type (schemaUri: string) => Promise<SchemaDocumentType | undefined> */
   async getBySchemaUri(schemaUri) {
-    for await (const schemaDocument of this.all()) {
+    for await (const schemaDocument of this.#savedSchemaDocuments.values()) {
       for (const schemaResource of schemaDocument.schemaResources) {
         if (schemaResource.baseUri === schemaUri) {
           return schemaDocument;
@@ -256,6 +259,45 @@ export class Schemas {
     }
 
     return schemaDocument;
+  }
+
+  /** @type (url: string, node: SchemaNodeType | undefined) => SchemaNodeType | undefined */
+  getSchemaNode(uri, node) {
+    const schemaId = toAbsoluteUri(resolveIri(uri, node?.baseUri ?? ""));
+    const schemaResource = this.#getSchemaResource(schemaId, node);
+    if (!schemaResource) {
+      return;
+    }
+
+    const fragment = uriFragment(uri);
+    const pointer = fragment === "" || fragment[0] === "/" ? fragment : schemaResource.anchors[fragment];
+    if (typeof pointer !== "string") {
+      return;
+    }
+
+    return reduce((/** @type SchemaNodeType | undefined */ node, segment) => {
+      if (node === undefined) {
+        return;
+      }
+
+      segment = segment === "-" && SchemaNode.typeOf(node) === "array" ? `${SchemaNode.length(node)}` : segment;
+      return SchemaNode.step(segment, node);
+    }, schemaResource.root, JsonPointer.pointerSegments(pointer));
+  }
+
+  /** @type (uri: string, node: SchemaNodeType | undefined) => SchemaNodeType | undefined */
+  #getSchemaResource(uri, node) {
+    for (const embeddedSchemaUri in node?.embedded) {
+      if (embeddedSchemaUri === uri) {
+        return node.embedded[embeddedSchemaUri];
+      }
+    }
+
+    for (const schemaDocument of this.#savedSchemaDocuments.values()) {
+      if (schemaDocument.schemaResources[0]?.baseUri === uri) {
+        return schemaDocument.schemaResources[0];
+      }
+    }
   }
 
   #clear() {

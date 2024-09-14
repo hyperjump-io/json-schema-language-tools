@@ -70,7 +70,7 @@ export class GotoDefinitionFeature {
       }
 
       const reference = SchemaNode.value(node);
-      const targetSchema = await SchemaNode.get(reference, node, schemas);
+      const targetSchema = schemas.getSchemaNode(reference, node);
 
       if (!targetSchema) {
         return [];

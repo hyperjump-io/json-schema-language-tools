@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import {
-  DidChangeWatchedFilesNotification,
-  PublishDiagnosticsNotification,
-  WorkDoneProgress,
-  WorkDoneProgressCreateRequest
-} from "vscode-languageserver";
-import { rm } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../../test/test-client.js";
 
 import type { Diagnostic } from "vscode-languageserver";
@@ -20,6 +13,7 @@ describe("Feature - Custom Dialects", () => {
 
   beforeEach(async () => {
     client = new TestClient();
+    await client.start();
 
     documentUriB = await client.writeDocument("./subjectB.schema.json", `{
       "$id": "https://example.com/my-dialect",
@@ -35,8 +29,6 @@ describe("Feature - Custom Dialects", () => {
     documentUri = await client.writeDocument("./subject.schema.json", `{
       "$schema": "https://example.com/my-dialect"
     }`);
-
-    await client.start();
   });
 
   afterEach(async () => {
@@ -58,28 +50,13 @@ describe("Feature - Custom Dialects", () => {
   });
 
   test("Unregister dialect schema", async () => {
-    const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
-      let diagnostics: Diagnostic[];
-
-      client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {
-        client.onProgress(WorkDoneProgress.type, token, ({ kind }) => {
-          if (kind === "end") {
-            resolve(diagnostics);
-          }
-        });
-      });
-
-      client.onNotification(PublishDiagnosticsNotification.type, (params) => {
-        diagnostics = params.diagnostics;
-      });
+    let diagnostics: Diagnostic[] = [];
+    client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+      diagnostics = params.diagnostics;
     });
 
-    await rm(fileURLToPath(documentUriB));
-    await client.sendNotification(DidChangeWatchedFilesNotification.type, {
-      changes: []
-    });
+    await client.deleteDocument(documentUriB);
 
-    const diagnostics = await diagnosticsPromise;
     expect(diagnostics[0]?.message).to.eql("Unknown dialect");
   });
 });

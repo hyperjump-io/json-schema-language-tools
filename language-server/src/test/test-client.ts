@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { Duplex } from "node:stream";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,12 +10,14 @@ import {
   DidCloseTextDocumentNotification,
   DidOpenTextDocumentNotification,
   ExitNotification,
+  FileChangeType,
   InitializedNotification,
   InitializeRequest,
   RegistrationRequest,
   SemanticTokensRefreshRequest,
   SemanticTokensRequest,
   ShutdownRequest,
+  WorkDoneProgress,
   WorkDoneProgressCreateRequest
 } from "vscode-languageserver";
 import { createConnection } from "vscode-languageserver/node.js";
@@ -41,6 +43,7 @@ export class TestClient<Configuration> {
   private configurationChangeNotificationOptions: DidChangeConfigurationRegistrationOptions | null | undefined;
   private openDocuments: Set<string> = new Set();
   private workspaceFolder: Promise<string>;
+  private watchEnabled: boolean;
 
   onRequest: Connection["onRequest"];
   sendRequest: Connection["sendRequest"];
@@ -51,6 +54,7 @@ export class TestClient<Configuration> {
 
   constructor(serverName: string = "jsonSchemaLanguageServer") {
     this.serverName = serverName;
+    this.watchEnabled = false;
     this.workspaceFolder = mkdtemp(join(tmpdir(), "test-workspace-"))
       .then((path) => URI.file(path).toString() + "/");
 
@@ -77,7 +81,7 @@ export class TestClient<Configuration> {
             ? null
             : registration.registerOptions as DidChangeConfigurationRegistrationOptions;
         } else if (registration.method === DidChangeWatchedFilesNotification.method) {
-          // Ignore for now
+          this.watchEnabled = true;
         } else {
           throw Error(`Unsupported Registration: '${registration.method}'`);
         }
@@ -216,6 +220,8 @@ export class TestClient<Configuration> {
   async changeConfiguration(settings: Partial<Configuration>) {
     this._settings = settings;
 
+    const buildCompleted = this.buildCompleted();
+
     if (this.configurationChangeNotificationOptions === null) {
       await this.client.sendNotification(DidChangeConfigurationNotification.type, {
         settings: null
@@ -228,13 +234,49 @@ export class TestClient<Configuration> {
       });
     }
 
-    // Wait for workspace rebuild to complete
-    await wait(100);
+    await buildCompleted;
   }
 
   async writeDocument(uri: string, text: string) {
     const fullUri = resolveIri(uri, await this.workspaceFolder);
+    const exists = await access(fullUri).then(() => true).catch(() => false);
+
     await writeFile(fileURLToPath(fullUri), text, "utf-8");
+
+    const buildCompleted = this.buildCompleted();
+
+    if (this.watchEnabled) {
+      await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
+        changes: [{
+          type: exists ? FileChangeType.Changed : FileChangeType.Created,
+          uri: fullUri
+        }]
+      });
+    }
+
+    await buildCompleted;
+
+    return fullUri;
+  }
+
+  async deleteDocument(uri: string) {
+    const fullUri = resolveIri(uri, await this.workspaceFolder);
+
+    await rm(fileURLToPath(fullUri));
+
+    const buildCompleted = this.buildCompleted();
+
+    if (this.watchEnabled) {
+      await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
+        changes: [{
+          type: FileChangeType.Deleted,
+          uri: fullUri
+        }]
+      });
+    }
+
+    await buildCompleted;
+
     return fullUri;
   }
 
@@ -262,6 +304,19 @@ export class TestClient<Configuration> {
       textDocument: {
         uri: uri
       }
+    });
+  }
+
+  // TODO: Duplicated code
+  private buildCompleted() {
+    return new Promise<void>((resolve) => {
+      this.client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {
+        this.client.onProgress(WorkDoneProgress.type, token, ({ kind }) => {
+          if (kind === "end") {
+            resolve();
+          }
+        });
+      });
     });
   }
 }

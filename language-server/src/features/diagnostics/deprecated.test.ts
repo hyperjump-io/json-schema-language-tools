@@ -19,16 +19,16 @@ describe("Feature - Deprecated", () => {
   });
 
   test("test deprecated 2020-12", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "definitions": {}
+  }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "definitions": {}
-  }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -36,16 +36,16 @@ describe("Feature - Deprecated", () => {
   });
 
   test("test deprecated 2019-09", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "definitions": {}
+  }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "definitions": {}
-  }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -53,16 +53,16 @@ describe("Feature - Deprecated", () => {
   });
 
   test("test diganostics type", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "definitions": {}
+  }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "definitions": {}
-  }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -70,16 +70,16 @@ describe("Feature - Deprecated", () => {
   });
 
   test("test diganostics tag", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "definitions": {}
+  }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "definitions": {}
-  }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
@@ -87,24 +87,24 @@ describe("Feature - Deprecated", () => {
   });
 
   test("test diganostics range", async () => {
+    await client.writeDocument("./subject.schema.json", `{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "definitions": {}
+  }`);
+
     const diagnosticsPromise = new Promise<Diagnostic[]>((resolve) => {
       client.onNotification(PublishDiagnosticsNotification.type, (params) => {
         resolve(params.diagnostics);
       });
     });
-
-    await client.writeDocument("./subject.schema.json", `{
-    "$schema": "https://json-schema.org/draft/2019-09/schema",
-    "definitions": {}
-  }`);
     await client.openDocument("./subject.schema.json");
 
     const diagnostics = await diagnosticsPromise;
-    const range = {
+    const expectedRange = {
       "start": { "line": 2, "character": 4 },
       "end": { "line": 2, "character": 21 }
     };
 
-    expect(diagnostics[0]?.range).to.eql(range);
+    expect(diagnostics[0]?.range).to.eql(expectedRange);
   });
 });

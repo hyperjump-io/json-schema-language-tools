@@ -31,7 +31,7 @@ export class ValidateReferencesDiagnosticsProvider {
         const reference = SchemaNode.value(node);
         let referencedSchema;
         try {
-          referencedSchema = await SchemaNode.get(reference, schemaResource, this.#schemas) ?? await getSchema(reference);
+          referencedSchema = this.#schemas.getSchemaNode(reference, schemaResource) ?? await getSchema(reference);
         } catch (error) {
           // Ignore for now
         }
