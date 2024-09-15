@@ -1,7 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DidChangeWatchedFilesNotification, FileChangeType, TextDocuments, TextDocumentSyncKind } from "vscode-languageserver";
+import {
+  DidChangeWatchedFilesNotification,
+  FileChangeType,
+  TextDocuments,
+  TextDocumentSyncKind
+} from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";

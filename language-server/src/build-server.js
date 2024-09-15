@@ -58,7 +58,6 @@ export const buildServer = (connection) => {
   ]);
 
   // TODO: It's awkward that validateSchema needs a variable
-  // TODO: Decouple from diagnostics
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
 

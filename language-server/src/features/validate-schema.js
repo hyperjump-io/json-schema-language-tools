@@ -101,6 +101,7 @@ export class ValidateSchemaFeature {
       }
     }
 
+    // TODO: Decouple diagnostics
     this.#diagnostics.sendDiagnostics(schemaDocument);
   }
 }
