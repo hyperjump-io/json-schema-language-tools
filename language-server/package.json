@@ -15,7 +15,7 @@
   "repository": "github:hyperjump-io/json-schema-language-tools",
   "keywords": [],
   "dependencies": {
-    "chokidar": "^3.6.0",
+    "chokidar": "^4.0.0",
     "jsonc-parser": "^3.2.1",
     "merge-anything": "^6.0.2",
     "vscode-languageserver": "^9.0.0",
