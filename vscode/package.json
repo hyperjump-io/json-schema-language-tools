@@ -17,13 +17,9 @@
   "license": "MIT",
   "repository": "github:hyperjump-io/json-schema-language-tools",
   "devDependencies": {
-    "@types/node": "*",
     "@types/vscode": "*",
     "@vscode/vsce": "*",
-    "esbuild": "*",
-    "eslint": "*",
-    "eslint-import-resolver-node": "*",
-    "eslint-plugin-import": "*"
+    "esbuild": "*"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.0"
