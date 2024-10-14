@@ -68,7 +68,7 @@ describe("Annotations", () => {
             describe("Instance: " + JSON.stringify(subject.instance), () => {
               let instance: JsonNodeType;
 
-              beforeAll(async () => {
+              beforeAll(() => {
                 const instanceJson = JSON.stringify(subject.instance, null, "  ");
                 const textDocument = TextDocument.create(id, "json", 1, instanceJson);
                 const json = textDocument.getText();

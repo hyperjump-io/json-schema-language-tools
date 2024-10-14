@@ -38,7 +38,7 @@ import { normalizeUri } from "../util/util.js";
  *   offset: number,
  *   textLength: number,
  *   dialectUri: string | undefined
- * ) => SchemaNode;
+ * ) => SchemaNode
  */
 export const cons = (uri, pointer, value, type, parent, offset, textLength, dialectUri) => {
   const node = /** @type SchemaNode */ (JsonNode.cons(uri, pointer, value, type, [], parent, offset, textLength));

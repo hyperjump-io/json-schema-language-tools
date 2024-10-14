@@ -1,5 +1,5 @@
 import "@hyperjump/json-schema/draft-07";
-import { runTestSuite } from "./json-schema-test.js";
+import { runTestSuite } from "./json-schema-test.ts";
 
 
 const skip = new Set([

@@ -28,7 +28,9 @@ import { getNodeValue } from "jsonc-parser";
 
 /** @type (node: Node, uri?: string, pointer?: string, parent?: JsonNode) => JsonNode */
 export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
-  const jsonNode = cons(uri, pointer, getNodeValue(node), node.type, [], parent, node.offset, node.length);
+  /** @type unknown */
+  const value = getNodeValue(node);
+  const jsonNode = cons(uri, pointer, /** @type Json */ (value), node.type, [], parent, node.offset, node.length);
 
   switch (node.type) {
     case "array":
@@ -41,7 +43,9 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
     case "object":
       jsonNode.children = node.children?.map((child) => {
         const keyNode = /** @type Node */ (child.children?.[0]);
-        const propertyPointer = JsonPointer.append(getNodeValue(keyNode), pointer);
+        /** @type unknown */
+        const key = getNodeValue(keyNode);
+        const propertyPointer = JsonPointer.append(/** @type string */ (key), pointer);
         return fromJsonc(child, uri, propertyPointer, jsonNode);
       }) ?? [];
       break;
@@ -69,6 +73,7 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
  * ) => JsonNode;
  */
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength) => {
+  // eslint-disable-next-line import/namespace
   const node = /** @type JsonNode */ (Instance.cons(uri, pointer, value, type, children, parent));
   node.offset = offset;
   node.textLength = textLength;
@@ -82,4 +87,3 @@ export {
   allNodes,
   setAnnotation, annotation, annotatedWith
 } from "@hyperjump/json-schema/annotated-instance/experimental";
-

@@ -38,7 +38,7 @@ export class GotoDefinitionFeature {
       if (highlightBlockDialects.has(node.dialectUri)) {
         // Legacy reference
         const legacyRefToken = keywordNameFor("https://json-schema.org/keyword/draft-04/ref", node.dialectUri);
-        if (!node.parent || !node.parent.parent) {
+        if (!node.parent?.parent) {
           return false;
         }
 
@@ -51,6 +51,7 @@ export class GotoDefinitionFeature {
         }
 
         const refToken = keywordNameFor("https://json-schema.org/keyword/ref", node.dialectUri);
+        /** @type ReturnType<typeof SchemaNode.value<string>> */
         const keyword = SchemaNode.value(node.parent?.children[0]);
         return keyword === refToken;
       }
@@ -69,6 +70,7 @@ export class GotoDefinitionFeature {
         return [];
       }
 
+      /** @type ReturnType<typeof SchemaNode.value<string>> */
       const reference = SchemaNode.value(node);
       const targetSchema = schemas.getSchemaNode(reference, node);
 
@@ -76,7 +78,7 @@ export class GotoDefinitionFeature {
         return [];
       }
 
-      const targetSchemaDocument = await schemas.getBySchemaUri(targetSchema.baseUri);
+      const targetSchemaDocument = schemas.getBySchemaUri(targetSchema.baseUri);
       if (!targetSchemaDocument) {
         return [];
       }

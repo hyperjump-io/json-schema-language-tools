@@ -24,7 +24,7 @@ import { createConnection } from "vscode-languageserver/node.js";
 import { URI } from "vscode-uri";
 import { merge } from "merge-anything";
 import { buildServer } from "../build-server.js";
-import { wait } from "./test-utils.js";
+import { wait } from "./test-utils.ts";
 import { resolveIri } from "../util/util.js";
 
 import type {
@@ -41,7 +41,7 @@ export class TestClient<Configuration> {
   private _serverCapabilities: ServerCapabilities | undefined;
   private _settings: Partial<Configuration> | undefined;
   private configurationChangeNotificationOptions: DidChangeConfigurationRegistrationOptions | null | undefined;
-  private openDocuments: Set<string> = new Set();
+  private openDocuments: Set<string>;
   private workspaceFolder: Promise<string>;
   private watchEnabled: boolean;
 
@@ -52,9 +52,10 @@ export class TestClient<Configuration> {
   onProgress: Connection["onProgress"];
   sendProgress: Connection["sendProgress"];
 
-  constructor(serverName: string = "jsonSchemaLanguageServer") {
+  constructor(serverName = "jsonSchemaLanguageServer") {
     this.serverName = serverName;
     this.watchEnabled = false;
+    this.openDocuments = new Set();
     this.workspaceFolder = mkdtemp(join(tmpdir(), "test-workspace-"))
       .then((path) => URI.file(path).toString() + "/");
 
@@ -327,6 +328,6 @@ export class TestStream extends Duplex {
     done();
   }
 
-  _read(_size: number) {
+  _read() {
   }
 }

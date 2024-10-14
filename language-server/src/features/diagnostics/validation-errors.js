@@ -3,6 +3,8 @@ import jsonStringify from "json-stringify-deterministic";
 import * as SchemaNode from "../../model/schema-node.js";
 
 /**
+ * @import { SchemaObject } from "@hyperjump/json-schema"
+ * @import { Json } from "@hyperjump/json-pointer"
  * @import { SchemaNode as SchemaNodeType } from "../../model/schema-node.js"
  * @import { SchemaError } from "../../model/schema-document.js"
  * @import { DiagnosticsProvider, ValidationDiagnostic } from "./diagnostics.js"
@@ -15,27 +17,27 @@ export class ValidationErrorsDiagnosticsProvider {
   }
 
   /** @type DiagnosticsProvider["getDiagnostics"] */
-  async getDiagnostics(schemaDocument) {
+  async getDiagnostics(schemaDocument) { // eslint-disable-line @typescript-eslint/require-await
     const diagnostics = [];
 
-    for await (const diagnostic of this.#invalidNodes(schemaDocument.errors)) {
+    for (const diagnostic of this.#invalidNodes(schemaDocument.errors)) {
       diagnostics.push(diagnostic);
     }
 
     return diagnostics;
   }
 
-  /** @type (errors: SchemaError[]) => AsyncGenerator<ValidationDiagnostic> */
-  async* #invalidNodes(errors) {
+  /** @type (errors: SchemaError[]) => Generator<ValidationDiagnostic> */
+  * #invalidNodes(errors) {
     for (const error of errors) {
-      for await (const diagnostic of this.#toErrorMessage(error)) {
+      for (const diagnostic of this.#toErrorMessage(error)) {
         yield diagnostic;
       }
     }
   }
 
-  /** @type (error: SchemaError) => AsyncGenerator<ValidationDiagnostic> */
-  async* #toErrorMessage(error) {
+  /** @type (error: SchemaError) => Generator<ValidationDiagnostic> */
+  * #toErrorMessage(error) {
     if (error.message) {
       yield {
         instance: error.instanceNode,
@@ -50,6 +52,7 @@ export class ValidationErrorsDiagnosticsProvider {
       } else if (error.keyword === "https://json-schema.org/keyword/anyOf") {
         // Skip
       } else if (error.keyword === "https://json-schema.org/keyword/const") {
+        /** @type ReturnType<typeof Browser.value<Json>> */
         const constValue = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
@@ -58,8 +61,10 @@ export class ValidationErrorsDiagnosticsProvider {
       } else if (error.keyword === "https://json-schema.org/keyword/contains") {
         // Skip
       } else if (error.keyword === "https://json-schema.org/keyword/dependentRequired") {
+        /** @type ReturnType<typeof Browser.value<Record<string, string[]>>> */
         const dependentRequired = Browser.value(error.keywordNode);
 
+        /** @type ReturnType<typeof SchemaNode.value<Record<string, unknown>>> */
         const object = SchemaNode.value(error.instanceNode);
         for (const propertyName in dependentRequired) {
           if (propertyName in object) {
@@ -85,12 +90,14 @@ export class ValidationErrorsDiagnosticsProvider {
           message: `Expected one of: ${toListMessage(enumValue.map((value) => JSON.stringify(value)))}`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/exclusiveMaximum") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const exclusiveMaximum = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `Must be less than ${exclusiveMaximum}`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/exclusiveMinimum") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const exclusiveMinimum = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
@@ -99,60 +106,70 @@ export class ValidationErrorsDiagnosticsProvider {
       } else if (error.keyword === "https://json-schema.org/keyword/items") {
         // Skip
       } else if (error.keyword === "https://json-schema.org/keyword/maxItems") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const maxItems = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A maximum of ${maxItems} items are allowed`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/maxLength") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const maxLength = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A maximum of ${maxLength} characters are allowed.`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/maxProperties") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const maxProperties = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A maximum of ${maxProperties} properties are allowed.`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/maximum") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const maximum = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `Must be less than or equal to ${maximum}`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/minItems") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const minItems = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A minimum of ${minItems} items are required`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/minLength") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const minLength = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A minimum of ${minLength} characters are required`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/minProperties") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const minProperties = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `A minimum of ${minProperties} properties are required`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/minimum") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const minimum = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `Must be greater than or equal to ${minimum}`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/multipleOf") {
+        /** @type ReturnType<typeof Browser.value<number>> */
         const multipleOf = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
           message: `Must be a multiple of ${multipleOf}`
         };
       } else if (error.keyword === "https://json-schema.org/keyword/pattern") {
+        /** @type ReturnType<typeof Browser.value<string>> */
         const pattern = Browser.value(error.keywordNode);
         yield {
           instance: error.instanceNode,
@@ -170,8 +187,10 @@ export class ValidationErrorsDiagnosticsProvider {
       } else if (error.keyword === "https://json-schema.org/keyword/ref") {
         // Skip
       } else if (error.keyword === "https://json-schema.org/keyword/required") {
+        /** @type ReturnType<typeof Browser.value<string[]>> */
         const required = Browser.value(error.keywordNode);
 
+        /** @type ReturnType<typeof SchemaNode.value<Record<string, unknown>>> */
         const object = SchemaNode.value(error.instanceNode);
         for (const propertyName of required) {
           if (!(propertyName in object)) {
@@ -182,6 +201,7 @@ export class ValidationErrorsDiagnosticsProvider {
           }
         }
       } else if (error.keyword === "https://json-schema.org/keyword/type") {
+        /** @type ReturnType<typeof Browser.value<string | string[]>> */
         const type = Browser.value(error.keywordNode);
         if (Array.isArray(type)) {
           yield {
@@ -225,11 +245,13 @@ export class ValidationErrorsDiagnosticsProvider {
           }
         }
       } else if (error.keyword === "https://json-schema.org/keyword/draft-04/dependencies") {
+        /** @type ReturnType<typeof Browser.value<Record<string, SchemaObject | string[]>>> */
         const dependencies = Browser.value(error.keywordNode);
         for (const property in dependencies) {
           if (Array.isArray(dependencies[property])) {
             const required = dependencies[property];
 
+            /** @type ReturnType<typeof SchemaNode.value<Record<string, unknown>>> */
             const object = SchemaNode.value(error.instanceNode);
             for (const propertyName of required) {
               if (!(propertyName in object)) {

@@ -90,7 +90,7 @@ export const runTestSuite = (draft: string, dialectId: string, skip: Set<string>
                 if (shouldSkip(skip, [draft, entry.name, suite.description, test.description])) {
                   it.skip(test.description, () => { /* empty */ });
                 } else {
-                  it(test.description, async () => {
+                  it(test.description, () => {
                     const instanceJson = JSON.stringify(test.data, null, "  ");
                     const textDocument = TextDocument.create(url, "json", 1, instanceJson);
                     const json = textDocument.getText();

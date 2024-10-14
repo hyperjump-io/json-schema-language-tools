@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DefinitionRequest } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { DocumentSettings } from "../services/configuration.js";
 
@@ -86,10 +86,10 @@ describe("Feature - Goto Definition", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 4, "character": 13 },
-          "end": { "line": 6, "character": 5 }
+        uri: documentUri,
+        range: {
+          start: { line: 4, character: 13 },
+          end: { line: 6, character: 5 }
         }
       }
     ]);
@@ -116,10 +116,10 @@ describe("Feature - Goto Definition", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 4, "character": 13 },
-          "end": { "line": 6, "character": 5 }
+        uri: documentUri,
+        range: {
+          start: { line: 4, character: 13 },
+          end: { line: 6, character: 5 }
         }
       }
     ]);
@@ -154,10 +154,10 @@ describe("Feature - Goto Definition", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUriA,
-        "range": {
-          "start": { "line": 3, "character": 14 },
-          "end": { "line": 5, "character": 5 }
+        uri: documentUriA,
+        range: {
+          start: { line: 3, character: 14 },
+          end: { line: 5, character: 5 }
         }
       }
     ]);
@@ -191,10 +191,10 @@ describe("Feature - Goto Definition", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUriB,
-        "range": {
-          "start": { "line": 4, "character": 13 },
-          "end": { "line": 6, "character": 5 }
+        uri: documentUriB,
+        range: {
+          start: { line: 4, character: 13 },
+          end: { line: 6, character: 5 }
         }
       }
     ]);
@@ -221,10 +221,10 @@ describe("Feature - Goto Definition", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 7, "character": 1 }
+        uri: documentUri,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 7, character: 1 }
         }
       }
     ]);

@@ -25,7 +25,7 @@ export const uriFragment = (uri) => {
 export const keywordNameFor = (keywordUri, dialectUri) => {
   try {
     return getKeywordName(dialectUri, keywordUri);
-  } catch (error) {
+  } catch (_error) {
     return undefined;
   }
 };
@@ -36,7 +36,7 @@ export const keywordIdFor = (keywordName, dialectUri) => {
     return keywordName === "$schema"
       ? "https://json-schema.org/keyword/schema"
       : getKeywordId(keywordName, dialectUri);
-  } catch (error) {
+  } catch (_error) {
     return;
   }
 };

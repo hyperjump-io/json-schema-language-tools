@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ReferencesRequest } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { DocumentSettings } from "../services/configuration.js";
 
@@ -83,10 +83,10 @@ describe("Feature - References", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 2, "character": 10 },
-          "end": { "line": 2, "character": 25 }
+        uri: documentUri,
+        range: {
+          start: { line: 2, character: 10 },
+          end: { line: 2, character: 25 }
         }
       }
     ]);
@@ -122,10 +122,10 @@ describe("Feature - References", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUriB,
-        "range": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 3, "character": 1 }
+        uri: documentUriB,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 3, character: 1 }
         }
       }
     ]);
@@ -160,10 +160,10 @@ describe("Feature - References", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 0, "character": 0 },
-          "end": { "line": 3, "character": 1 }
+        uri: documentUri,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 3, character: 1 }
         }
       }
     ]);
@@ -191,10 +191,10 @@ describe("Feature - References", () => {
 
     expect(response).to.eql([
       {
-        "uri": documentUri,
-        "range": {
-          "start": { "line": 5, "character": 13 },
-          "end": { "line": 5, "character": 58 }
+        uri: documentUri,
+        range: {
+          start: { line: 5, character: 13 },
+          end: { line: 5, character: 58 }
         }
       }
     ]);

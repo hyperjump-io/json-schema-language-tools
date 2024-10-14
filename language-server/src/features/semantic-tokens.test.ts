@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, afterEach, describe, expect, test } from "vitest";
 import { SemanticTokensRequest } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { DocumentSettings } from "../services/configuration.js";
 
@@ -24,7 +24,7 @@ describe("Feature - Semantic Tokens", () => {
   });
 
   test("semantic tokens on a watched file", async () => {
-    await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
+    await client.changeConfiguration({ schemaFilePatterns: ["**/subject.schema.json"] });
     await client.writeDocument("subject.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
 "type": "string",
 "minLength": 10,
@@ -54,7 +54,7 @@ describe("Feature - Semantic Tokens", () => {
   });
 
   test("no semantic tokens on an unwatched file", async () => {
-    await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
+    await client.changeConfiguration({ schemaFilePatterns: ["**/subject.schema.json"] });
     await client.writeDocument("subjectB.schema.json", `{"$schema":"http://json-schema.org/draft-07/schema#",
       "type": "string",
       "minLength": 10,
@@ -77,7 +77,7 @@ describe("Feature - Semantic Tokens", () => {
 }`);
     documentUri = await client.openDocument("subject.schema.json");
 
-    await client.changeConfiguration({ "schemaFilePatterns": ["**/subjectC.schema.json"] });
+    await client.changeConfiguration({ schemaFilePatterns: ["**/subjectC.schema.json"] });
 
     const response = await client.sendRequest(SemanticTokensRequest.type, {
       textDocument: { uri: documentUri }
@@ -87,7 +87,7 @@ describe("Feature - Semantic Tokens", () => {
   });
 
   test("a property in not in a schema should not be highlighted", async () => {
-    await client.changeConfiguration({ "schemaFilePatterns": ["**/subject.schema.json"] });
+    await client.changeConfiguration({ schemaFilePatterns: ["**/subject.schema.json"] });
     await client.writeDocument("subject.schema.json", `{
 "$schema":"http://json-schema.org/draft-07/schema#",
 "properties": {
@@ -611,4 +611,3 @@ describe("Feature - Semantic Tokens", () => {
     });
   });
 });
-

@@ -24,11 +24,12 @@ export class ValidateReferencesDiagnosticsProvider {
 
     for (const schemaResource of schemaDocument.schemaResources) {
       for (const node of this.#schemas.references(schemaResource)) {
+        /** @type ReturnType<typeof SchemaNode.value<string>> */
         const reference = SchemaNode.value(node);
         let referencedSchema;
         try {
           referencedSchema = this.#schemas.getSchemaNode(reference, schemaResource) ?? await getSchema(reference);
-        } catch (error) {
+        } catch (_error) {
           // Ignore for now
         }
 

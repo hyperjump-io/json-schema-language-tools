@@ -9,7 +9,7 @@ import * as SchemaNode from "../../model/schema-node.js";
 /** @implements DiagnosticsProvider */
 export class DeprecatedDiagnosticsProvider {
   /** @type DiagnosticsProvider["getDiagnostics"] */
-  async getDiagnostics(schemaDocument) {
+  async getDiagnostics(schemaDocument) { // eslint-disable-line @typescript-eslint/require-await
     const diagnostics = [];
 
     const annotationDialectUri = "https://json-schema.org/draft/2020-12/schema";
@@ -17,7 +17,7 @@ export class DeprecatedDiagnosticsProvider {
       for (const deprecated of SchemaNode.annotatedWith(schemaResource, "deprecated", annotationDialectUri)) {
         if (SchemaNode.annotation(deprecated, "deprecated", annotationDialectUri).some((deprecated) => deprecated)) {
           diagnostics.push({
-            instance: deprecated.parent,
+            instance: deprecated.parent ?? deprecated,
             message: SchemaNode.annotation(deprecated, "x-deprecationMessage", annotationDialectUri).join("\n") || "deprecated",
             severity: DiagnosticSeverity.Warning,
             tags: [DiagnosticTag.Deprecated]

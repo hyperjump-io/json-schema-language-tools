@@ -28,10 +28,12 @@ export class ValidateWorkspaceFeature {
     this.#configuration = configuration;
     this.#validateSchema = validateSchema;
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeWatchedFiles(async (params) => {
       await this.workspaceChanged(params);
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#configuration.onDidChangeConfiguration(async () => {
       await this.workspaceChanged({ changes: [] });
     });

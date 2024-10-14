@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { HoverRequest, MarkupKind } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
 import type { DocumentSettings } from "../services/configuration.js";
@@ -45,7 +45,7 @@ describe("Feature - Hover", () => {
       await client.closeDocument(documentUri);
     });
 
-    test("kind", async () => {
+    test("kind", () => {
       const contents = response?.contents as MarkupContent;
       expect(contents.kind).to.eql(MarkupKind.Markdown);
     });

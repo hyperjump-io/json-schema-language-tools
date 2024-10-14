@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { PublishDiagnosticsNotification } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "./configuration.js";
@@ -77,7 +77,7 @@ describe("Feature - Document Settings", () => {
   });
 
   test("watches only specified files", async () => {
-    await client.changeConfiguration({ "schemaFilePatterns": ["**/subjectB.schema.json"] });
+    await client.changeConfiguration({ schemaFilePatterns: ["**/subjectB.schema.json"] });
     await client.writeDocument("./subject.schema.json", "{}");
     await client.writeDocument("./subjectB.schema.json", "{}");
 

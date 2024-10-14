@@ -27,6 +27,7 @@ export class ValidateSchemaFeature {
     this.#schemas = schemas;
     this.#diagnostics = diagnostics;
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeContent(async ({ document }) => {
       await this.validateSchema(document);
     });
@@ -68,7 +69,9 @@ export class ValidateSchemaFeature {
       const vocabularyNode = vocabToken && SchemaNode.step(vocabToken, schemaResource);
       if (vocabularyNode) {
         for (const [vocabularyUriNode, isRequiredNode] of SchemaNode.entries(vocabularyNode)) {
+          /** @type ReturnType<typeof SchemaNode.value<string>> */
           const vocabularyUri = SchemaNode.value(vocabularyUriNode);
+          /** @type ReturnType<typeof SchemaNode.value<boolean>> */
           const isRequired = SchemaNode.value(isRequiredNode);
 
           if (!hasVocabulary(vocabularyUri)) {
@@ -102,6 +105,6 @@ export class ValidateSchemaFeature {
     }
 
     // TODO: Decouple diagnostics
-    this.#diagnostics.sendDiagnostics(schemaDocument);
+    await this.#diagnostics.sendDiagnostics(schemaDocument);
   }
 }

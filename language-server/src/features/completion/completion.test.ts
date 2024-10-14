@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { TestClient } from "../../test/test-client.js";
+import { TestClient } from "../../test/test-client.ts";
 
 import type { DocumentSettings } from "../../services/configuration.js";
 
@@ -16,7 +16,7 @@ describe("Feature - Completion", () => {
     await client.stop();
   });
 
-  test("completion provider capabilities", async () => {
+  test("completion provider capabilities", () => {
     expect(client.serverCapabilities?.completionProvider).to.eql({
       resolveProvider: false,
       triggerCharacters: ["\"", ":", " "]

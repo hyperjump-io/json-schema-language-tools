@@ -11,6 +11,7 @@ import { keywordNameFor, keywordIdFor, toAbsoluteUri, resolveIri } from "../util
  * @import { Node } from "jsonc-parser"
  * @import { Browser } from "@hyperjump/browser"
  * @import { SchemaDocument as SchemaDoc } from "@hyperjump/json-schema/experimental"
+ * @import { Json } from "@hyperjump/json-pointer"
  * @import { SchemaNode as SchemaNodeType } from "./schema-node.js"
  */
 
@@ -84,18 +85,21 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
     const $schemaNode = nodeStep(node, "$schema");
     if ($schemaNode && $schemaNode.type === "string") {
       try {
-        embeddedDialectUri = toAbsoluteUri(getNodeValue($schemaNode));
-      } catch (error) {
+        /** @type unknown */
+        const value = getNodeValue($schemaNode);
+        embeddedDialectUri = toAbsoluteUri(/** @type string */ (value));
+      } catch (_error) {
         // Ignore for now
       }
     }
 
     const idToken = keywordNameFor("https://json-schema.org/keyword/id", embeddedDialectUri ?? "")
-      || keywordNameFor("https://json-schema.org/keyword/draft-04/id", embeddedDialectUri ?? "");
+      ?? keywordNameFor("https://json-schema.org/keyword/draft-04/id", embeddedDialectUri ?? "");
     const $idNode = idToken && nodeStep(node, idToken);
     if ($idNode && $idNode.type === "string") {
+      /** @type unknown */
       const $id = getNodeValue($idNode);
-      uri = toAbsoluteUri(resolveIri($id, uri));
+      uri = toAbsoluteUri(resolveIri(/** @type string */ ($id), uri));
       pointer = "";
       dialectUri = embeddedDialectUri;
     } else if (!parent) {
@@ -107,13 +111,15 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
     }
   }
 
-  const schemaNode = SchemaNode.cons(uri, pointer, getNodeValue(node), node.type, parent, node.offset, node.length, dialectUri);
+  /** @type unknown */
+  const value = getNodeValue(node);
+  const schemaNode = SchemaNode.cons(uri, pointer, /** @type Json */ (value), node.type, parent, node.offset, node.length, dialectUri);
   if (isSchema) {
     schemaNode.isSchema = isSchema;
   }
 
   switch (node.type) {
-    case "array":
+    case "array": {
       let index = 0;
       for (const childNode of node.children ?? []) {
         const itemPointer = JsonPointer.append(`${index++}`, pointer);
@@ -121,29 +127,35 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
         schemaNode.children.push(childSchemaNode);
       }
       break;
+    }
 
-    case "object":
+    case "object": {
       for (const childNode of node.children ?? []) {
-        const keywordNode = childNode.children?.[0];
-        const keyword = keywordNode && getNodeValue(keywordNode);
-        const propertyPointer = JsonPointer.append(keyword, pointer);
+        const keywordNode = /** @type Node */ (childNode.children?.[0]);
+        /** @type unknown */
+        const keyword = getNodeValue(keywordNode);
+        const propertyPointer = JsonPointer.append(/** @type string */ (keyword), pointer);
         const childSchemaNode = fromJsonc(childNode, uri, propertyPointer, dialectUri, schemaNode, schemaLocations, knownLocations);
         if (childSchemaNode.pointer !== "") {
           schemaNode.children.push(childSchemaNode);
         }
       }
       break;
+    }
 
-    case "property":
+    case "property": {
       let propertyKeywordUri;
       if (schemaNode.parent?.isSchema) {
-        const keywordNode = node.children?.[0];
-        const keyword = keywordNode && getNodeValue(keywordNode);
-        propertyKeywordUri = dialectUri && keywordIdFor(keyword, dialectUri);
+        const keywordNode = /** @type Node */ (node.children?.[0]);
+        /** @type unknown */
+        const keyword = getNodeValue(keywordNode);
+        propertyKeywordUri = dialectUri && keywordIdFor(/** @type string */ (keyword), dialectUri);
 
         if (propertyKeywordUri && !propertyKeywordUri?.startsWith("https://json-schema.org/keyword/unknown#")) {
           const valueNode = node.children?.[1];
-          valueNode && keywordHandlers[propertyKeywordUri]?.(valueNode, pointer, schemaLocations, knownLocations);
+          if (valueNode) {
+            keywordHandlers[propertyKeywordUri]?.(valueNode, pointer, schemaLocations, knownLocations);
+          }
         }
       }
 
@@ -155,6 +167,7 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
         }
       }
       break;
+    }
   }
 
   return schemaNode;
@@ -211,8 +224,9 @@ const nodeLocations = function* (node, pointer) {
   if (node.type === "object") {
     for (const propertyNode of node.children ?? []) {
       const [keyNode, valueNode] = propertyNode.children ?? [];
+      /** @type unknown */
       const property = getNodeValue(keyNode);
-      const propertyPointer = JsonPointer.append(property, pointer);
+      const propertyPointer = JsonPointer.append(/** @type string */ (property), pointer);
 
       if (valueNode) {
         yield* nodeLocations(valueNode, propertyPointer);
@@ -238,7 +252,7 @@ const knownKeywordHandler = (node, pointer, _schemaLocations, knownLocations) =>
 };
 
 /** @type KeywordHandler */
-const schemaKeywordHandler = (_node, pointer, schemaLocations, _knownLocations) => {
+const schemaKeywordHandler = (_node, pointer, schemaLocations) => {
   schemaLocations.add(pointer);
 };
 
@@ -265,9 +279,10 @@ const schemaObjectKeywordHandler = (node, pointer, schemaLocations, knownLocatio
 
   knownLocations.add(pointer);
   for (const childNode of node.children ?? []) {
-    const propertyNode = childNode.children?.[0];
-    const property = propertyNode && getNodeValue(propertyNode);
-    const propertyPointer = JsonPointer.append(property, pointer);
+    const propertyNode = /** @type Node */ (childNode.children?.[0]);
+    /** @type unknown */
+    const property = getNodeValue(propertyNode);
+    const propertyPointer = JsonPointer.append(/** @type string */ (property), pointer);
     schemaLocations.add(propertyPointer);
   }
 };
@@ -296,9 +311,10 @@ const schemaObjectObjectKeywordHandler = (node, pointer, schemaLocations, knownL
 
   knownLocations.add(pointer);
   for (const childNode of node.children ?? []) {
-    const propertyNode = childNode.children?.[0];
-    const property = propertyNode && getNodeValue(propertyNode);
-    let propertyPointer = JsonPointer.append(property, pointer);
+    const propertyNode = /** @type Node */ (childNode.children?.[0]);
+    /** @type unknown */
+    const property = getNodeValue(propertyNode);
+    let propertyPointer = JsonPointer.append(/** @type string */ (property), pointer);
 
     if (propertyNode?.type !== "object") {
       knownKeywordHandler(node, propertyPointer, schemaLocations, knownLocations);
@@ -307,9 +323,10 @@ const schemaObjectObjectKeywordHandler = (node, pointer, schemaLocations, knownL
 
     knownLocations.add(propertyPointer);
     for (const childNode of node.children ?? []) {
-      const propertyNode = childNode.children?.[0];
-      const property = propertyNode && getNodeValue(propertyNode);
-      propertyPointer = JsonPointer.append(property, propertyPointer);
+      const propertyNode = /** @type Node */ (childNode.children?.[0]);
+      /** @type unknown */
+      const property = getNodeValue(propertyNode);
+      propertyPointer = JsonPointer.append(/** @type string */ (property), propertyPointer);
       schemaLocations.add(propertyPointer);
     }
   }

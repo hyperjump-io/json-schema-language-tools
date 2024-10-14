@@ -27,6 +27,7 @@ import { createPromise, keywordNameFor, resolveIri, toAbsoluteUri, uriFragment }
  *   TextDocumentChangeEvent,
  *   WorkspaceFolder
  * } from "vscode-languageserver"
+ * @import { SchemaObject } from "@hyperjump/json-schema"
  * @import { FSWatcher } from "chokidar";
  * @import { Server } from "../services/server.js";
  * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
@@ -99,13 +100,14 @@ export class Schemas {
       };
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#server.onInitialized(async () => {
       if (hasWorkspaceWatchCapability) {
         await this.#server.client.register(DidChangeWatchedFilesNotification.type, {
           watchers: [{ globPattern: "**/*" }]
         });
       } else {
-        this.watch();
+        this.watch(); // eslint-disable-line @typescript-eslint/no-floating-promises
       }
 
       if (hasWorkspaceFolderCapability) {
@@ -233,10 +235,13 @@ export class Schemas {
         }
 
         try {
+          /** @type unknown */
+          const schema = JSON.parse(textDocument.getText());
+
           unregisterSchema(schemaUri);
-          registerSchema(JSON.parse(textDocument.getText()), schemaUri);
+          registerSchema(/** @type SchemaObject | boolean */ (schema), schemaUri);
           this.#registeredSchemas.add(schemaUri);
-        } catch (error) {
+        } catch (_error) {
           // Ignore errors
         }
       }
@@ -245,9 +250,9 @@ export class Schemas {
     return schemaDocument;
   }
 
-  /** @type (schemaUri: string) => Promise<SchemaDocumentType | undefined> */
-  async getBySchemaUri(schemaUri) {
-    for await (const schemaDocument of this.#savedSchemaDocuments.values()) {
+  /** @type (schemaUri: string) => SchemaDocumentType | undefined */
+  getBySchemaUri(schemaUri) {
+    for (const schemaDocument of this.#savedSchemaDocuments.values()) {
       for (const schemaResource of schemaDocument.schemaResources) {
         if (schemaResource.baseUri === schemaUri) {
           return schemaDocument;
@@ -282,7 +287,7 @@ export class Schemas {
     }
 
     const fragment = uriFragment(uri);
-    const pointer = fragment === "" || fragment[0] === "/" ? fragment : schemaResource.anchors[fragment];
+    const pointer = fragment === "" || fragment.startsWith("/") ? fragment : schemaResource.anchors[fragment];
     if (typeof pointer !== "string") {
       return;
     }
@@ -332,6 +337,7 @@ export class Schemas {
 
     for (const node of SchemaNode.allNodes(schemaResource)) {
       if (node.parent && SchemaNode.typeOf(node.parent) === "property") {
+        /** @type string */
         const keyword = SchemaNode.value(node.parent.children[0]);
         if (keyword === refToken || keyword === legacyRefToken) {
           yield node;
@@ -360,10 +366,12 @@ export class Schemas {
 
   /** @type (handler: NotificationHandler<DidChangeWatchedFilesParams>) => void */
   onDidChangeWatchedFiles(handler) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#didChangeWatchedFilesHandler = async ({ changes }) => {
+      /** @type FileEvent[] */
       const filteredChanges = await pipe(
         changes,
-        asyncFilter(async (fileEvent) => await this.#configuration.isSchema(fileEvent.uri)),
+        asyncFilter(async (/** @type FileEvent */ fileEvent) => await this.#configuration.isSchema(fileEvent.uri)),
         asyncCollectArray
       );
       if (filteredChanges) {

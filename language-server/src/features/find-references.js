@@ -53,6 +53,7 @@ export class FindReferencesFeature {
       for await (const schemaDocument of schemas.all()) {
         for (const schemaResource of schemaDocument.schemaResources) {
           for (const referenceNode of schemas.references(schemaResource)) {
+            /** @type ReturnType<typeof SchemaNode.value<string>> */
             const reference = SchemaNode.value(referenceNode);
             const referencedSchema = schemas.getSchemaNode(reference, schemaResource);
             if (!referencedSchema) {

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { CompletionItemKind, CompletionRequest } from "vscode-languageserver";
-import { TestClient } from "../../test/test-client.js";
+import { TestClient } from "../../test/test-client.ts";
 
 import type { DocumentSettings } from "../../services/configuration.js";
 

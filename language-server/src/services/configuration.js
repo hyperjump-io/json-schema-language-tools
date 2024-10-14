@@ -15,6 +15,12 @@ import picomatch from "picomatch";
  * }} DocumentSettings
  */
 
+/**
+ * @typedef {{
+ *   jsonSchemaLanguageServer?: DocumentSettings;
+ * }} Settings
+ */
+
 export class Configuration {
   #server;
 
@@ -47,6 +53,7 @@ export class Configuration {
       return { capabilities: {} };
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#server.onInitialized(async () => {
       if (hasDidChangeConfigurationCapability) {
         await this.#server.client.register(DidChangeConfigurationNotification.type, {
@@ -58,7 +65,15 @@ export class Configuration {
     this.#didChangeConfigurationHandlers = [];
 
     this.#server.onDidChangeConfiguration((params) => {
-      this.#settings = { ...this.#defaultSettings, ...params.settings.jsonSchemaLanguageServer };
+      /** @type unknown */
+      const settings = params.settings;
+
+      /** @type unknown */
+      const fullSettings = {
+        ...this.#defaultSettings,
+        .../** @type Settings */(settings).jsonSchemaLanguageServer
+      };
+      this.#settings = /** @type DocumentSettings */ (fullSettings);
       this.#matcher = undefined;
 
       for (const handler of this.#didChangeConfigurationHandlers) {
@@ -70,10 +85,14 @@ export class Configuration {
   /** @type () => Promise<DocumentSettings> */
   async get() {
     if (!this.#settings) {
+      /** @type unknown */
       const result = await this.#server.workspace.getConfiguration({
         section: "jsonSchemaLanguageServer"
-      }) ?? {};
-      this.#settings = { ...this.#defaultSettings, ...result };
+      });
+      const settings = result ?? {};
+      /** @type unknown */
+      const fullSettings = { ...this.#defaultSettings, ...settings };
+      this.#settings = /** @type DocumentSettings */ (fullSettings);
       this.#matcher = undefined;
     }
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { DiagnosticSeverity, DiagnosticTag, PublishDiagnosticsNotification } from "vscode-languageserver";
-import { TestClient } from "../../test/test-client.js";
+import { TestClient } from "../../test/test-client.ts";
 
 import type { Diagnostic } from "vscode-languageserver";
 import type { DocumentSettings } from "../../services/configuration.js";
@@ -101,8 +101,8 @@ describe("Feature - Deprecated", () => {
 
     const diagnostics = await diagnosticsPromise;
     const expectedRange = {
-      "start": { "line": 2, "character": 4 },
-      "end": { "line": 2, "character": 21 }
+      start: { line: 2, character: 4 },
+      end: { line: 2, character: 21 }
     };
 
     expect(diagnostics[0]?.range).to.eql(expectedRange);

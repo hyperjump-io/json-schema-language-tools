@@ -54,6 +54,7 @@ export class SemanticTokensFeature {
       };
     });
 
+    /** @type Map<string, SemanticTokensBuilder> */
     const tokenBuilders = new Map();
 
     schemas.onDidClose(({ document }) => {
@@ -66,7 +67,7 @@ export class SemanticTokensFeature {
         tokenBuilders.set(uri, new SemanticTokensBuilder());
       }
 
-      return tokenBuilders.get(uri);
+      return /** @type SemanticTokensBuilder */ (tokenBuilders.get(uri));
     };
 
     /** @type (builder: SemanticTokensBuilder, uri: string) => Promise<void> */

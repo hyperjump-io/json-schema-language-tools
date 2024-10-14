@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { PublishDiagnosticsNotification, TextDocumentSyncKind } from "vscode-languageserver";
-import { TestClient } from "../test/test-client.js";
+import { TestClient } from "../test/test-client.ts";
 
 import type { DocumentSettings } from "./configuration.js";
 
@@ -22,11 +22,11 @@ describe("JSON Schema Language Server", () => {
     await client.stop();
   });
 
-  test("textDocumentSync = Incremental", async () => {
+  test("textDocumentSync = Incremental", () => {
     expect(client.serverCapabilities?.textDocumentSync).to.equal(TextDocumentSyncKind.Incremental);
   });
 
-  test("workspace folders are supported", async () => {
+  test("workspace folders are supported", () => {
     expect(client.serverCapabilities?.workspace).to.eql({
       workspaceFolders: {
         changeNotifications: true,
