@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import picomatch from "picomatch";
 
@@ -106,8 +105,7 @@ export class Configuration {
       this.#matcher = picomatch(schemaFilePatterns);
     }
 
-    const path = fileURLToPath(uri);
-    return this.#matcher(path);
+    return this.#matcher(uri);
   }
 
   /** @type (handler: NotificationHandler<DidChangeConfigurationParams>) => void */
