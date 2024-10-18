@@ -33,6 +33,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { caughtErrorsIgnorePattern: "^_" }],
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+      "no-console": "error",
 
       // Imports
       "import/extensions": ["error", "ignorePackages"],
