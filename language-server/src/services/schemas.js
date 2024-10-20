@@ -159,7 +159,7 @@ export class Schemas {
     let promise = createPromise();
 
     this.#watcher = watch([...this.#workspaceFolders], { ignoreInitial: true })
-      .on("all", (event, path) => {
+      .on("all", (event, /** @type string */ path) => {
         if (event === "add") {
           changes[path] = changes[path] === FileChangeType.Deleted ? FileChangeType.Changed : FileChangeType.Created;
         } else if (event === "change") {

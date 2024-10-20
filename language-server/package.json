@@ -15,12 +15,12 @@
   "repository": "github:hyperjump-io/json-schema-language-tools",
   "keywords": [],
   "dependencies": {
-    "chokidar": "^3.6.0",
-    "jsonc-parser": "^3.2.1",
+    "chokidar": "^4.0.1",
+    "jsonc-parser": "^3.3.1",
     "merge-anything": "^6.0.2",
     "picomatch": "^4.0.2",
-    "vscode-languageserver": "^9.0.0",
-    "vscode-languageserver-textdocument": "^1.0.8",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
     "vscode-uri": "^3.0.8"
   },
   "engines": {
