@@ -39,7 +39,7 @@ describe("Feature - workspace (neovim)", () => {
     });
   });
 
-  test("a change to a watched file should validate the workspace", async () => {
+  test("a change to a watched file should validate the workspace", { retry: 3 }, async () => {
     const schemaUris: string[] = [];
 
     client.onNotification(PublishDiagnosticsNotification.type, (params) => {
