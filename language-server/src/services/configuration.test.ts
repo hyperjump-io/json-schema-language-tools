@@ -77,8 +77,8 @@ describe("Feature - Document Settings", () => {
   });
 
   test("watches only specified files", async () => {
-    await client.changeConfiguration({ schemaFilePatterns: ["**/subjectB.schema.json"] });
-    await client.writeDocument("./subject.schema.json", "{}");
+    await client.changeConfiguration({ schemaFilePatterns: ["subjectB.schema.json"] });
+    await client.writeDocument("./subject.schema.json", "{}", true);
     await client.writeDocument("./subjectB.schema.json", "{}");
 
     const diagnosticsPromise = new Promise<string>((resolve) => {

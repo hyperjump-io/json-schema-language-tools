@@ -28,11 +28,11 @@ import { createPromise, keywordNameFor, resolveIri, toAbsoluteUri, uriFragment }
  *   WorkspaceFolder
  * } from "vscode-languageserver"
  * @import { SchemaObject } from "@hyperjump/json-schema"
- * @import { FSWatcher } from "chokidar";
- * @import { Server } from "../services/server.js";
+ * @import { FSWatcher } from "chokidar"
+ * @import { Server } from "../services/server.js"
  * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
- * @import { Configuration } from "./configuration.js";
+ * @import { Configuration } from "./configuration.js"
  * @import { MyPromise } from "../util/util.js"
  */
 
@@ -374,7 +374,7 @@ export class Schemas {
         asyncFilter(async (/** @type FileEvent */ fileEvent) => await this.#configuration.isSchema(fileEvent.uri)),
         asyncCollectArray
       );
-      if (filteredChanges) {
+      if (changes.length === 0 || filteredChanges.length > 0) {
         handler({ changes: filteredChanges });
       }
     };

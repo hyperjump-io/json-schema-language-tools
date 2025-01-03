@@ -238,45 +238,49 @@ export class TestClient<Configuration> {
     await buildCompleted;
   }
 
-  async writeDocument(uri: string, text: string) {
+  async writeDocument(uri: string, text: string, isIgnored = false) {
     const fullUri = resolveIri(uri, await this.workspaceFolder);
     const exists = await access(fullUri).then(() => true).catch(() => false);
 
     await writeFile(fileURLToPath(fullUri), text, "utf-8");
 
-    const buildCompleted = this.buildCompleted();
+    if (!isIgnored) {
+      const buildCompleted = this.buildCompleted();
 
-    if (this.watchEnabled) {
-      await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
-        changes: [{
-          type: exists ? FileChangeType.Changed : FileChangeType.Created,
-          uri: fullUri
-        }]
-      });
+      if (this.watchEnabled) {
+        await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
+          changes: [{
+            type: exists ? FileChangeType.Changed : FileChangeType.Created,
+            uri: fullUri
+          }]
+        });
+      }
+
+      await buildCompleted;
     }
-
-    await buildCompleted;
 
     return fullUri;
   }
 
-  async deleteDocument(uri: string) {
+  async deleteDocument(uri: string, isIgnored = false) {
     const fullUri = resolveIri(uri, await this.workspaceFolder);
 
     await rm(fileURLToPath(fullUri));
 
-    const buildCompleted = this.buildCompleted();
+    if (!isIgnored) {
+      const buildCompleted = this.buildCompleted();
 
-    if (this.watchEnabled) {
-      await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
-        changes: [{
-          type: FileChangeType.Deleted,
-          uri: fullUri
-        }]
-      });
+      if (this.watchEnabled) {
+        await this.client.sendNotification(DidChangeWatchedFilesNotification.type, {
+          changes: [{
+            type: FileChangeType.Deleted,
+            uri: fullUri
+          }]
+        });
+      }
+
+      await buildCompleted;
     }
-
-    await buildCompleted;
 
     return fullUri;
   }
@@ -308,7 +312,6 @@ export class TestClient<Configuration> {
     });
   }
 
-  // TODO: Duplicated code
   private buildCompleted() {
     return new Promise<void>((resolve) => {
       this.client.onRequest(WorkDoneProgressCreateRequest.type, ({ token }) => {

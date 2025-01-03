@@ -1,5 +1,6 @@
+import { readFile } from "node:fs/promises";
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
-import picomatch from "picomatch";
+import ignore from "ignore";
 
 /**
  * @import { DidChangeConfigurationParams, NotificationHandler } from "vscode-languageserver"
@@ -41,7 +42,7 @@ export class Configuration {
     this.#server = server;
 
     this.#defaultSettings = {
-      schemaFilePatterns: ["**/*.schema.json", "**/schema.json"]
+      schemaFilePatterns: ["*.schema.json", "schema.json"]
     };
 
     let hasDidChangeConfigurationCapability = false;
@@ -101,8 +102,23 @@ export class Configuration {
   /** @type (uri: string) => Promise<boolean> */
   async isSchema(uri) {
     if (!this.#matcher) {
+      let gitignore;
+      try {
+        gitignore = await readFile(".gitignore", "utf8");
+      } catch (_error) {
+        gitignore = "";
+      }
+
       const { schemaFilePatterns } = await this.get();
-      this.#matcher = picomatch(schemaFilePatterns);
+
+      const matcher = ignore.default().add([
+        "*",
+        ...schemaFilePatterns.map((pattern) => `!${pattern}`),
+        "!*/",
+        gitignore,
+        ".git/"
+      ]);
+      this.#matcher = (path) => !matcher.ignores(path);
     }
 
     return this.#matcher(uri);
