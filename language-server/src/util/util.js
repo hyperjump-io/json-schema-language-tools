@@ -1,9 +1,12 @@
 import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimental";
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
+import { readdir } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
 
 /**
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
+ * @import { Ignore } from "ignore"
  */
 
 
@@ -85,4 +88,23 @@ export const createPromise = () => {
     resolve: /** @type (value: T) => void */ (/** @type unknown */ (resolve)),
     reject: /** @type (error: Error) => void */ (/** @type unknown */ (reject))
   };
+};
+
+/** @type (path: string, filter?: Ignore, cwd?: string) => AsyncGenerator<string> */
+export const readDirRecursive = async function* (path, filter, cwd) {
+  cwd ??= path;
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    const entryPath = join(path, entry.name);
+    const relativeEntryPath = relative(cwd, entryPath);
+
+    if (filter?.ignores(relativeEntryPath)) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      yield* readDirRecursive(entryPath, filter, cwd);
+    } else if (entry.isFile()) {
+      yield relativeEntryPath;
+    }
+  }
 };

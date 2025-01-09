@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import ignore from "ignore";
 
@@ -102,23 +101,10 @@ export class Configuration {
   /** @type (uri: string) => Promise<boolean> */
   async isSchema(uri) {
     if (!this.#matcher) {
-      let gitignore;
-      try {
-        gitignore = await readFile(".gitignore", "utf8");
-      } catch (_error) {
-        gitignore = "";
-      }
-
       const { schemaFilePatterns } = await this.get();
 
-      const matcher = ignore.default().add([
-        "*",
-        ...schemaFilePatterns.map((pattern) => `!${pattern}`),
-        "!*/",
-        gitignore,
-        ".git/"
-      ]);
-      this.#matcher = (path) => !matcher.ignores(path);
+      const matcher = ignore().add(schemaFilePatterns);
+      this.#matcher = (path) => matcher.ignores(path);
     }
 
     return this.#matcher(uri);

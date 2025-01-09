@@ -1,5 +1,5 @@
-import { readdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DidChangeWatchedFilesNotification,
@@ -13,9 +13,10 @@ import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2
 import { asyncCollectArray, asyncFilter, pipe, reduce } from "@hyperjump/pact";
 import * as JsonPointer from "@hyperjump/json-pointer";
 import { watch } from "chokidar";
+import ignore from "ignore";
 import * as SchemaDocument from "../model/schema-document.js";
 import * as SchemaNode from "../model/schema-node.js";
-import { createPromise, keywordNameFor, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
+import { createPromise, keywordNameFor, readDirRecursive, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
 
 /**
  * @import {
@@ -320,10 +321,21 @@ export class Schemas {
   /** @type () => AsyncGenerator<SchemaDocumentType> */
   async* all() {
     for (const folderPath of this.#workspaceFolders) {
-      for (const relativePath of await readdir(folderPath, { recursive: true })) {
-        const path = resolve(folderPath, relativePath);
-        const uri = URI.file(path).toString();
-        if (await this.#configuration.isSchema(uri)) {
+      let gitignore;
+      try {
+        gitignore = await readFile(join(folderPath, ".gitignore"), "utf8");
+      } catch (_error) {
+        gitignore = "";
+      }
+
+      const filter = ignore()
+        .add(gitignore)
+        .add(".git/");
+
+      for await (const relativePath of readDirRecursive(folderPath, filter)) {
+        if (await this.#configuration.isSchema(relativePath)) {
+          const path = resolve(folderPath, relativePath);
+          const uri = URI.file(path).toString();
           yield await this.get(uri);
         }
       }
