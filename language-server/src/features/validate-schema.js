@@ -90,16 +90,28 @@ export class ValidateSchemaFeature {
       }
 
       // Validate schema
-      const schema = await getSchema(schemaResource.dialectUri);
-      const compiled = await compile(schema);
-      const output = interpret(compiled, schemaResource, BASIC);
-      if (output.errors) {
-        for (const error of output.errors) {
+      try {
+        const schema = await getSchema(schemaResource.dialectUri);
+        const compiled = await compile(schema);
+        const output = interpret(compiled, schemaResource, BASIC);
+        if (output.errors) {
+          for (const error of output.errors) {
+            schemaDocument.errors.push({
+              keyword: error.keyword,
+              keywordNode: await getSchema(error.absoluteKeywordLocation),
+              instanceNode: /** @type SchemaNodeType */ (this.#schemas.getSchemaNode(error.instanceLocation, schemaResource))
+            });
+          }
+        }
+      } catch (error) {
+        if (error instanceof Error) {
           schemaDocument.errors.push({
-            keyword: error.keyword,
-            keywordNode: await getSchema(error.absoluteKeywordLocation),
-            instanceNode: /** @type SchemaNodeType */ (this.#schemas.getSchemaNode(error.instanceLocation, schemaResource))
+            keyword: "",
+            instanceNode: schemaDocument.schemaResources[0],
+            message: error.message
           });
+        } else {
+          throw error;
         }
       }
     }
