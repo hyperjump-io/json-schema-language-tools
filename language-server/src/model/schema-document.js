@@ -311,12 +311,13 @@ const schemaObjectObjectKeywordHandler = (node, pointer, schemaLocations, knownL
 
   knownLocations.add(pointer);
   for (const childNode of node.children ?? []) {
-    const propertyNode = /** @type Node */ (childNode.children?.[0]);
+    const propertyNameNode = /** @type Node */ (childNode.children?.[0]);
     /** @type unknown */
-    const property = getNodeValue(propertyNode);
+    const property = getNodeValue(propertyNameNode);
     let propertyPointer = JsonPointer.append(/** @type string */ (property), pointer);
 
-    if (propertyNode?.type !== "object") {
+    const propertyValueNode = /** @type Node */ (childNode.children?.[1]);
+    if (propertyValueNode?.type !== "object") {
       knownKeywordHandler(node, propertyPointer, schemaLocations, knownLocations);
       continue;
     }
