@@ -25,14 +25,14 @@ export class ExtractSubSchemaToDefs {
       }
     }));
 
-    server.onCodeAction(async (params) => {
-      const uri = params.textDocument.uri;
+    server.onCodeAction(async ({textDocument, range}) => {
+      const uri = textDocument.uri;
       let schemaDocument = await schemas.getOpen(uri);
       if (!schemaDocument) {
         return [];
       }
 
-      const offset = schemaDocument.textDocument.offsetAt(params.range.start);
+      const offset = schemaDocument.textDocument.offsetAt(range.start);
       const node = SchemaDocument.findNodeAtOffset(schemaDocument, offset);
       if (!node?.isSchema) {
         return [];
@@ -60,9 +60,9 @@ export class ExtractSubSchemaToDefs {
         kind: CodeActionKind.RefactorExtract,
         edit: {
           documentChanges: [
-            TextDocumentEdit.create({ uri: params.textDocument.uri, version: null }, [
+            TextDocumentEdit.create({ uri: textDocument.uri, version: null }, [
               {
-                range: params.range,
+                range: range,
                 newText: `{ "$ref": "#/$defs/${newDefName}" }`
               },
               findDef
@@ -71,14 +71,14 @@ export class ExtractSubSchemaToDefs {
                       start: schemaDocument.textDocument.positionAt(findDef.offset + 1),
                       end: schemaDocument.textDocument.positionAt(findDef.offset + 1)
                     },
-                    newText: `\n    "${newDefName}":${schemaDocument.textDocument.getText(params.range)},`
+                    newText: `\n    "${newDefName}":${schemaDocument.textDocument.getText(range)},`
                   }
                 : {
                     range: {
                       start: { line: 1, character: 0 },
                       end: { line: 1, character: 0 }
                     },
-                    newText: `  "$defs": {\n  "${newDefName}":${schemaDocument.textDocument.getText(params.range)}\n  },\n`
+                    newText: `  "$defs": {\n  "${newDefName}":${schemaDocument.textDocument.getText(range)}\n  },\n`
                   }
             ])
           ]
