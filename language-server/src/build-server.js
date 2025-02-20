@@ -22,6 +22,7 @@ import { ValidationErrorsDiagnosticsProvider } from "./features/diagnostics/vali
 import { IfThenCompletionProvider } from "./features/completion/if-then-completion.js";
 import { KeywordCompletionProvider } from "./features/completion/keyword-completion.js";
 import { SchemaCompletionProvider } from "./features/completion/schema-completion.js";
+import { ExtractSubSchemaToDefs } from "./features/codeAction/extractSubschema.js";
 
 // Hyperjump
 import { removeMediaTypePlugin } from "@hyperjump/browser";
@@ -49,6 +50,7 @@ export const buildServer = (connection) => {
   new GotoDefinitionFeature(server, schemas);
   new FindReferencesFeature(server, schemas);
   new HoverFeature(server, schemas);
+  new ExtractSubSchemaToDefs(server, schemas);
 
   // TODO: It's awkward that diagnostics needs a variable
   const diagnostics = new DiagnosticsFeature(server, [
