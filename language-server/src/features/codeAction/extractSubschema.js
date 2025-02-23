@@ -4,12 +4,11 @@ import {
 } from "vscode-languageserver";
 import * as SchemaDocument from "../../model/schema-document.js";
 import * as SchemaNode from "../../model/schema-node.js";
-
-
+import * as jsoncParser from "jsonc-parser";
 /**
- * @import { Schemas } from "../../services/schemas.js";
- * @import { Server } from "../../services/server.js";
- * @import {CodeAction} from "vscode-languageserver";
+ * @import { Server } from "../../services/server.js"
+ * @import { Schemas } from "../../services/schemas.js"
+ * @import { CodeAction } from "vscode-languageserver";
  */
 export class ExtractSubSchemaToDefs {
   /**
@@ -25,7 +24,18 @@ export class ExtractSubSchemaToDefs {
       }
     }));
 
-    server.onCodeAction(async ({textDocument, range}) => {
+    // Helper function to format new def using jsonc-parser
+    const formatNewDef = (/** @type {string} */ newDefText) => {
+      try {
+        /** @type {unknown} */
+        const parsedDef = jsoncParser.parse(newDefText);
+        return JSON.stringify(parsedDef, null, 2).replace(/\n/g, "\n    ");
+      } catch {
+        return newDefText;
+      }
+    };
+
+    server.onCodeAction(async ({ textDocument, range }) => {
       const uri = textDocument.uri;
       let schemaDocument = await schemas.getOpen(uri);
       if (!schemaDocument) {
@@ -37,22 +47,30 @@ export class ExtractSubSchemaToDefs {
       if (!node?.isSchema) {
         return [];
       }
-
-      // Finding the $defs node
-      let findDef;
+      let definitionsNode;
       for (const schemaNode of SchemaNode.allNodes(node.root)) {
         if (schemaNode.keywordUri === "https://json-schema.org/keyword/definitions") {
-          findDef = schemaNode;
+          definitionsNode = schemaNode;
           break;
         }
       }
-
-      // Getting the name from pointer
-      let newDefName = "unknown";
-      if (node.pointer) {
-        const parts = node.pointer.split("/");
-        newDefName = parts[parts.length - 1] || "unknown";
+      let highestDefNumber = 0;
+      if (definitionsNode) {
+        const defsContent = schemaDocument.textDocument.getText().slice(
+          definitionsNode.offset,
+          definitionsNode.offset + definitionsNode.textLength
+        );
+        const defMatches = [...defsContent.matchAll(/"def(\d+)":/g)];
+        defMatches.forEach((match) =>
+          highestDefNumber = Math.max(highestDefNumber, parseInt(match[1], 10))
+        );
       }
+      let newDefName = `def${highestDefNumber + 1}`;
+      const extractedDef = schemaDocument.textDocument.getText(range);
+      const newFormattedDef = formatNewDef(extractedDef);
+      let defName = (node.root.dialectUri === "https://json-schema.org/draft/2020-12/schema"
+        || node.root.dialectUri === "https://json-schema.org/draft/2019-09/schema")
+        ? "$defs" : "definitions";
 
       /** @type {CodeAction} */
       const codeAction = {
@@ -63,22 +81,22 @@ export class ExtractSubSchemaToDefs {
             TextDocumentEdit.create({ uri: textDocument.uri, version: null }, [
               {
                 range: range,
-                newText: `{ "$ref": "#/$defs/${newDefName}" }`
+                newText: `{ "$ref": "#/${defName}/${newDefName}" }`
               },
-              findDef
+              definitionsNode
                 ? {
                     range: {
-                      start: schemaDocument.textDocument.positionAt(findDef.offset + 1),
-                      end: schemaDocument.textDocument.positionAt(findDef.offset + 1)
+                      start: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1),
+                      end: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1)
                     },
-                    newText: `\n    "${newDefName}":${schemaDocument.textDocument.getText(range)},`
+                    newText: `\n    "${newDefName}": ${newFormattedDef},`
                   }
                 : {
                     range: {
-                      start: { line: 1, character: 0 },
-                      end: { line: 1, character: 0 }
+                      start: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2),
+                      end: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2)
                     },
-                    newText: `  "$defs": {\n  "${newDefName}":${schemaDocument.textDocument.getText(range)}\n  },\n`
+                    newText: `,\n  "${defName}": {\n    "${newDefName}": ${newFormattedDef}\n  }`
                   }
             ])
           ]
