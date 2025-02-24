@@ -2,6 +2,7 @@ import {
   CodeActionKind,
   TextDocumentEdit
 } from "vscode-languageserver";
+import { getKeywordName } from "@hyperjump/json-schema/experimental";
 import * as SchemaDocument from "../../model/schema-document.js";
 import * as SchemaNode from "../../model/schema-node.js";
 import * as jsoncParser from "jsonc-parser";
@@ -68,9 +69,10 @@ export class ExtractSubSchemaToDefs {
       let newDefName = `def${highestDefNumber + 1}`;
       const extractedDef = schemaDocument.textDocument.getText(range);
       const newFormattedDef = formatNewDef(extractedDef);
-      let defName = (node.root.dialectUri === "https://json-schema.org/draft/2020-12/schema"
-        || node.root.dialectUri === "https://json-schema.org/draft/2019-09/schema")
-        ? "$defs" : "definitions";
+      let defName = getKeywordName(
+      /** @type {string} */ (node.root.dialectUri),
+        "https://json-schema.org/keyword/definitions"
+      );
 
       /** @type {CodeAction} */
       const codeAction = {
