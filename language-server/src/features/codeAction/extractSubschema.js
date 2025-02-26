@@ -5,38 +5,37 @@ import {
 import { getKeywordName } from "@hyperjump/json-schema/experimental";
 import * as SchemaDocument from "../../model/schema-document.js";
 import * as SchemaNode from "../../model/schema-node.js";
-import * as jsoncParser from "jsonc-parser";
+import { formatNewDef } from "../../util/util.js";
+
 /**
- * @import { Server } from "../../services/server.js"
- * @import { Schemas } from "../../services/schemas.js"
+ * @import { Server } from "../../services/server.js";
+ * @import { Schemas } from "../../services/schemas.js";
  * @import { CodeAction } from "vscode-languageserver";
+ * @import { Configuration } from "../../services/configuration.js";
  */
+
+
 export class ExtractSubSchemaToDefs {
   /**
    * @param {Server} server
    * @param {Schemas} schemas
+   * @param {Configuration} configuration
    */
-  constructor(server, schemas) {
+  constructor(server, schemas, configuration) {
     this.server = server;
     this.schemas = schemas;
+    this.configuration = configuration;
     server.onInitialize(() => ({
       capabilities: {
         codeActionProvider: true
       }
     }));
 
-    // Helper function to format new def using jsonc-parser
-    const formatNewDef = (/** @type {string} */ newDefText) => {
-      try {
-        /** @type {unknown} */
-        const parsedDef = jsoncParser.parse(newDefText);
-        return JSON.stringify(parsedDef, null, 2).replace(/\n/g, "\n    ");
-      } catch {
-        return newDefText;
-      }
-    };
-
     server.onCodeAction(async ({ textDocument, range }) => {
+      if (range.start.line === range.end.line && range.start.character === range.end.character) {
+        return [];
+      }
+
       const uri = textDocument.uri;
       let schemaDocument = await schemas.getOpen(uri);
       if (!schemaDocument) {
@@ -48,6 +47,7 @@ export class ExtractSubSchemaToDefs {
       if (!node?.isSchema) {
         return [];
       }
+
       let definitionsNode;
       for (const schemaNode of SchemaNode.allNodes(node.root)) {
         if (schemaNode.keywordUri === "https://json-schema.org/keyword/definitions") {
@@ -55,28 +55,32 @@ export class ExtractSubSchemaToDefs {
           break;
         }
       }
+
       let highestDefNumber = 0;
       if (definitionsNode) {
-        const defsContent = schemaDocument.textDocument.getText().slice(
-          definitionsNode.offset,
-          definitionsNode.offset + definitionsNode.textLength
-        );
-        const defMatches = [...defsContent.matchAll(/"def(\d+)":/g)];
-        defMatches.forEach((match) =>
-          highestDefNumber = Math.max(highestDefNumber, parseInt(match[1], 10))
-        );
+        let defNodeKeys = SchemaNode.keys(definitionsNode);
+        for (const key of defNodeKeys) {
+          /** @type {string} */
+          const keyValue = String(SchemaNode.value(key));
+          /** @type RegExpMatchArray | null */
+          const match = /^def(\d+)$/.exec(keyValue);
+          if (match) {
+            highestDefNumber = Math.max(parseInt(match[1], 10), highestDefNumber);
+          }
+        }
       }
       let newDefName = `def${highestDefNumber + 1}`;
+      const settings = await this.configuration.get();
       const extractedDef = schemaDocument.textDocument.getText(range);
-      const newFormattedDef = formatNewDef(extractedDef);
+      const newFormattedDef = await formatNewDef(textDocument.uri, extractedDef, settings.tabSize, settings.insertSpaces, settings.detectIndentation);
       let defName = getKeywordName(
-      /** @type {string} */ (node.root.dialectUri),
+        /** @type {string} */ (node.root.dialectUri),
         "https://json-schema.org/keyword/definitions"
       );
 
       /** @type {CodeAction} */
       const codeAction = {
-        title: `Extract '${newDefName}' to $defs`,
+        title: `Extract '${newDefName}' to ${defName}`,
         kind: CodeActionKind.RefactorExtract,
         edit: {
           documentChanges: [

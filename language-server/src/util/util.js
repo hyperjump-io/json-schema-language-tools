@@ -1,9 +1,10 @@
 import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimental";
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
-import { readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
-
+import detectIndent from "detect-indent";
+import * as jsoncParser from "jsonc-parser";
 /**
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { Ignore } from "ignore"
@@ -106,5 +107,40 @@ export const readDirRecursive = async function* (path, filter, cwd) {
     } else if (entry.isFile()) {
       yield relativeEntryPath;
     }
+  }
+};
+
+/** @type (uri: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => Promise<{ type: 'tabs' | 'spaces', size: number }> */
+export const detectIndentationFromContent = async (uri, defaultTabSize, insertSpaces, detectIndentation) => {
+  try {
+    const filePath = URI.parse(uri).fsPath;
+    const content = await readFile(filePath, "utf-8");
+    const { amount } = detectIndent(content);
+
+    if (!detectIndentation) {
+      return { type: "spaces", size: defaultTabSize };
+    }
+
+    return insertSpaces
+      ? { type: "spaces", size: amount }
+      : { type: "tabs", size: amount };
+  } catch {
+    return { type: "spaces", size: defaultTabSize };
+  }
+};
+
+/** @type (uri: string, newDefText: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => Promise<string>} */
+export const formatNewDef = async (uri, newDefText, defaultTabSize, insertSpaces, detectIndentation) => {
+  try {
+    const detectedIndent = await detectIndentationFromContent(uri, defaultTabSize, insertSpaces, detectIndentation);
+
+    const edits = jsoncParser.format(newDefText, undefined, {
+      insertSpaces: detectedIndent?.type === "spaces",
+      tabSize: detectedIndent?.size ?? defaultTabSize
+    });
+
+    return jsoncParser.applyEdits(newDefText, edits).replace(/\n/g, `\n${"  ".repeat(detectedIndent?.size ?? defaultTabSize)}`);
+  } catch {
+    return newDefText;
   }
 };
