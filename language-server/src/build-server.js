@@ -50,7 +50,7 @@ export const buildServer = (connection) => {
   new GotoDefinitionFeature(server, schemas);
   new FindReferencesFeature(server, schemas);
   new HoverFeature(server, schemas);
-  new ExtractSubSchemaToDefs(server, schemas);
+  new ExtractSubSchemaToDefs(server, schemas, configuration);
 
   // TODO: It's awkward that diagnostics needs a variable
   const diagnostics = new DiagnosticsFeature(server, [
