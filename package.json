@@ -13,7 +13,6 @@
   "devDependencies": {
     "@stylistic/eslint-plugin": "*",
     "@types/node": "*",
-    "@types/picomatch": "*",
     "@vitest/coverage-v8": "*",
     "eslint-import-resolver-typescript": "*",
     "eslint-plugin-import": "*",
