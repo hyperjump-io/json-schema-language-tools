@@ -166,4 +166,3 @@ export const withFormatting = async (textDocument, text, textEdit, defaultTabSiz
     newText: jsoncParser.applyEdits(textEdit.newText, formatEdits)
   };
 };
-
