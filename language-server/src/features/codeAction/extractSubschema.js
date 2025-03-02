@@ -5,7 +5,7 @@ import {
 import { getKeywordName } from "@hyperjump/json-schema/experimental";
 import * as SchemaDocument from "../../model/schema-document.js";
 import * as SchemaNode from "../../model/schema-node.js";
-import { formatNewDef } from "../../util/util.js";
+import { withFormatting } from "../../util/util.js";
 
 /**
  * @import { Server } from "../../services/server.js";
@@ -69,13 +69,29 @@ export class ExtractSubSchemaToDefs {
           }
         }
       }
-      let newDefName = `def${highestDefNumber + 1}`;
-      const settings = await this.configuration.get();
-      const extractedDef = schemaDocument.textDocument.getText(range);
-      const newFormattedDef = await formatNewDef(textDocument.uri, extractedDef, settings.tabSize, settings.insertSpaces, settings.detectIndentation);
       let defName = getKeywordName(
         /** @type {string} */ (node.root.dialectUri),
         "https://json-schema.org/keyword/definitions"
+      );
+
+      let newDefName = `def${highestDefNumber + 1}`;
+      const settings = await this.configuration.get();
+      const extractedDef = schemaDocument.textDocument.getText(range);
+      const defOffset = definitionsNode ? definitionsNode.offset + 1 : node.root.offset + node.root.textLength - 2;
+      const formattedTextEdit = await withFormatting(
+        schemaDocument.textDocument,
+        schemaDocument.textDocument.getText(),
+        {
+          range: {
+            start: schemaDocument.textDocument.positionAt(offset),
+            end: schemaDocument.textDocument.positionAt(offset)
+          },
+          newText: definitionsNode ? `\n"${newDefName}": ${extractedDef},` : `,\n"${defName}": {\n"${newDefName}": ${extractedDef}\n}`
+        },
+        settings.tabSize,
+        settings.insertSpaces,
+        settings.detectIndentation,
+        defOffset
       );
 
       /** @type {CodeAction} */
@@ -95,14 +111,14 @@ export class ExtractSubSchemaToDefs {
                       start: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1),
                       end: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1)
                     },
-                    newText: `\n    "${newDefName}": ${newFormattedDef},`
+                    newText: formattedTextEdit.newText
                   }
                 : {
                     range: {
                       start: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2),
                       end: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2)
                     },
-                    newText: `,\n  "${defName}": {\n    "${newDefName}": ${newFormattedDef}\n  }`
+                    newText: formattedTextEdit.newText
                   }
             ])
           ]
@@ -113,3 +129,4 @@ export class ExtractSubSchemaToDefs {
     });
   }
 }
+

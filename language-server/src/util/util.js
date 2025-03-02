@@ -5,9 +5,12 @@ import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
 import detectIndent from "detect-indent";
 import * as jsoncParser from "jsonc-parser";
+
 /**
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { Ignore } from "ignore"
+ * @import { TextEdit } from "vscode-languageserver"
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
  */
 
 
@@ -111,7 +114,7 @@ export const readDirRecursive = async function* (path, filter, cwd) {
 };
 
 /** @type (uri: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => Promise<{ type: 'tabs' | 'spaces', size: number }> */
-export const detectIndentationFromContent = async (uri, defaultTabSize, insertSpaces, detectIndentation) => {
+const detectIndentationFromContent = async (uri, defaultTabSize, insertSpaces, detectIndentation) => {
   try {
     const filePath = URI.parse(uri).fsPath;
     const content = await readFile(filePath, "utf-8");
@@ -129,18 +132,38 @@ export const detectIndentationFromContent = async (uri, defaultTabSize, insertSp
   }
 };
 
-/** @type (uri: string, newDefText: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => Promise<string>} */
-export const formatNewDef = async (uri, newDefText, defaultTabSize, insertSpaces, detectIndentation) => {
-  try {
-    const detectedIndent = await detectIndentationFromContent(uri, defaultTabSize, insertSpaces, detectIndentation);
+/**
+* @type (textDocument: TextDocument, text: string, textEdit: TextEdit,
+* defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean, offset: number) => Promise<TextEdit>
+*/
+export const withFormatting = async (textDocument, text, textEdit, defaultTabSize, insertSpaces, detectIndentation, offset) => {
+  const detectedIndent = await detectIndentationFromContent(textDocument.uri, defaultTabSize, insertSpaces, detectIndentation);
 
-    const edits = jsoncParser.format(newDefText, undefined, {
-      insertSpaces: detectedIndent?.type === "spaces",
-      tabSize: detectedIndent?.size ?? defaultTabSize
-    });
+  const formattingOptions = {
+    insertSpaces: detectedIndent?.type === "spaces",
+    tabSize: detectedIndent?.size ?? defaultTabSize,
+    keepLines: true,
+    eol: "\n"
+  };
 
-    return jsoncParser.applyEdits(newDefText, edits).replace(/\n/g, `\n${"  ".repeat(detectedIndent?.size ?? defaultTabSize)}`);
-  } catch {
-    return newDefText;
+  const newText = jsoncParser.applyEdits(text, [
+    {
+      offset: offset,
+      length: 0,
+      content: textEdit.newText
+    }
+  ]);
+
+  const range = { offset: offset, length: textEdit.newText.length };
+  const formatEdits = jsoncParser.format(newText, range, formattingOptions);
+
+  for (const formatEdit of formatEdits) {
+    formatEdit.offset -= offset;
   }
+
+  return {
+    range: textEdit.range,
+    newText: jsoncParser.applyEdits(textEdit.newText, formatEdits)
+  };
 };
+
