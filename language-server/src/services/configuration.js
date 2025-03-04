@@ -14,6 +14,7 @@ import ignore from "ignore";
  *   tabSize: number;
  *   insertSpaces: boolean;
  *   detectIndentation: boolean;
+ *   endOfLine: string;
  * }} DocumentSettings
  */
 
@@ -87,34 +88,31 @@ export class Configuration {
   /** @type (documentUri?: string) => Promise<DocumentSettings> */
   async get(documentUri) {
     if (!this.#settings) {
-      /** @type {unknown} */
-      const extensionSettings = await this.#server.workspace.getConfiguration({
-        section: "jsonSchemaLanguageServer"
-      });
-      /** @type {{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean }} */
-      const editorSettings = /** @type {unknown} */ (
-        await this.#server.workspace.getConfiguration({
-          section: "editor",
-          scopeUri: documentUri
-        })
-      ) || {};
-      const settings = extensionSettings ?? {};
-      /** @type {{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean }} */
+      /** @type {unknown[]} */
+      const config = await this.#server.workspace.getConfiguration([
+        { section: "jsonSchemaLanguageServer" },
+        { section: "editor", scopeUri: documentUri },
+        { section: "files.eol" }
+      ]);
+      const [extensionSettings, editorSettings, eol] = /** @type [{ defaultDialect?: string; schemaFilePatterns?: string[] },{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean }, string ] */ (config);
+      /** @type {{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean, endOfLine?: string }} */
       const indentationSettings = {
-        tabSize: editorSettings?.tabSize,
-        insertSpaces: editorSettings?.insertSpaces,
-        detectIndentation: editorSettings?.detectIndentation
+        tabSize: editorSettings?.tabSize ?? this.#defaultSettings.tabSize,
+        insertSpaces: editorSettings?.insertSpaces ?? this.#defaultSettings.insertSpaces,
+        detectIndentation: editorSettings?.detectIndentation ?? this.#defaultSettings.detectIndentation,
+        endOfLine: eol
       };
 
-      // Merge settings with proper priority
       const fullSettings = {
         ...this.#defaultSettings,
-        ...settings,
+        ...extensionSettings,
         ...indentationSettings
       };
+
       this.#settings = /** @type DocumentSettings */ (fullSettings);
       this.#matcher = undefined;
     }
+
     return /** @type DocumentSettings */ (this.#settings);
   }
 
