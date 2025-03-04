@@ -1,6 +1,6 @@
 import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimental";
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
 import detectIndent from "detect-indent";
@@ -10,7 +10,6 @@ import * as jsoncParser from "jsonc-parser";
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { Ignore } from "ignore"
  * @import { TextEdit } from "vscode-languageserver"
- * @import { TextDocument } from "vscode-languageserver-textdocument"
  */
 
 
@@ -113,12 +112,10 @@ export const readDirRecursive = async function* (path, filter, cwd) {
   }
 };
 
-/** @type (uri: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => Promise<{ type: 'tabs' | 'spaces', size: number }> */
-const detectIndentationFromContent = async (uri, defaultTabSize, insertSpaces, detectIndentation) => {
+/** @type (text: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => { type: 'tabs' | 'spaces', size: number } */
+const detectIndentationFromContent = (text, defaultTabSize, insertSpaces, detectIndentation) => {
   try {
-    const filePath = URI.parse(uri).fsPath;
-    const content = await readFile(filePath, "utf-8");
-    const { amount } = detectIndent(content);
+    const { amount } = detectIndent(text);
 
     if (!detectIndentation) {
       return { type: "spaces", size: defaultTabSize };
@@ -132,18 +129,15 @@ const detectIndentationFromContent = async (uri, defaultTabSize, insertSpaces, d
   }
 };
 
-/**
-* @type (textDocument: TextDocument, text: string, textEdit: TextEdit,
-* defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean, offset: number) => Promise<TextEdit>
-*/
-export const withFormatting = async (textDocument, text, textEdit, defaultTabSize, insertSpaces, detectIndentation, offset) => {
-  const detectedIndent = await detectIndentationFromContent(textDocument.uri, defaultTabSize, insertSpaces, detectIndentation);
+/** @type (text: string, textEdit: TextEdit,defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean, eol: string, offset: number) => TextEdit */
+export const withFormatting = (text, textEdit, defaultTabSize, insertSpaces, detectIndentation, eol, offset) => {
+  const detectedIndent = detectIndentationFromContent(text, defaultTabSize, insertSpaces, detectIndentation);
 
   const formattingOptions = {
     insertSpaces: detectedIndent?.type === "spaces",
     tabSize: detectedIndent?.size ?? defaultTabSize,
     keepLines: true,
-    eol: "\n"
+    eol: eol
   };
 
   const newText = jsoncParser.applyEdits(text, [

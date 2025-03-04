@@ -48,38 +48,26 @@ export class ExtractSubSchemaToDefs {
         return [];
       }
 
-      let definitionsNode;
-      for (const schemaNode of SchemaNode.allNodes(node.root)) {
-        if (schemaNode.keywordUri === "https://json-schema.org/keyword/definitions") {
-          definitionsNode = schemaNode;
-          break;
-        }
-      }
-
+      let definitionsNode = SchemaNode.step("$defs", node.root) ?? SchemaNode.step("definitions", node.root);
       let highestDefNumber = 0;
       if (definitionsNode) {
         let defNodeKeys = SchemaNode.keys(definitionsNode);
         for (const key of defNodeKeys) {
-          /** @type {string} */
-          const keyValue = String(SchemaNode.value(key));
-          /** @type RegExpMatchArray | null */
+          const keyValue = /** @type {string} */ (SchemaNode.value(key));
+
           const match = /^def(\d+)$/.exec(keyValue);
           if (match) {
             highestDefNumber = Math.max(parseInt(match[1], 10), highestDefNumber);
           }
         }
       }
-      let defName = getKeywordName(
-        /** @type {string} */ (node.root.dialectUri),
-        "https://json-schema.org/keyword/definitions"
-      );
 
-      let newDefName = `def${highestDefNumber + 1}`;
+      let defName = getKeywordName(/** @type {string} */(node.root.dialectUri), "https://json-schema.org/keyword/definitions");
+      const newDefName = `def${highestDefNumber + 1}`;
       const settings = await this.configuration.get();
       const extractedDef = schemaDocument.textDocument.getText(range);
       const defOffset = definitionsNode ? definitionsNode.offset + 1 : node.root.offset + node.root.textLength - 2;
-      const formattedTextEdit = await withFormatting(
-        schemaDocument.textDocument,
+      const formattedTextEdit = withFormatting(
         schemaDocument.textDocument.getText(),
         {
           range: {
@@ -91,6 +79,7 @@ export class ExtractSubSchemaToDefs {
         settings.tabSize,
         settings.insertSpaces,
         settings.detectIndentation,
+        settings.endOfLine,
         defOffset
       );
 
