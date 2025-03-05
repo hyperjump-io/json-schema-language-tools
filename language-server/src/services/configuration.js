@@ -68,15 +68,7 @@ export class Configuration {
     this.#didChangeConfigurationHandlers = [];
 
     this.#server.onDidChangeConfiguration((params) => {
-      /** @type unknown */
-      const settings = params.settings;
-
-      /** @type unknown */
-      const fullSettings = {
-        ...this.#defaultSettings,
-        .../** @type Settings */(settings).jsonSchemaLanguageServer
-      };
-      this.#settings = /** @type DocumentSettings */ (fullSettings);
+      this.#settings = undefined;
       this.#matcher = undefined;
 
       for (const handler of this.#didChangeConfigurationHandlers) {
