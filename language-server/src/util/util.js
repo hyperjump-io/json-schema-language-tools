@@ -7,9 +7,11 @@ import detectIndent from "detect-indent";
 import * as jsoncParser from "jsonc-parser";
 
 /**
- * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
- * @import { Ignore } from "ignore"
  * @import { TextEdit } from "vscode-languageserver"
+ * @import { TextDocument } from "vscode-languageserver-textdocument"
+ * @import { Ignore } from "ignore"
+ * @import { DocumentSettings } from "../services/configuration.js"
+ * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
 
@@ -112,38 +114,26 @@ export const readDirRecursive = async function* (path, filter, cwd) {
   }
 };
 
-/** @type (text: string, defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean) => { type: 'tabs' | 'spaces', size: number } */
-const detectIndentationFromContent = (text, defaultTabSize, insertSpaces, detectIndentation) => {
-  try {
-    const { amount } = detectIndent(text);
-
-    if (!detectIndentation) {
-      return { type: "spaces", size: defaultTabSize };
-    }
-
-    return insertSpaces
-      ? { type: "spaces", size: amount }
-      : { type: "tabs", size: amount };
-  } catch {
-    return { type: "spaces", size: defaultTabSize };
-  }
-};
-
-/** @type (text: string, textEdit: TextEdit,defaultTabSize: number, insertSpaces: boolean, detectIndentation: boolean, eol: string, offset: number) => TextEdit */
-export const withFormatting = (text, textEdit, defaultTabSize, insertSpaces, detectIndentation, eol, offset) => {
-  const detectedIndent = detectIndentationFromContent(text, defaultTabSize, insertSpaces, detectIndentation);
-
-  const formattingOptions = {
-    insertSpaces: detectedIndent?.type === "spaces",
-    tabSize: detectedIndent?.size ?? defaultTabSize,
-    keepLines: true,
-    eol: eol
+/** @type (textDocument: TextDocument, textEdit: TextEdit, settings: DocumentSettings) => TextEdit */
+export const withFormatting = (textDocument, textEdit, settings) => {
+  const indentation = settings.detectIndentation ? detectIndent(textDocument.getText()) : {
+    amount: settings.tabSize,
+    type: settings.insertSpaces ? "space" : "tab"
   };
 
-  const newText = jsoncParser.applyEdits(text, [
+  const formattingOptions = {
+    insertSpaces: indentation.type === "space",
+    tabSize: indentation.amount,
+    keepLines: true,
+    eol: settings.endOfLine
+  };
+
+  const offset = textDocument.offsetAt(textEdit.range.start);
+
+  const newText = jsoncParser.applyEdits(textDocument.getText(), [
     {
       offset: offset,
-      length: 0,
+      length: textDocument.offsetAt(textEdit.range.end) - offset,
       content: textEdit.newText
     }
   ]);
