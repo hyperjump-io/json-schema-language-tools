@@ -25,6 +25,7 @@ export class ExtractSubSchemaToDefs {
     this.server = server;
     this.schemas = schemas;
     this.configuration = configuration;
+
     server.onInitialize(() => ({
       capabilities: {
         codeActionProvider: true
@@ -48,7 +49,10 @@ export class ExtractSubSchemaToDefs {
         return [];
       }
 
-      let definitionsNode = SchemaNode.step("$defs", node.root) ?? SchemaNode.step("definitions", node.root);
+      const dialectUri = /** @type {string} */(node.root.dialectUri);
+      const definitionsKeyword = getKeywordName(dialectUri, "https://json-schema.org/keyword/definitions");
+
+      const definitionsNode = SchemaNode.step(definitionsKeyword, node.root);
       let highestDefNumber = 0;
       if (definitionsNode) {
         let defNodeKeys = SchemaNode.keys(definitionsNode);
@@ -62,53 +66,36 @@ export class ExtractSubSchemaToDefs {
         }
       }
 
-      let defName = getKeywordName(/** @type {string} */(node.root.dialectUri), "https://json-schema.org/keyword/definitions");
       const newDefName = `def${highestDefNumber + 1}`;
-      const settings = await this.configuration.get();
       const extractedDef = schemaDocument.textDocument.getText(range);
-      const defOffset = definitionsNode ? definitionsNode.offset + 1 : node.root.offset + node.root.textLength - 2;
-      const formattedTextEdit = withFormatting(
-        schemaDocument.textDocument.getText(),
-        {
-          range: {
-            start: schemaDocument.textDocument.positionAt(offset),
-            end: schemaDocument.textDocument.positionAt(offset)
-          },
-          newText: definitionsNode ? `\n"${newDefName}": ${extractedDef},` : `,\n"${defName}": {\n"${newDefName}": ${extractedDef}\n}`
-        },
-        settings.tabSize,
-        settings.insertSpaces,
-        settings.detectIndentation,
-        settings.endOfLine,
-        defOffset
-      );
+      const settings = await this.configuration.get();
 
       /** @type {CodeAction} */
       const codeAction = {
-        title: `Extract '${newDefName}' to ${defName}`,
+        title: `Extract '${newDefName}' to ${definitionsKeyword}`,
         kind: CodeActionKind.RefactorExtract,
         edit: {
           documentChanges: [
             TextDocumentEdit.create({ uri: textDocument.uri, version: null }, [
               {
                 range: range,
-                newText: `{ "$ref": "#/${defName}/${newDefName}" }`
+                newText: `{ "$ref": "#/${definitionsKeyword}/${newDefName}" }`
               },
               definitionsNode
-                ? {
+                ? withFormatting(schemaDocument.textDocument, {
                     range: {
                       start: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1),
                       end: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1)
                     },
-                    newText: formattedTextEdit.newText
-                  }
-                : {
+                    newText: `\n"${newDefName}": ${extractedDef},`
+                  }, settings)
+                : withFormatting(schemaDocument.textDocument, {
                     range: {
                       start: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2),
                       end: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2)
                     },
-                    newText: formattedTextEdit.newText
-                  }
+                    newText: `,\n"${definitionsKeyword}": {\n"${newDefName}": ${extractedDef}\n}`
+                  }, settings)
             ])
           ]
         }
