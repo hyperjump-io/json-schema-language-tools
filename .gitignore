@@ -5,3 +5,4 @@ dist/
 .vscode/
 scratch/
 TODO
+.DS_Store
