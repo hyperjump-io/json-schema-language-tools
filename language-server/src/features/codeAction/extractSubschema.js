@@ -49,7 +49,7 @@ export class ExtractSubSchemaToDefs {
         return [];
       }
 
-      const dialectUri = /** @type {string} */(node.root.dialectUri);
+      const dialectUri = /** @type {string} */ (node.root.dialectUri);
       const definitionsKeyword = getKeywordName(dialectUri, "https://json-schema.org/keyword/definitions");
 
       const definitionsNode = SchemaNode.step(definitionsKeyword, node.root);
