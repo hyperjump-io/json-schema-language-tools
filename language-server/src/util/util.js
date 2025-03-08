@@ -10,7 +10,7 @@ import * as jsoncParser from "jsonc-parser";
  * @import { TextEdit } from "vscode-languageserver"
  * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Ignore } from "ignore"
- * @import { DocumentSettings } from "../services/configuration.js"
+ * @import { IndentationSettings } from "../services/configuration.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
@@ -114,7 +114,7 @@ export const readDirRecursive = async function* (path, filter, cwd) {
   }
 };
 
-/** @type (textDocument: TextDocument, textEdit: TextEdit, settings: DocumentSettings) => TextEdit */
+/** @type (textDocument: TextDocument, textEdit: TextEdit, settings: IndentationSettings) => TextEdit */
 export const withFormatting = (textDocument, textEdit, settings) => {
   const indentation = settings.detectIndentation ? detectIndent(textDocument.getText()) : {
     amount: settings.tabSize,
