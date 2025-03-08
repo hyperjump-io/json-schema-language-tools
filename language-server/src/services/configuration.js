@@ -35,6 +35,7 @@ export class Configuration {
 
   /** @type DocumentSettings | undefined */
   #settings;
+
   /** @type Partial<DocumentSettings> */
   #defaultSettings;
 
