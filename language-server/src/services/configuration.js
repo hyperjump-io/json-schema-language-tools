@@ -11,10 +11,7 @@ import ignore from "ignore";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
- *   tabSize: number;
- *   insertSpaces: boolean;
  *   detectIndentation: boolean;
- *   endOfLine: string;
  * }} DocumentSettings
  */
 
@@ -22,6 +19,15 @@ import ignore from "ignore";
  * @typedef {{
  *   jsonSchemaLanguageServer?: DocumentSettings;
  * }} Settings
+ */
+
+/**
+ * @typedef {{
+ *   tabSize?: number;
+ *   insertSpaces?: boolean;
+ *   detectIndentation?: boolean;
+ *   endOfLine?: string;
+ * }} IndentationSettings
  */
 
 export class Configuration {
@@ -68,7 +74,15 @@ export class Configuration {
     this.#didChangeConfigurationHandlers = [];
 
     this.#server.onDidChangeConfiguration((params) => {
-      this.#settings = undefined;
+      /** @type unknown */
+      const settings = params.settings;
+
+      /** @type unknown */
+      const fullSettings = {
+        ...this.#defaultSettings,
+        .../** @type Settings */(settings).jsonSchemaLanguageServer
+      };
+      this.#settings = /** @type DocumentSettings */ (fullSettings);
       this.#matcher = undefined;
 
       for (const handler of this.#didChangeConfigurationHandlers) {
@@ -77,20 +91,20 @@ export class Configuration {
     });
   }
 
-  /** @type (documentUri?: string) => Promise<DocumentSettings> */
-  async get(documentUri) {
+  /** @type () => Promise<DocumentSettings> */
+  async get() {
     if (!this.#settings) {
       /** @type {unknown[]} */
       const config = await this.#server.workspace.getConfiguration([
         { section: "jsonSchemaLanguageServer" },
-        { section: "editor", scopeUri: documentUri },
+        { section: "editor" },
         { section: "files.eol" }
       ]);
-      const [extensionSettings, editorSettings, eol] = /** @type [{ defaultDialect?: string; schemaFilePatterns?: string[] },{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean }, string ] */ (config);
-      /** @type {{ tabSize?: number; insertSpaces?: boolean; detectIndentation?: boolean, endOfLine?: string }} */
+      const [extensionSettings, editorSettings, eol] = /** @type [DocumentSettings, IndentationSettings, string] */ (config);
+      /** @type IndentationSettings */
       const indentationSettings = {
-        tabSize: editorSettings?.tabSize ?? this.#defaultSettings.tabSize,
-        insertSpaces: editorSettings?.insertSpaces ?? this.#defaultSettings.insertSpaces,
+        tabSize: editorSettings?.tabSize,
+        insertSpaces: editorSettings?.insertSpaces,
         detectIndentation: editorSettings?.detectIndentation ?? this.#defaultSettings.detectIndentation,
         endOfLine: eol
       };
