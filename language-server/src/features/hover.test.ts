@@ -3,11 +3,10 @@ import { HoverRequest, MarkupKind } from "vscode-languageserver";
 import { TestClient } from "../test/test-client.ts";
 
 import type { Hover, MarkupContent } from "vscode-languageserver";
-import type { DocumentSettings } from "../services/configuration.js";
 
 
 describe("Feature - Hover", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeAll(async () => {
     client = new TestClient();
