@@ -1,17 +1,17 @@
 import { getKeywordId, getKeywordName } from "@hyperjump/json-schema/experimental";
 import { resolveIri as hyperjumpResolveIri } from "@hyperjump/uri";
 import { readdir } from "node:fs/promises";
+import { EOL } from "node:os";
 import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
 import detectIndent from "detect-indent";
 import * as jsoncParser from "jsonc-parser";
-import os from "os";
 
 /**
  * @import { TextEdit } from "vscode-languageserver"
  * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Ignore } from "ignore"
- * @import { DocumentSettings} from "../services/configuration.js"
+ * @import { DocumentSettings } from "../services/configuration.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
@@ -126,7 +126,7 @@ export const withFormatting = (textDocument, textEdit, settings) => {
     insertSpaces: indentation.type === "space",
     tabSize: indentation.amount,
     keepLines: true,
-    eol: settings.endOfLine == "auto" ? os.EOL : settings.endOfLine
+    eol: settings.eol == "auto" ? EOL : settings.eol
   };
 
   const offset = textDocument.offsetAt(textEdit.range.start);
@@ -151,3 +151,15 @@ export const withFormatting = (textDocument, textEdit, settings) => {
     newText: jsoncParser.applyEdits(textEdit.newText, formatEdits)
   };
 };
+
+// eslint-disable-next-line @stylistic/no-extra-parens
+export const pick = /** @type <T extends object, K extends keyof T>(object: T, ...keys: K[]) => Partial<Pick<T, K>> */ ((object, ...keys) => {
+  /** @type Partial<typeof object> */
+  const result = {};
+  for (const key of keys) {
+    if (key in object) {
+      result[key] = object[key];
+    }
+  }
+  return result;
+});
