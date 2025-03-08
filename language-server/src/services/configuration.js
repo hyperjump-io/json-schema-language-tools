@@ -1,5 +1,6 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import ignore from "ignore";
+import { pick } from "../util/util.js";
 
 /**
  * @import { DidChangeConfigurationParams, NotificationHandler } from "vscode-languageserver"
@@ -11,20 +12,42 @@ import ignore from "ignore";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
- *   detectIndentation?: boolean;
- *   tabSize?: number;
- *   insertSpaces?: boolean;
- *   endOfLine: string;
- * }} DocumentSettings
+ * }} LanguageServerSettings
  */
 
+/**
+ * @typedef {{
+ *   tabSize?: number;
+ *   insertSpaces?: boolean;
+ *   detectIndentation: boolean;
+ * }} EditorSettings
+ */
+
+/**
+ * @typedef {{
+ *   eol?: string;
+ * }} FilesSettings
+ */
+
+/**
+ * @typedef {LanguageServerSettings & EditorSettings & FilesSettings} DocumentSettings
+ */
+
+/**
+ * @typedef {[
+ *   Partial<LanguageServerSettings> | null,
+ *   Partial<EditorSettings> | null,
+ *   Partial<FilesSettings> | null
+ * ]} Settings
+ */
 
 export class Configuration {
   #server;
 
   /** @type DocumentSettings | undefined */
   #settings;
-  /** @type Partial<DocumentSettings> */
+
+  /** @type DocumentSettings */
   #defaultSettings;
 
   /** @type ((uri: string) => boolean) | undefined */
@@ -76,32 +99,22 @@ export class Configuration {
   /** @type () => Promise<DocumentSettings> */
   async get() {
     if (!this.#settings) {
-      /** @type {unknown[]} */
-      const config = await this.#server.workspace.getConfiguration([
+      const settings = /** @type Settings */ (await this.#server.workspace.getConfiguration([
         { section: "jsonSchemaLanguageServer" },
         { section: "editor" },
-        { section: "files.eol" }
-      ]);
-      const [extensionSettings, editorSettings, eol] = /** @type [Partial<DocumentSettings> | null, Partial<DocumentSettings> | null, string | null] */ (config);
-      const indentationSettings = {
-        tabSize: editorSettings?.tabSize,
-        insertSpaces: editorSettings?.insertSpaces,
-        detectIndentation: editorSettings?.detectIndentation ?? this.#defaultSettings.detectIndentation,
-        endOfLine: eol
+        { section: "files" }
+      ]));
+      const [languageServerSettings, editorSettings, filesSettings] = settings;
 
-      };
-
-      const fullSettings = {
+      this.#settings = {
         ...this.#defaultSettings,
-        ...extensionSettings,
-        ...indentationSettings
+        ...languageServerSettings,
+        ...pick(editorSettings ?? {}, "tabSize", "insertSpaces", "detectIndentation"),
+        ...pick(filesSettings ?? {}, "eol")
       };
-
-      this.#settings = /** @type DocumentSettings */ (fullSettings);
-      this.#matcher = undefined;
     }
 
-    return /** @type DocumentSettings */ (this.#settings);
+    return this.#settings;
   }
 
   /** @type (uri: string) => Promise<boolean> */
