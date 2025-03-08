@@ -3,11 +3,10 @@ import { DiagnosticSeverity, PublishDiagnosticsNotification } from "vscode-langu
 import { TestClient } from "../../test/test-client.ts";
 
 import type { Diagnostic } from "vscode-languageserver";
-import type { DocumentSettings } from "../../services/configuration.js";
 
 
 describe("Feature - Validate $vocabulary", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeEach(async () => {
     client = new TestClient();
