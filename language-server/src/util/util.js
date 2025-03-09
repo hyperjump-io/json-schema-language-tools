@@ -5,12 +5,13 @@ import { join, relative } from "node:path";
 import { URI } from "vscode-uri";
 import detectIndent from "detect-indent";
 import * as jsoncParser from "jsonc-parser";
+import os from "os";
 
 /**
  * @import { TextEdit } from "vscode-languageserver"
  * @import { TextDocument } from "vscode-languageserver-textdocument"
  * @import { Ignore } from "ignore"
- * @import { IndentationSettings } from "../services/configuration.js"
+ * @import { DocumentSettings} from "../services/configuration.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  */
 
@@ -114,7 +115,7 @@ export const readDirRecursive = async function* (path, filter, cwd) {
   }
 };
 
-/** @type (textDocument: TextDocument, textEdit: TextEdit, settings: IndentationSettings) => TextEdit */
+/** @type (textDocument: TextDocument, textEdit: TextEdit, settings: DocumentSettings) => TextEdit */
 export const withFormatting = (textDocument, textEdit, settings) => {
   const indentation = settings.detectIndentation ? detectIndent(textDocument.getText()) : {
     amount: settings.tabSize,
@@ -125,7 +126,7 @@ export const withFormatting = (textDocument, textEdit, settings) => {
     insertSpaces: indentation.type === "space",
     tabSize: indentation.amount,
     keepLines: true,
-    eol: settings.endOfLine
+    eol: settings.endOfLine == "auto" ? os.EOL : settings.endOfLine
   };
 
   const offset = textDocument.offsetAt(textEdit.range.start);
