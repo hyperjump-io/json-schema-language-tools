@@ -11,31 +11,19 @@ import ignore from "ignore";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
- *   detectIndentation: boolean;
+ *   detectIndentation?: boolean;
+ *   tabSize?: number;
+ *   insertSpaces?: boolean;
+ *   endOfLine: string;
  * }} DocumentSettings
  */
 
-/**
- * @typedef {{
- *   jsonSchemaLanguageServer?: DocumentSettings;
- * }} Settings
- */
-
-/**
- * @typedef {{
- *   tabSize?: number;
- *   insertSpaces?: boolean;
- *   detectIndentation?: boolean;
- *   endOfLine?: string;
- * }} IndentationSettings
- */
 
 export class Configuration {
   #server;
 
   /** @type DocumentSettings | undefined */
   #settings;
-
   /** @type Partial<DocumentSettings> */
   #defaultSettings;
 
@@ -52,7 +40,8 @@ export class Configuration {
     this.#server = server;
 
     this.#defaultSettings = {
-      schemaFilePatterns: ["*.schema.json", "schema.json"]
+      schemaFilePatterns: ["*.schema.json", "schema.json"],
+      detectIndentation: true
     };
 
     let hasDidChangeConfigurationCapability = false;
@@ -93,13 +82,13 @@ export class Configuration {
         { section: "editor" },
         { section: "files.eol" }
       ]);
-      const [extensionSettings, editorSettings, eol] = /** @type [DocumentSettings, IndentationSettings, string] */ (config);
-      /** @type IndentationSettings */
+      const [extensionSettings, editorSettings, eol] = /** @type [Partial<DocumentSettings> | null, Partial<DocumentSettings> | null, string | null] */ (config);
       const indentationSettings = {
         tabSize: editorSettings?.tabSize,
         insertSpaces: editorSettings?.insertSpaces,
         detectIndentation: editorSettings?.detectIndentation ?? this.#defaultSettings.detectIndentation,
         endOfLine: eol
+
       };
 
       const fullSettings = {
