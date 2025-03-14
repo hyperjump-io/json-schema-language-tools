@@ -69,7 +69,10 @@ export class ExtractSubSchemaToDefs {
       const newDefName = `def${highestDefNumber + 1}`;
       const extractedDef = schemaDocument.textDocument.getText(range);
       const settings = await this.configuration.get();
-
+      const lastDefinition = definitionsNode?.children.at(-1);
+      const lastDefinitionPosition = (lastDefinition?.offset && lastDefinition?.textLength)
+        ? lastDefinition.offset + lastDefinition.textLength
+        : /** @type {number} */ (definitionsNode?.offset) + 1;
       /** @type {CodeAction} */
       const codeAction = {
         title: `Extract '${newDefName}' to ${definitionsKeyword}`,
@@ -84,10 +87,10 @@ export class ExtractSubSchemaToDefs {
               definitionsNode
                 ? withFormatting(schemaDocument.textDocument, {
                     range: {
-                      start: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1),
-                      end: schemaDocument.textDocument.positionAt(definitionsNode.offset + 1)
+                      start: schemaDocument.textDocument.positionAt(lastDefinitionPosition),
+                      end: schemaDocument.textDocument.positionAt(lastDefinitionPosition)
                     },
-                    newText: `\n"${newDefName}": ${extractedDef},`
+                    newText: lastDefinition ? `,\n"${newDefName}": ${extractedDef}` : `\n"${newDefName}": ${extractedDef}`
                   }, settings)
                 : withFormatting(schemaDocument.textDocument, {
                     range: {
