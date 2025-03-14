@@ -2,11 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TestClient } from "../test/test-client.ts";
 import { PublishDiagnosticsNotification } from "vscode-languageserver";
 
-import type { DocumentSettings } from "./configuration.js";
-
 
 describe("Feature - workspace (neovim)", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
   let documentUriA: string;
   let documentUriB: string;
 

@@ -3,11 +3,10 @@ import { DiagnosticSeverity, DiagnosticTag, PublishDiagnosticsNotification } fro
 import { TestClient } from "../../test/test-client.ts";
 
 import type { Diagnostic } from "vscode-languageserver";
-import type { DocumentSettings } from "../../services/configuration.js";
 
 
 describe("Feature - Deprecated", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeEach(async () => {
     client = new TestClient();
