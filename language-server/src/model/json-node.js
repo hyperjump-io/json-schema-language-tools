@@ -73,7 +73,6 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
  * ) => JsonNode;
  */
 export const cons = (uri, pointer, value, type, children, parent, offset, textLength) => {
-  // eslint-disable-next-line import/namespace
   const node = /** @type JsonNode */ (Instance.cons(uri, pointer, value, type, children, parent));
   node.offset = offset;
   node.textLength = textLength;
