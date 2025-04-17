@@ -33,13 +33,16 @@ import type {
   InitializeParams,
   ServerCapabilities
 } from "vscode-languageserver";
+import type { EditorSettings, FilesSettings, LanguageServerSettings } from "../services/configuration.js";
 
 
-export class TestClient<Configuration> {
+export class TestClient {
   private client: Connection;
   private serverName: string;
   private _serverCapabilities: ServerCapabilities | undefined;
-  private _settings: Partial<Configuration> | undefined;
+  private languageServerSettings: Partial<LanguageServerSettings> | undefined;
+  private editorSettings: Partial<EditorSettings> | undefined;
+  private filesSettings: Partial<FilesSettings> | undefined;
   private configurationChangeNotificationOptions: DidChangeConfigurationRegistrationOptions | null | undefined;
   private openDocuments: Set<string>;
   private workspaceFolder: Promise<string>;
@@ -102,11 +105,18 @@ export class TestClient<Configuration> {
     });
 
     this.client.onRequest(ConfigurationRequest.type, (params) => {
-      return params.items
-        .filter((configurationItem) => configurationItem.section === this.serverName)
-        .map(() => {
-          return this._settings;
-        });
+      return params.items.map((configurationItem) => {
+        switch (configurationItem.section) {
+          case this.serverName:
+            return this.languageServerSettings;
+          case "editor":
+            return this.editorSettings;
+          case "files":
+            return this.filesSettings;
+          default:
+            throw Error(`Unsupported configuration section: ${configurationItem.section}`);
+        }
+      });
     });
 
     this.client.listen();
@@ -114,10 +124,6 @@ export class TestClient<Configuration> {
 
   get serverCapabilities() {
     return structuredClone(this._serverCapabilities);
-  }
-
-  get settings() {
-    return structuredClone(this._settings);
   }
 
   async start(params: Partial<InitializeParams> = {}) {
@@ -208,7 +214,7 @@ export class TestClient<Configuration> {
     // Wait for dynamic registrations to be completed
     await wait(100);
 
-    await this.changeConfiguration(this._settings ?? {});
+    await this.changeConfiguration();
   }
 
   async stop() {
@@ -218,8 +224,10 @@ export class TestClient<Configuration> {
     this.client.dispose();
   }
 
-  async changeConfiguration(settings: Partial<Configuration>) {
-    this._settings = settings;
+  async changeConfiguration(languageServerSettings?: Partial<LanguageServerSettings>, editorSettings?: Partial<EditorSettings>, filesSettings?: Partial<FilesSettings>) {
+    this.languageServerSettings = languageServerSettings ?? this.languageServerSettings;
+    this.editorSettings = editorSettings ?? this.editorSettings;
+    this.filesSettings = filesSettings ?? this.filesSettings;
 
     const buildCompleted = this.buildCompleted();
 
@@ -230,7 +238,9 @@ export class TestClient<Configuration> {
     } else if (this.configurationChangeNotificationOptions) {
       await this.client.sendNotification(DidChangeConfigurationNotification.type, {
         settings: {
-          [this.serverName]: this._settings
+          [this.serverName]: this.languageServerSettings,
+          editor: this.editorSettings,
+          files: this.filesSettings
         }
       });
     }

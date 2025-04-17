@@ -1,11 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TestClient } from "../../test/test-client.ts";
 
-import type { DocumentSettings } from "../../services/configuration.js";
-
 
 describe("Feature - Completion", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeAll(async () => {
     client = new TestClient();
