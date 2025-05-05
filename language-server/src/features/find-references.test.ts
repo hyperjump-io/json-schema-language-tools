@@ -2,11 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ReferencesRequest } from "vscode-languageserver";
 import { TestClient } from "../test/test-client.ts";
 
-import type { DocumentSettings } from "../services/configuration.js";
-
 
 describe("Feature - References", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeEach(async () => {
     client = new TestClient();
