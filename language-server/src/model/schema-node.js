@@ -62,5 +62,5 @@ export {
   uri, value, typeOf, has, length,
   step, iter, keys, values, entries,
   allNodes,
-  setAnnotation, annotation, annotatedWith
+  annotation, annotatedWith
 } from "./json-node.js";

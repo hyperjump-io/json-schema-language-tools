@@ -1,7 +1,8 @@
 import { DiagnosticSeverity } from "vscode-languageserver";
-import { BASIC, compile, getSchema, hasDialect, hasVocabulary, interpret } from "@hyperjump/json-schema/experimental";
+import { BASIC, compile, getSchema, hasDialect, hasVocabulary } from "@hyperjump/json-schema/experimental";
 import * as SchemaNode from "../model/schema-node.js";
 import { keywordNameFor } from "../util/util.js";
+import { interpret, ValidationError } from "@hyperjump/json-schema/annotations/experimental";
 
 /**
  * @import { Server } from "../services/server.js";
@@ -93,18 +94,17 @@ export class ValidateSchemaFeature {
       try {
         const schema = await getSchema(schemaResource.dialectUri);
         const compiled = await compile(schema);
-        const output = interpret(compiled, schemaResource, BASIC);
-        if (output.errors) {
-          for (const error of output.errors) {
+        interpret(compiled, schemaResource, BASIC);
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          for (const outputUnit of error.output.errors ?? []) {
             schemaDocument.errors.push({
-              keyword: error.keyword,
-              keywordNode: await getSchema(error.absoluteKeywordLocation),
-              instanceNode: /** @type SchemaNodeType */ (this.#schemas.getSchemaNode(error.instanceLocation, schemaResource))
+              keyword: outputUnit.keyword,
+              keywordNode: await getSchema(outputUnit.absoluteKeywordLocation),
+              instanceNode: /** @type SchemaNodeType */ (this.#schemas.getSchemaNode(outputUnit.instanceLocation, schemaResource))
             });
           }
-        }
-      } catch (error) {
-        if (error instanceof Error) {
+        } else if (error instanceof Error) {
           schemaDocument.errors.push({
             keyword: "",
             instanceNode: schemaDocument.schemaResources[0],

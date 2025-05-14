@@ -51,9 +51,10 @@ export const fromJsonc = (node, uri = "", pointer = "", parent = undefined) => {
       break;
 
     case "property":
-      jsonNode.children = node.children?.map((child) => {
-        return fromJsonc(child, uri, pointer, jsonNode);
-      }) ?? [];
+      jsonNode.children = [
+        fromJsonc(/** @type Node */ (node.children?.[0]), uri, "*" + pointer, jsonNode),
+        fromJsonc(/** @type Node */ (node.children?.[1]), uri, pointer, jsonNode)
+      ];
       break;
   }
 
@@ -84,5 +85,5 @@ export {
   get, uri, value, typeOf, has, length,
   step, iter, keys, values, entries,
   allNodes,
-  setAnnotation, annotation, annotatedWith
+  annotation, annotatedWith
 } from "@hyperjump/json-schema/annotated-instance/experimental";

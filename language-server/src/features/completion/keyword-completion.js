@@ -18,7 +18,7 @@ export class KeywordCompletionProvider {
       const schemaNode = node.parent?.parent;
       if (schemaNode && SchemaNode.typeOf(schemaNode) === "object" && schemaNode?.isSchema && schemaNode.dialectUri) {
         const dialect = getDialect(schemaNode.dialectUri);
-        const keywords = Object.keys(dialect);
+        const keywords = Object.keys(dialect.keywords);
         completions.push(...keywords.map((keyword) => ({
           label: keyword,
           kind: CompletionItemKind.Value
