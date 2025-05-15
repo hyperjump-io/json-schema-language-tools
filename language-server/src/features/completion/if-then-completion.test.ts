@@ -74,7 +74,7 @@ describe("Feature - if/then completion", () => {
 
   test("if/then completion on property value", async () => {
     await client.writeDocument("subject.schema.json", `{
-  "if": ""
+  "if": {}
 }`);
     documentUri = await client.openDocument("subject.schema.json");
 

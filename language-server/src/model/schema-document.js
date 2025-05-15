@@ -164,6 +164,8 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
         childSchemaNode.keywordUri = propertyKeywordUri;
         if (childSchemaNode.pointer !== "") {
           schemaNode.children.push(childSchemaNode);
+        } else {
+          schemaNode.isEmbeddedSchema = true;
         }
       }
       break;
@@ -182,7 +184,7 @@ const isValueNode = (node) => {
 export const findNodeAtOffset = (document, offset) => {
   for (const schemaResource of document.schemaResources) {
     const node = _findNodeAtOffset(schemaResource, offset);
-    if (node) {
+    if (node && !node.isEmbeddedSchema) {
       return node;
     }
   }
