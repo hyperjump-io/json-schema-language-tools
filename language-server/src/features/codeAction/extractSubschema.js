@@ -51,7 +51,6 @@ export class ExtractSubSchemaToDefs {
 
       const dialectUri = /** @type {string} */ (node.root.dialectUri);
       const definitionsKeyword = getKeywordName(dialectUri, "https://json-schema.org/keyword/definitions");
-
       const definitionsNode = SchemaNode.step(definitionsKeyword, node.root);
       let highestDefNumber = 0;
       if (definitionsNode) {
@@ -69,8 +68,10 @@ export class ExtractSubSchemaToDefs {
       const newDefName = `def${highestDefNumber + 1}`;
       const extractedDef = schemaDocument.textDocument.getText(range);
       const settings = await this.configuration.get();
+      const lastSubschema = node.root.children.slice(-1)[0];
+      const lastSubschemaPosition = lastSubschema.offset + lastSubschema.textLength;
       const lastDefinition = definitionsNode?.children.at(-1);
-      const lastDefinitionPosition = (lastDefinition?.offset && lastDefinition?.textLength)
+      const lastDefinitionPosition = (lastDefinition)
         ? lastDefinition.offset + lastDefinition.textLength
         : /** @type {number} */ (definitionsNode?.offset) + 1;
       /** @type {CodeAction} */
@@ -94,8 +95,8 @@ export class ExtractSubSchemaToDefs {
                   }, settings)
                 : withFormatting(schemaDocument.textDocument, {
                     range: {
-                      start: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2),
-                      end: schemaDocument.textDocument.positionAt(node.root.offset + node.root.textLength - 2)
+                      start: schemaDocument.textDocument.positionAt(lastSubschemaPosition),
+                      end: schemaDocument.textDocument.positionAt(lastSubschemaPosition)
                     },
                     newText: `,\n"${definitionsKeyword}": {\n"${newDefName}": ${extractedDef}\n}`
                   }, settings)
