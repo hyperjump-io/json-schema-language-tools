@@ -3,7 +3,7 @@ import { CompletionRequest, CompletionItemKind } from "vscode-languageserver";
 import { TestClient } from "../../test/test-client.ts";
 
 
-describe("Feature - if/then completion", () => {
+describe("Feature - keyword completion", () => {
   let client: TestClient;
   let documentUri: string;
 
