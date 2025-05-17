@@ -23,6 +23,7 @@ import { normalizeUri } from "../util/util.js";
  *   dialectUri?: string;
  *   anchors: Record<string, string>;
  *   isSchema: boolean;
+ *   isEmbeddedSchema: boolean;
  *   keywordUri: string | undefined;
  *   embedded: Record<string, SchemaNode>;
  * }} SchemaNode
@@ -46,6 +47,7 @@ export const cons = (uri, pointer, value, type, parent, offset, textLength, dial
   node.dialectUri = dialectUri;
   node.anchors = parent?.anchors ?? {};
   node.embedded = parent?.embedded ?? {};
+  node.isEmbeddedSchema = false;
 
   if (node.baseUri !== parent?.baseUri) {
     node.embedded[uri] = node;
