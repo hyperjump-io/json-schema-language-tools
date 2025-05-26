@@ -45,8 +45,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
               {
                 newText: `{ "$ref": "#/$defs/def1" }`,
                 range: {
-                  end: { character: 5, line: 7 },
-                  start: { character: 13, line: 4 }
+                  start: { line: 4, character: 13 },
+                  end: { line: 7, character: 5 }
                 }
               },
               {
@@ -58,8 +58,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
     }
   }`,
                 range: {
-                  end: { character: 3, line: 8 },
-                  start: { character: 3, line: 8 }
+                  start: { line: 8, character: 3 },
+                  end: { line: 8, character: 3 }
                 }
               }
             ],
@@ -109,8 +109,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
               {
                 newText: `{ "$ref": "#/definitions/def2" }`,
                 range: {
-                  end: { line: 8, character: 5 },
-                  start: { line: 5, character: 11 }
+                  start: { line: 5, character: 11 },
+                  end: { line: 8, character: 5 }
                 }
               },
               {
@@ -120,8 +120,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
       "minimum": 0
     }`,
                 range: {
-                  end: { character: 5, line: 13 },
-                  start: { character: 5, line: 13 }
+                  start: { line: 13, character: 5 },
+                  end: { line: 13, character: 5 }
                 }
               }
             ],
@@ -214,8 +214,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
               {
                 newText: `{ "$ref": "#/definitions/def1" }`,
                 range: {
-                  end: { line: 7, character: 5 },
-                  start: { line: 4, character: 11 }
+                  start: { line: 4, character: 11 },
+                  end: { line: 7, character: 5 }
                 }
               },
               {
@@ -225,8 +225,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
       "minimum": 0
     }`,
                 range: {
-                  end: { character: 18, line: 9 },
-                  start: { character: 18, line: 9 }
+                  start: { line: 9, character: 18 },
+                  end: { line: 9, character: 18 }
                 }
               }
             ],
@@ -319,8 +319,8 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
                 newText: `,
         "def1": { "type": "string" }`,
                 range: {
-                  end: { character: 56, line: 23 },
-                  start: { character: 56, line: 23 }
+                  start: { line: 23, character: 56 },
+                  end: { line: 23, character: 56 }
                 }
               }
             ],
@@ -361,17 +361,15 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
     expect(edits?.[1]?.range?.end).to.eql({ line: 8, character: 3 });
   });
 
-  describe("should maintain indentation as per used in the schema", () => {
-    test("checking for the indentation: 2 spaces", async () => {
+  describe("Handling configuration settings", () => {
+    test("uses detected indentation when detectIndentation is true and applies default EOL behavior when eol is 'auto' - checking for 2 spaces", async () => {
       await client.changeConfiguration(
         undefined,
         {
-          tabSize: 2,
-          insertSpaces: true,
-          detectIndentation: false
+          detectIndentation: true
         },
         {
-          eol: "\n"
+          eol: "auto"
         }
       );
       await client.writeDocument("subject.schema.json", `{
@@ -404,7 +402,7 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
   }`);
     });
 
-    test("checking for the indentation: 4 spaces", async () => {
+    test("uses provided tabSize and insertSpaces when detectIndentation is false and respects specified EOL when settings.eol is not 'auto' - checking for 4 spaces", async () => {
       await client.changeConfiguration(
         undefined,
         {
@@ -444,6 +442,47 @@ describe("Feature - CodeAction: Extract subSchema to $defs", () => {
             "type": "string"
         }
     }`);
+    });
+
+    test("indentation.type is 'tab' when insertSpaces is false and it works correctly with the schema", async () => {
+      await client.changeConfiguration(
+        undefined,
+        {
+          tabSize: 2,
+          insertSpaces: false,
+          detectIndentation: false
+        }
+      );
+      await client.writeDocument("subject.schema.json", `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  }
+}`);
+      documentUri = await client.openDocument("subject.schema.json");
+
+      const codeActions = await client.sendRequest(CodeActionRequest.type, {
+        textDocument: { uri: documentUri },
+        range: {
+          start: { line: 4, character: 12 },
+          end: { line: 6, character: 5 }
+        },
+        context: { diagnostics: [] }
+      });
+      const firstAction = codeActions?.[0] as CodeAction;
+      const documentChange = firstAction.edit?.documentChanges?.[0] as TextDocumentEdit;
+      const edits = documentChange.edits;
+      /* eslint-disable @stylistic/no-tabs */
+      expect(edits?.[1].newText).to.eql(`,
+	"$defs": {
+		"def1": {
+			"type": "string"
+		}
+	}`);
+      /* eslint-enable @stylistic/no-tabs */
     });
   });
 });
