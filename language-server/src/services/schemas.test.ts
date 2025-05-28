@@ -2,11 +2,9 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { PublishDiagnosticsNotification, TextDocumentSyncKind } from "vscode-languageserver";
 import { TestClient } from "../test/test-client.ts";
 
-import type { DocumentSettings } from "./configuration.js";
-
 
 describe("JSON Schema Language Server", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
   let documentUriA: string;
   let documentUriB: string;
 

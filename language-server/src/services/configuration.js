@@ -1,5 +1,6 @@
 import { DidChangeConfigurationNotification } from "vscode-languageserver";
 import ignore from "ignore";
+import { pick } from "../util/util.js";
 
 /**
  * @import { DidChangeConfigurationParams, NotificationHandler } from "vscode-languageserver"
@@ -11,13 +12,33 @@ import ignore from "ignore";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
- * }} DocumentSettings
+ * }} LanguageServerSettings
  */
 
 /**
  * @typedef {{
- *   jsonSchemaLanguageServer?: DocumentSettings;
- * }} Settings
+ *   tabSize?: number;
+ *   insertSpaces?: boolean;
+ *   detectIndentation: boolean;
+ * }} EditorSettings
+ */
+
+/**
+ * @typedef {{
+ *   eol?: string;
+ * }} FilesSettings
+ */
+
+/**
+ * @typedef {LanguageServerSettings & EditorSettings & FilesSettings} DocumentSettings
+ */
+
+/**
+ * @typedef {[
+ *   Partial<LanguageServerSettings> | null,
+ *   Partial<EditorSettings> | null,
+ *   Partial<FilesSettings> | null
+ * ]} Settings
  */
 
 export class Configuration {
@@ -25,7 +46,8 @@ export class Configuration {
 
   /** @type DocumentSettings | undefined */
   #settings;
-  /** @type Partial<DocumentSettings> */
+
+  /** @type DocumentSettings */
   #defaultSettings;
 
   /** @type ((uri: string) => boolean) | undefined */
@@ -41,7 +63,8 @@ export class Configuration {
     this.#server = server;
 
     this.#defaultSettings = {
-      schemaFilePatterns: ["*.schema.json", "schema.json"]
+      schemaFilePatterns: ["*.schema.json", "schema.json"],
+      detectIndentation: true
     };
 
     let hasDidChangeConfigurationCapability = false;
@@ -64,15 +87,7 @@ export class Configuration {
     this.#didChangeConfigurationHandlers = [];
 
     this.#server.onDidChangeConfiguration((params) => {
-      /** @type unknown */
-      const settings = params.settings;
-
-      /** @type unknown */
-      const fullSettings = {
-        ...this.#defaultSettings,
-        .../** @type Settings */(settings).jsonSchemaLanguageServer
-      };
-      this.#settings = /** @type DocumentSettings */ (fullSettings);
+      this.#settings = undefined;
       this.#matcher = undefined;
 
       for (const handler of this.#didChangeConfigurationHandlers) {
@@ -84,18 +99,22 @@ export class Configuration {
   /** @type () => Promise<DocumentSettings> */
   async get() {
     if (!this.#settings) {
-      /** @type unknown */
-      const result = await this.#server.workspace.getConfiguration({
-        section: "jsonSchemaLanguageServer"
-      });
-      const settings = result ?? {};
-      /** @type unknown */
-      const fullSettings = { ...this.#defaultSettings, ...settings };
-      this.#settings = /** @type DocumentSettings */ (fullSettings);
-      this.#matcher = undefined;
+      const settings = /** @type Settings */ (await this.#server.workspace.getConfiguration([
+        { section: "jsonSchemaLanguageServer" },
+        { section: "editor" },
+        { section: "files" }
+      ]));
+      const [languageServerSettings, editorSettings, filesSettings] = settings;
+
+      this.#settings = {
+        ...this.#defaultSettings,
+        ...languageServerSettings,
+        ...pick(editorSettings ?? {}, "tabSize", "insertSpaces", "detectIndentation"),
+        ...pick(filesSettings ?? {}, "eol")
+      };
     }
 
-    return /** @type DocumentSettings */ (this.#settings);
+    return this.#settings;
   }
 
   /** @type (uri: string) => Promise<boolean> */

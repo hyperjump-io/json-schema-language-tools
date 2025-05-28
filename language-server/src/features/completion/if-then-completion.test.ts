@@ -3,11 +3,9 @@ import { CompletionRequest } from "vscode-languageserver";
 import { TestClient } from "../../test/test-client.ts";
 import { ifThenPatternCompletion } from "./if-then-completion.js";
 
-import type { DocumentSettings } from "../../services/configuration.js";
-
 
 describe("Feature - if/then completion", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
   let documentUri: string;
 
   beforeAll(async () => {
@@ -76,7 +74,7 @@ describe("Feature - if/then completion", () => {
 
   test("if/then completion on property value", async () => {
     await client.writeDocument("subject.schema.json", `{
-  "if": ""
+  "if": {}
 }`);
     documentUri = await client.openDocument("subject.schema.json");
 

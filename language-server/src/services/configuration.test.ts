@@ -3,11 +3,10 @@ import { PublishDiagnosticsNotification } from "vscode-languageserver";
 import { TestClient } from "../test/test-client.ts";
 
 import type { Diagnostic } from "vscode-languageserver";
-import type { DocumentSettings } from "./configuration.js";
 
 
 describe("Feature - Document Settings", () => {
-  let client: TestClient<DocumentSettings>;
+  let client: TestClient;
 
   beforeEach(async () => {
     client = new TestClient();
