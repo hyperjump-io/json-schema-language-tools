@@ -17,7 +17,7 @@
   "dependencies": {
     "chokidar": "^4.0.1",
     "detect-indent": "^7.0.1",
-    "ignore": "^7.0.1",
+    "ignore": "^7.0.5",
     "jsonc-parser": "^3.3.1",
     "merge-anything": "^6.0.2",
     "vscode-languageserver": "^9.0.1",
