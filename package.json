@@ -25,6 +25,6 @@
     "@hyperjump/json-pointer": "^1.0.1",
     "@hyperjump/json-schema": "github:hyperjump-io/json-schema#lsp",
     "@hyperjump/pact": "^1.3.0",
-    "@hyperjump/uri": "^1.2.2"
+    "@hyperjump/uri": "^1.3.2"
   }
 }
