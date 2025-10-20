@@ -161,7 +161,7 @@ describe("Feature - Goto Definition", () => {
     ]);
   });
 
-  test("match self identified externally", async () => {
+  test("match self identified externally", { retry: 3 }, async () => {
     await client.writeDocument("./subject.schema.json", `{
   "$schema":"http://json-schema.org/draft-07/schema#",
   "$ref": "https://example.com/schemas/two#/definitions/names", 

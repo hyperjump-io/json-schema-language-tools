@@ -83,7 +83,7 @@ const fromJsonc = (node, uri, pointer, dialectUri, parent, schemaLocations = new
   if (node.type === "object" && (isSchema || !isKnown)) {
     let embeddedDialectUri = dialectUri;
     const $schemaNode = nodeStep(node, "$schema");
-    if ($schemaNode && $schemaNode.type === "string") {
+    if ($schemaNode?.type === "string") {
       try {
         /** @type unknown */
         const value = getNodeValue($schemaNode);

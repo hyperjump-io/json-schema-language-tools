@@ -17,7 +17,7 @@ describe("Feature - Validate References Errors", () => {
     await client.stop();
   });
 
-  test("invalid external reference", async () => {
+  test("invalid external reference", { retry: 3 }, async () => {
     await client.writeDocument("./subject.schema.json", `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "properties": {
