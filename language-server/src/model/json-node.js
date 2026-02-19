@@ -18,7 +18,7 @@ import { getNodeValue } from "jsonc-parser";
  *   root: JsonNode;
  *   valid: boolean;
  *   errors: Record<string, string>;
- *   annotations: Record<string, Record<string, unknown>>;
+ *   annotations: Record<string, unknown[]>;
  *   offset: number;
  *   textLength: number;
  * }} JsonNode
