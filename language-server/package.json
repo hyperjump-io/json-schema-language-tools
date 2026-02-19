@@ -15,7 +15,7 @@
   "repository": "github:hyperjump-io/json-schema-language-tools",
   "keywords": [],
   "dependencies": {
-    "chokidar": "^4.0.1",
+    "chokidar": "^5.0.0",
     "detect-indent": "^7.0.1",
     "ignore": "^7.0.1",
     "jsonc-parser": "^3.3.1",
