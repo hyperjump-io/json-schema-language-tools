@@ -118,20 +118,24 @@ const descriptions = {
   "https://json-schema.org/keyword/writeOnly": `This keyword indicates that the value is never present when the instance is retrieved from the owning authority. Learn more: https://www.learnjsonschema.com/2020-12/meta-data/writeonly/`,
 
   // Draft-04
-  "https://json-schema.org/keyword/draft-04/id": ``,
+  "https://json-schema.org/keyword/draft-04/id": `This keyword declares an identifier for the schema resource. Learn more: https://www.learnjsonschema.com/2020-12/core/id/`,
   "https://json-schema.org/keyword/draft-04/ref": `This keyword is used to reference a statically identified schema. Learn more: https://www.learnjsonschema.com/2020-12/core/ref/`,
   "https://json-schema.org/keyword/draft-04/additionalItems": `If items is set to an array of schemas, validation succeeds if each element of the instance not covered by it validates against this schema. Learn more: https://www.learnjsonschema.com/2019-09/applicator/additionalitems/`,
-  "https://json-schema.org/keyword/draft-04/dependencies": ``,
-  "https://json-schema.org/keyword/draft-04/exclusiveMaximum": ``,
-  "https://json-schema.org/keyword/draft-04/exclusiveMinimum": ``,
+  "https://json-schema.org/keyword/draft-04/dependencies": `This keyword specifies rules that are evaluated if the instance is an object and contains a certain property. Learn more: https://json-schema.org/understanding-json-schema/reference/object#dependencies`,
+  "https://json-schema.org/keyword/draft-04/exclusiveMaximum": `If true, validation succeeds if the numeric instance is strictly less than the given maximum. Learn more: https://json-schema.org/understanding-json-schema/reference/numeric#range`,
+  "https://json-schema.org/keyword/draft-04/exclusiveMinimum": `If true, validation succeeds if the numeric instance is strictly greater than the given minimum. Learn more: https://json-schema.org/understanding-json-schema/reference/numeric#range`,
   "https://json-schema.org/keyword/draft-04/items": `If set to a schema, validation succeeds if each element of the instance validates against it, otherwise validation succeeds if each element of the instance validates against the schema at the same position, if any. Learn more: https://www.learnjsonschema.com/2019-09/applicator/items/`,
-  "https://json-schema.org/keyword/draft-04/maximum": ``,
-  "https://json-schema.org/keyword/draft-04/minimum": ``,
+  "https://json-schema.org/keyword/draft-04/maximum": `Validation succeeds if the numeric instance is less than or equal to the given number. Learn more: https://www.learnjsonschema.com/2020-12/validation/maximum/`,
+  "https://json-schema.org/keyword/draft-04/minimum": `Validation succeeds if the numeric instance is greater than or equal to the given number. Learn more: https://www.learnjsonschema.com/2020-12/validation/minimum/`,
 
   // Draft-06
+  "https://json-schema.org/keyword/draft-06/$id": `This keyword declares an identifier for the schema resource. Learn more: https://www.learnjsonschema.com/2020-12/core/id/`,
   "https://json-schema.org/keyword/draft-06/contains": `Validation succeeds if the instance contains an element that validates against this schema. Learn more: https://www.learnjsonschema.com/2020-12/applicator/contains/`,
+  "https://json-schema.org/keyword/draft-06/dependencies": `This keyword specifies rules that are evaluated if the instance is an object and contains a certain property. Learn more: https://json-schema.org/understanding-json-schema/reference/object#dependencies`,
 
   // Draft-7
+  "https://json-schema.org/keyword/draft-07/$id": `This keyword declares an identifier for the schema resource. Learn more: https://www.learnjsonschema.com/2020-12/core/id/`,
+  "https://json-schema.org/keyword/draft-07/dependencies": `This keyword specifies rules that are evaluated if the instance is an object and contains a certain property. Learn more: https://json-schema.org/understanding-json-schema/reference/object#dependencies`,
 
   // Draft 2019-09
   "https://json-schema.org/keyword/draft-2019-09/recursiveAnchor": `This keyword is used to dynamically identify a base URI at runtime by marking where such a calculation can start, and where it stops. Learn more: https://www.learnjsonschema.com/2019-09/core/recursiveanchor/`,
