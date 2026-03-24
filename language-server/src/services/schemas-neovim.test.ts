@@ -49,7 +49,17 @@ describe("Feature - workspace (neovim)", () => {
     expect(schemaUris).to.eql([documentUriA, documentUriB]);
   });
 
-  test.todo("changing the workspace folders should validate the workspace", () => {
-    // DidChangeWorkspaceFoldersNotification
+  test("changing the workspace folders should validate the workspace", async () => {
+    const workspaceFolder = await client.createWorkspaceFolder();
+    const documentUriC = await client.writeDocument("./subjectC.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`, true, workspaceFolder);
+    const schemaUris: string[] = [];
+
+    client.onNotification(PublishDiagnosticsNotification.type, (params) => {
+      schemaUris.push(params.uri);
+    });
+
+    await client.changeWorkspaceFolders([workspaceFolder]);
+
+    expect(schemaUris).to.eql([documentUriA, documentUriB, documentUriC]);
   });
 });

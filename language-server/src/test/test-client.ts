@@ -7,6 +7,7 @@ import {
   ConfigurationRequest,
   DidChangeConfigurationNotification,
   DidChangeWatchedFilesNotification,
+  DidChangeWorkspaceFoldersNotification,
   DidCloseTextDocumentNotification,
   DidOpenTextDocumentNotification,
   ExitNotification,
@@ -46,6 +47,7 @@ export class TestClient {
   private configurationChangeNotificationOptions: DidChangeConfigurationRegistrationOptions | null | undefined;
   private openDocuments: Set<string>;
   private workspaceFolder: Promise<string>;
+  private tempDirectories: Set<string>;
   private watchEnabled: boolean;
 
   onRequest: Connection["onRequest"];
@@ -59,8 +61,12 @@ export class TestClient {
     this.serverName = serverName;
     this.watchEnabled = false;
     this.openDocuments = new Set();
+    this.tempDirectories = new Set();
     this.workspaceFolder = mkdtemp(join(tmpdir(), "test-workspace-"))
-      .then((path) => URI.file(path).toString() + "/");
+      .then((path) => {
+        this.tempDirectories.add(path);
+        return URI.file(path).toString() + "/";
+      });
 
     const up = new TestStream();
     const down = new TestStream();
@@ -220,7 +226,7 @@ export class TestClient {
   async stop() {
     await this.client.sendRequest(ShutdownRequest.type);
     await this.client.sendNotification(ExitNotification.type);
-    await rm(fileURLToPath(await this.workspaceFolder), { recursive: true });
+    await Promise.all([...this.tempDirectories].map(async (path) => await rm(path, { recursive: true })));
     this.client.dispose();
   }
 
@@ -248,8 +254,9 @@ export class TestClient {
     await buildCompleted;
   }
 
-  async writeDocument(uri: string, text: string, isIgnored = false) {
-    const fullUri = resolveIri(uri, await this.workspaceFolder);
+  async writeDocument(uri: string, text: string, isIgnored = false, workspaceFolder?: string) {
+    workspaceFolder ??= await this.workspaceFolder;
+    const fullUri = resolveIri(uri, workspaceFolder);
     const exists = await access(fullUri).then(() => true).catch(() => false);
 
     await writeFile(fileURLToPath(fullUri), text, "utf-8");
@@ -272,8 +279,9 @@ export class TestClient {
     return fullUri;
   }
 
-  async deleteDocument(uri: string, isIgnored = false) {
-    const fullUri = resolveIri(uri, await this.workspaceFolder);
+  async deleteDocument(uri: string, isIgnored = false, workspaceFolder?: string) {
+    workspaceFolder ??= await this.workspaceFolder;
+    const fullUri = resolveIri(uri, workspaceFolder);
 
     await rm(fileURLToPath(fullUri));
 
@@ -320,6 +328,31 @@ export class TestClient {
         uri: uri
       }
     });
+  }
+
+  async createWorkspaceFolder(name = "workspace") {
+    const path = await mkdtemp(join(tmpdir(), `test-${name}-`));
+    this.tempDirectories.add(path);
+    return URI.file(path).toString() + "/";
+  }
+
+  async changeWorkspaceFolders(added: string[] = [], removed: string[] = []) {
+    const buildCompleted = this.buildCompleted();
+
+    await this.client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
+      event: {
+        added: added.map((uri, index) => ({
+          name: `workspace-${index + 1}`,
+          uri
+        })),
+        removed: removed.map((uri, index) => ({
+          name: `workspace-${index + 1}`,
+          uri
+        }))
+      }
+    });
+
+    await buildCompleted;
   }
 
   private buildCompleted() {
