@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -12,11 +12,10 @@ import { URI } from "vscode-uri";
 import { registerSchema, unregisterSchema } from "@hyperjump/json-schema/draft-2020-12";
 import { asyncCollectArray, asyncFilter, pipe, reduce } from "@hyperjump/pact";
 import * as JsonPointer from "@hyperjump/json-pointer";
-import { watch } from "chokidar";
 import ignore from "ignore";
 import * as SchemaDocument from "../model/schema-document.js";
 import * as SchemaNode from "../model/schema-node.js";
-import { createPromise, keywordNameFor, readDirRecursive, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
+import { keywordNameFor, readDirRecursive, resolveIri, toAbsoluteUri, uriFragment } from "../util/util.js";
 
 /**
  * @import {
@@ -29,12 +28,10 @@ import { createPromise, keywordNameFor, readDirRecursive, resolveIri, toAbsolute
  *   WorkspaceFolder
  * } from "vscode-languageserver"
  * @import { SchemaObject } from "@hyperjump/json-schema"
- * @import { FSWatcher } from "chokidar"
  * @import { Server } from "../services/server.js"
  * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { Configuration } from "./configuration.js"
- * @import { MyPromise } from "../util/util.js"
  */
 
 
@@ -53,9 +50,9 @@ export class Schemas {
   /** @type Set<string> */
   #registeredSchemas;
 
-  /** @type FSWatcher | undefined */
-  #watcher;
   #watchEnabled;
+  /** @type Map<string, number> */
+  #watchedSchemaFiles;
 
   /** @type NotificationHandler<DidChangeWatchedFilesParams> */
   #didChangeWatchedFilesHandler;
@@ -115,6 +112,8 @@ export class Schemas {
         this.#server.workspace.onDidChangeWorkspaceFolders(({ added, removed }) => {
           this.addWorkspaceFolders(added);
           this.removeWorkspaceFolders(removed);
+          this.#clear();
+          this.#didChangeWatchedFilesHandler({ changes: [] });
         });
       }
     });
@@ -130,6 +129,7 @@ export class Schemas {
     this.#registeredSchemas = new Set();
 
     this.#watchEnabled = false;
+    this.#watchedSchemaFiles = new Map();
 
     this.#didChangeWatchedFilesHandler = () => {};
     this.#server.onDidChangeWatchedFiles((params) => {
@@ -153,58 +153,75 @@ export class Schemas {
   }
 
   async watch() {
-    /** @type Record<string, FileChangeType> */
-    let changes = {};
-
-    /** @type MyPromise<Record<string, FileChangeType>> */
-    let promise = createPromise();
-
-    this.#watcher = watch([...this.#workspaceFolders], { ignoreInitial: true })
-      .on("all", (event, /** @type string */ path) => {
-        if (event === "add") {
-          changes[path] = changes[path] === FileChangeType.Deleted ? FileChangeType.Changed : FileChangeType.Created;
-        } else if (event === "change") {
-          changes[path] = changes[path] === FileChangeType.Created ? FileChangeType.Created : FileChangeType.Changed;
-        } else if (event === "unlink") {
-          if (changes[path] === FileChangeType.Created) {
-            delete changes[path];
-          } else {
-            changes[path] = FileChangeType.Deleted;
-          }
-        } else {
-          return;
-        }
-
-        promise.resolve(changes);
-        promise = createPromise();
-      });
-
     this.#watchEnabled = true;
+    this.#watchedSchemaFiles = await this.#getWatchedSchemaFiles();
+
     while (this.#watchEnabled) {
-      const value = await promise.promise;
-      changes = {};
+      await new Promise((resolve) => setTimeout(resolve, 250));
 
+      const currentFiles = await this.#getWatchedSchemaFiles();
       /** @type FileEvent[] */
-      const fileEvents = [];
-      for (const path in value) {
-        const uri = URI.file(path).toString();
+      const changes = [];
 
-        fileEvents.push({
-          uri: uri,
-          type: value[path]
-        });
+      for (const [path, mtimeMs] of currentFiles) {
+        const previousMtimeMs = this.#watchedSchemaFiles.get(path);
+        if (previousMtimeMs === undefined) {
+          changes.push({ uri: URI.file(path).toString(), type: FileChangeType.Created });
+        } else if (previousMtimeMs !== mtimeMs) {
+          changes.push({ uri: URI.file(path).toString(), type: FileChangeType.Changed });
+        }
       }
 
-      this.#didChangeWatchedFilesHandler({ changes: fileEvents });
+      for (const path of this.#watchedSchemaFiles.keys()) {
+        if (!currentFiles.has(path)) {
+          changes.push({ uri: URI.file(path).toString(), type: FileChangeType.Deleted });
+        }
+      }
+
+      this.#watchedSchemaFiles = currentFiles;
+
+      if (changes.length > 0) {
+        this.#didChangeWatchedFilesHandler({ changes });
+      }
     }
   }
 
   /** @type () => Promise<void> */
-  async stop() {
+  stop() {
     this.#watchEnabled = false;
-    await this.#watcher?.close();
+    this.#watchedSchemaFiles.clear();
 
     this.#clear();
+    return Promise.resolve();
+  }
+
+  /** @type () => Promise<Map<string, number>> */
+  async #getWatchedSchemaFiles() {
+    /** @type Map<string, number> */
+    const watchedSchemaFiles = new Map();
+
+    for (const folderPath of this.#workspaceFolders) {
+      let gitignore;
+      try {
+        gitignore = await readFile(join(folderPath, ".gitignore"), "utf8");
+      } catch (_error) {
+        gitignore = "";
+      }
+
+      const filter = ignore()
+        .add(gitignore)
+        .add(".git/");
+
+      for await (const relativePath of readDirRecursive(folderPath, filter)) {
+        if (await this.#configuration.isSchema(relativePath)) {
+          const path = resolve(folderPath, relativePath);
+          const { mtimeMs } = await stat(path);
+          watchedSchemaFiles.set(path, mtimeMs);
+        }
+      }
+    }
+
+    return watchedSchemaFiles;
   }
 
   #clear() {
@@ -363,7 +380,6 @@ export class Schemas {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
       this.#workspaceFolders.add(folderPath);
-      this.#watcher?.add(folderPath);
     }
   }
 
@@ -372,7 +388,6 @@ export class Schemas {
     for (const folder of folders) {
       const folderPath = fileURLToPath(folder.uri);
       this.#workspaceFolders.delete(folderPath);
-      this.#watcher?.unwatch(folderPath);
     }
   }
 
