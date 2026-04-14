@@ -2,7 +2,7 @@
 import { Server } from "./services/server.js";
 import { Configuration } from "./services/configuration.js";
 import { Schemas } from "./services/schemas.js";
-
+import { VocabularyLoader } from "./services/vocabulary-loader.js";
 // Features
 import { CompletionFeature } from "./features/completion/completion.js";
 import { DiagnosticsFeature } from "./features/diagnostics/diagnostics.js";
@@ -45,6 +45,20 @@ export const buildServer = (connection) => {
   const server = new Server(connection);
   const configuration = new Configuration(server);
   const schemas = new Schemas(server, configuration);
+
+  const vocabularyLoader = new VocabularyLoader(connection);
+
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  server.onInitialized(async () => {
+    const { customVocabularies } = await configuration.get();
+    await vocabularyLoader.load(customVocabularies);
+  });
+
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
+  configuration.onDidChangeConfiguration(async () => {
+    const { customVocabularies } = await configuration.get();
+    await vocabularyLoader.load(customVocabularies);
+  });
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);

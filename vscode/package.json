@@ -42,6 +42,12 @@
           "type": "array",
           "description": "The glob pattern for identifying JSON Schema files.",
           "default": ["**/*.schema.json", "**/schema.json"]
+        },
+        "jsonSchemaLanguageServer.customVocabularies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of npm package identifiers (e.g. 'my-vocab@1.0.0') to load as custom vocabularies via esm.sh",
+          "default": []
         }
       }
     }

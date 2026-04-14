@@ -12,6 +12,7 @@ import { pick } from "../util/util.js";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
+ *   customVocabularies: string[];
  * }} LanguageServerSettings
  */
 
@@ -59,11 +60,12 @@ export class Configuration {
   /**
    * @param {Server} server
    */
-  constructor(server) {
+    constructor(server) {
     this.#server = server;
 
     this.#defaultSettings = {
       schemaFilePatterns: ["*.schema.json", "schema.json"],
+      customVocabularies: [],
       detectIndentation: true
     };
 
