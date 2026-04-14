@@ -54,7 +54,7 @@ export const buildServer = (connection) => {
     await vocabularyLoader.load(customVocabularies);
   });
 
-// eslint-disable-next-line @typescript-eslint/no-misused-promises
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   configuration.onDidChangeConfiguration(async () => {
     const { customVocabularies } = await configuration.get();
     await vocabularyLoader.load(customVocabularies);

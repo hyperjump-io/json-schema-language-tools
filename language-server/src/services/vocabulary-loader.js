@@ -67,9 +67,12 @@ export class VocabularyLoader {
       const code = await res.text();
 
       const dataUrl = `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-      const mod = /** @type {{ default?: unknown }} */ (await import(dataUrl));
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const mod = await import(dataUrl);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
       if (typeof mod.default === "function") {
-        await /** @type {() => Promise<void>} */ (mod.default)();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        await mod.default();
       } else {
         this.#connection.console.warn(`Vocabulary "${identifier}" does not export a default function.`);
       }

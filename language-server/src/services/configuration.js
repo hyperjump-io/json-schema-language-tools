@@ -60,7 +60,7 @@ export class Configuration {
   /**
    * @param {Server} server
    */
-    constructor(server) {
+  constructor(server) {
     this.#server = server;
 
     this.#defaultSettings = {
