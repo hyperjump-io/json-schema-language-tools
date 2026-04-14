@@ -37,11 +37,13 @@ const activate = async (context: ExtensionContext) => {
   }
 
   // Persist newly trusted vocabs into globalState
-  client.onNotification("custom/persistTrustedVocab", async ({ identifier }: { identifier: string }) => {
-    const current = context.globalState.get<string[]>(TRUSTED_VOCABS_KEY, []);
-    if (!current.includes(identifier)) {
-      await context.globalState.update(TRUSTED_VOCABS_KEY, [...current, identifier]);
-    }
+  client.onNotification("custom/persistTrustedVocab", ({ identifier }: { identifier: string }) => {
+    void (async () => {
+      const current = context.globalState.get<string[]>(TRUSTED_VOCABS_KEY, []);
+      if (!current.includes(identifier)) {
+        await context.globalState.update(TRUSTED_VOCABS_KEY, [...current, identifier]);
+      }
+    })();
   });
 };
 
