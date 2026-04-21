@@ -7,6 +7,7 @@ import { hasDialect } from "@hyperjump/json-schema/experimental";
  * @import { Schemas } from "../services/schemas.js";
  * @import { Configuration } from "../services/configuration.js";
  * @import { ValidateSchemaFeature } from "./validate-schema.js";
+ * @import { Dependencies } from "../services/dependencies.js";
  */
 
 
@@ -15,18 +16,21 @@ export class ValidateWorkspaceFeature {
   #schemas;
   #configuration;
   #validateSchema;
+  #dependencies;
 
   /**
    * @param {Server} server
    * @param {Schemas} schemas
    * @param {Configuration} configuration
    * @param {ValidateSchemaFeature} validateSchema
+   * @param {Dependencies} dependencies
    */
-  constructor(server, schemas, configuration, validateSchema) {
+  constructor(server, schemas, configuration, validateSchema, dependencies) {
     this.#server = server;
     this.#schemas = schemas;
     this.#configuration = configuration;
     this.#validateSchema = validateSchema;
+    this.#dependencies = dependencies;
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeWatchedFiles(async (params) => {
@@ -75,6 +79,9 @@ export class ValidateWorkspaceFeature {
     for await (const schemaDocument of this.#schemas.all()) {
       await this.#validateSchema.validateSchema(schemaDocument);
     }
+
+    await this.#dependencies.build();
+    this.#dependencies.print();
 
     await this.#server.sendRequest(SemanticTokensRefreshRequest.type);
 
