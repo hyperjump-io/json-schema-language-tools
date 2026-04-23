@@ -8,6 +8,8 @@ import { hasDialect } from "@hyperjump/json-schema/experimental";
  * @import { Configuration } from "../services/configuration.js";
  * @import { ValidateSchemaFeature } from "./validate-schema.js";
  * @import { Dependencies } from "../services/dependencies.js";
+ * @import { FileEvent } from "vscode-languageserver"
+ * @import { SchemaDocument } from "../model/schema-document.js"
  */
 
 
@@ -75,8 +77,15 @@ export class ValidateWorkspaceFeature {
       await this.#schemas.getOpen(schemaUri, true);
     }
 
-    // Re/validate all schemas
-    for await (const schemaDocument of this.#schemas.all()) {
+    // NOTE: When the workspace is first loaded, we need to validate all schemas
+    const shouldValidateWorkspace = changes.length === 0;
+    // NOTE: We find the affected schemas before rebuilding the dependencies.
+    // e.g. If A depends on B, and B is deleted, and we build the dependencies first,
+    // we would have already removed B from the workspace, so the graph would have no dependents.
+    const affectedSchemas = shouldValidateWorkspace ? this.#schemas.all() : this.#findAffectedSchemas(changes);
+
+    // Re/validate affected schemas
+    for await (const schemaDocument of affectedSchemas) {
       await this.#validateSchema.validateSchema(schemaDocument);
     }
 
@@ -86,5 +95,39 @@ export class ValidateWorkspaceFeature {
     await this.#server.sendRequest(SemanticTokensRefreshRequest.type);
 
     reporter.done();
+  }
+
+  /**
+   * @param {FileEvent[]} changes
+   * @returns {AsyncGenerator<SchemaDocument>}
+   */
+  async* #findAffectedSchemas(changes) {
+    const affectedUris = this.#findAffectedUris(changes);
+    for (const uri of affectedUris) {
+      const schemaDocument = await this.#schemas.get(uri);
+      if (schemaDocument) {
+        yield schemaDocument;
+      }
+    }
+  }
+
+  /**
+   * @param {FileEvent[]} changes
+   * @returns {Set<string>}
+   */
+  #findAffectedUris(changes) {
+    /** @type {Set<string>} */
+    const affectedUris = new Set();
+    for (const change of changes) {
+      if (change.type !== FileChangeType.Deleted) {
+        // NOTE: When a file is deleted, we don't need to revalidate it, as it will be removed from the workspace
+        affectedUris.add(change.uri);
+      }
+      const dependents = this.#dependencies.findDependents(change.uri);
+      for (const dependent of dependents) {
+        affectedUris.add(dependent);
+      }
+    }
+    return affectedUris;
   }
 }

@@ -51,6 +51,32 @@ export class Dependencies {
   }
 
   /**
+   * @param {string} uri
+   * @returns {DependencyRecord | undefined}
+   */
+  get(uri) {
+    return this.#records.get(uri);
+  }
+
+  /**
+   * @param {string} uri
+   * @param {Set<string>} dependents
+   * @returns {Set<string>}
+   */
+  findDependents(uri, dependents = new Set()) {
+    const dependency = this.get(uri);
+    if (!dependency) return dependents;
+
+    for (const dependent of dependency.dependents) {
+      if (dependents.has(dependent)) continue;
+      dependents.add(dependent);
+      this.findDependents(dependent, dependents);
+    }
+
+    return dependents;
+  }
+
+  /**
    * @param {DependencyRecord} dependent
    * @param {string} dependencyUri
    */
