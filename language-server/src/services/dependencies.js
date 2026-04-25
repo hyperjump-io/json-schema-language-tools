@@ -50,47 +50,60 @@ export class Dependencies {
    * @returns {Promise<AsyncIterable<SchemaDocument> | Iterable<SchemaDocument>>}
    */
   async sync(changes) {
-    const shouldValidateAllSchemas = !changes.length;
-    if (shouldValidateAllSchemas) {
-      await this.addAllSchemas();
+    const isInitial = !changes.length;
+    if (isInitial) {
+      await this.#init();
       return this.#schemas.all();
     }
     /** @type {Set<FileSystemUri>} */
     const affectedUris = new Set();
-    const affectedSchemas = [];
     // We are calling findAffectedUris before updating the dependencies
     // because if a file is deleted, it will be removed from the dependencies
     // and we won't be able to find its dependents after the update.
     // This also happens if a file defined an id that now is deleted.
     this.#findAffectedUris(changes, affectedUris);
-    await this.updateSchemas(changes);
+    await this.#applyChanges(changes);
     // We are also calling findAffectedUris after updating the dependencies
     // because if a file is added, we need to find its dependents.
     // This also happens if a file now defines an id that it didn't before.
     this.#findAffectedUris(changes, affectedUris);
-    for (const uri of affectedUris) {
-      const schemaDocument = await this.#schemas.get(uri);
-      if (schemaDocument) {
-        affectedSchemas.push(schemaDocument);
-      }
-    }
-    return affectedSchemas;
+    return this.#resolveSchemas(affectedUris);
   }
 
-  async addAllSchemas() {
+  async #init() {
     this.#records.clear();
     this.#dependents.clear();
     for await (const schemaDocument of this.#schemas.all()) {
-      this.addSchema(schemaDocument);
+      this.#addSchema(schemaDocument);
+    }
+  }
+
+  /**
+   * @param {FileEvent[]} changes
+   */
+  async #applyChanges(changes) {
+    for (const change of changes) {
+      switch (change.type) {
+        case FileChangeType.Created:
+        case FileChangeType.Changed: {
+          const document = await this.#schemas.get(change.uri);
+          this.#addSchema(document);
+          break;
+        }
+        case FileChangeType.Deleted: {
+          this.#removeSchema(change.uri);
+          break;
+        }
+      }
     }
   }
 
   /**
    * @param {SchemaDocument} schemaDocument
    */
-  addSchema(schemaDocument) {
+  #addSchema(schemaDocument) {
     const uri = schemaDocument.textDocument.uri;
-    this.removeSchema(uri);
+    this.#removeSchema(uri);
     const dependent = this.#createRecord(uri);
     for (const schemaResource of schemaDocument.schemaResources) {
       dependent.definitions.add(schemaResource.baseUri);
@@ -109,7 +122,7 @@ export class Dependencies {
   /**
    * @param {FileSystemUri} uri
    */
-  removeSchema(uri) {
+  #removeSchema(uri) {
     const record = this.#records.get(uri);
     if (!record) {
       return;
@@ -122,31 +135,11 @@ export class Dependencies {
   }
 
   /**
-   * @param {FileEvent[]} changes
-   */
-  async updateSchemas(changes) {
-    for (const change of changes) {
-      switch (change.type) {
-        case FileChangeType.Created:
-        case FileChangeType.Changed: {
-          const document = await this.#schemas.get(change.uri);
-          this.addSchema(document);
-          break;
-        }
-        case FileChangeType.Deleted: {
-          this.removeSchema(change.uri);
-          break;
-        }
-      }
-    }
-  }
-
-  /**
    * @param {FileSystemUri} uri
    * @param {Set<FileSystemUri>} dependents
    * @returns {Set<FileSystemUri>}
    */
-  findDependents(uri, dependents = new Set()) {
+  #findDependents(uri, dependents = new Set()) {
     const record = this.#records.get(uri);
     const handles = record?.definitions ?? new Set();
 
@@ -155,7 +148,7 @@ export class Dependencies {
       for (const directDependent of directDependents) {
         if (dependents.has(directDependent)) continue;
         dependents.add(directDependent);
-        this.findDependents(directDependent, dependents);
+        this.#findDependents(directDependent, dependents);
       }
     }
 
@@ -198,10 +191,10 @@ export class Dependencies {
   #findAffectedUris(changes, affectedUris = new Set()) {
     for (const change of changes) {
       if (change.type !== FileChangeType.Deleted) {
-        // NOTE: When a file is deleted, we don't need to revalidate it, as it will be removed from the workspace
+        // When a file is deleted, we don't need to revalidate it, as it will be removed from the workspace
         affectedUris.add(change.uri);
       }
-      const dependents = this.findDependents(change.uri);
+      const dependents = this.#findDependents(change.uri);
       for (const dependent of dependents) {
         affectedUris.add(dependent);
       }
@@ -209,12 +202,16 @@ export class Dependencies {
     return affectedUris;
   }
 
-  print() {
-    for (const [key, value] of this.#records) {
-      const dependencies = value.dependencies;
-      for (const dependency of dependencies) {
-        this.#server.console.log(`${key} -> ${dependency}`);
-      }
-    }
+  /**
+   * @param {Set<FileSystemUri>} uris
+   * @returns {Promise<SchemaDocument[]>}
+   */
+  async #resolveSchemas(uris) {
+    const documents = await Promise.all(
+      Array.from(uris).map((uri) =>
+        this.#schemas.get(uri)
+      )
+    );
+    return documents.filter(Boolean);
   }
 }
