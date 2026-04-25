@@ -45,29 +45,6 @@ export class Dependencies {
     this.#dependents = new Map();
   }
 
-  async build() {
-    this.#server.console.log("Extracting Dependencies");
-    this.#records.clear();
-    this.#dependents.clear();
-
-    for await (const schemaDocument of this.#schemas.all()) {
-      const uri = schemaDocument.textDocument.uri;
-      const dependent = this.#getOrCreateRecord(uri);
-      for (const schemaResource of schemaDocument.schemaResources) {
-        dependent.definitions.add(schemaResource.baseUri);
-        if (schemaResource.dialectUri) {
-          this.#addDependency(dependent, schemaResource.dialectUri);
-        }
-        for (const reference of this.#schemas.references(schemaResource)) {
-          /** @type {string} */
-          const referenceValue = value(reference);
-          const referencedUri = toAbsoluteUri(resolveIri(referenceValue, schemaResource.baseUri));
-          this.#addDependency(dependent, referencedUri);
-        }
-      }
-    }
-  }
-
   /**
    * @param {FileEvent[]} changes
    * @returns {Promise<AsyncIterable<SchemaDocument> | Iterable<SchemaDocument>>}
@@ -75,7 +52,7 @@ export class Dependencies {
   async sync(changes) {
     const shouldValidateAllSchemas = !changes.length;
     if (shouldValidateAllSchemas) {
-      await this.build();
+      await this.addAllSchemas();
       return this.#schemas.all();
     }
     /** @type {Set<FileSystemUri>} */
@@ -86,7 +63,7 @@ export class Dependencies {
     // and we won't be able to find its dependents after the update.
     // This also happens if a file defined an id that now is deleted.
     this.#findAffectedUris(changes, affectedUris);
-    await this.build();
+    await this.updateSchemas(changes);
     // We are also calling findAffectedUris after updating the dependencies
     // because if a file is added, we need to find its dependents.
     // This also happens if a file now defines an id that it didn't before.
@@ -98,6 +75,70 @@ export class Dependencies {
       }
     }
     return affectedSchemas;
+  }
+
+  async addAllSchemas() {
+    this.#records.clear();
+    this.#dependents.clear();
+    for await (const schemaDocument of this.#schemas.all()) {
+      this.addSchema(schemaDocument);
+    }
+  }
+
+  /**
+   * @param {SchemaDocument} schemaDocument
+   */
+  addSchema(schemaDocument) {
+    const uri = schemaDocument.textDocument.uri;
+    this.removeSchema(uri);
+    const dependent = this.#createRecord(uri);
+    for (const schemaResource of schemaDocument.schemaResources) {
+      dependent.definitions.add(schemaResource.baseUri);
+      if (schemaResource.dialectUri) {
+        this.#addDependency(dependent, schemaResource.dialectUri);
+      }
+      for (const reference of this.#schemas.references(schemaResource)) {
+        /** @type {string} */
+        const referenceValue = value(reference);
+        const referencedUri = toAbsoluteUri(resolveIri(referenceValue, schemaResource.baseUri));
+        this.#addDependency(dependent, referencedUri);
+      }
+    }
+  }
+
+  /**
+   * @param {FileSystemUri} uri
+   */
+  removeSchema(uri) {
+    const record = this.#records.get(uri);
+    if (!record) {
+      return;
+    }
+    for (const dependency of record.dependencies) {
+      const dependents = this.#dependents.get(dependency);
+      dependents?.delete(uri);
+    }
+    this.#records.delete(uri);
+  }
+
+  /**
+   * @param {FileEvent[]} changes
+   */
+  async updateSchemas(changes) {
+    for (const change of changes) {
+      switch (change.type) {
+        case FileChangeType.Created:
+        case FileChangeType.Changed: {
+          const document = await this.#schemas.get(change.uri);
+          this.addSchema(document);
+          break;
+        }
+        case FileChangeType.Deleted: {
+          this.removeSchema(change.uri);
+          break;
+        }
+      }
+    }
   }
 
   /**
@@ -139,19 +180,14 @@ export class Dependencies {
    * @param {FileSystemUri} uri
    * @returns {DependencyRecord}
    */
-  #getOrCreateRecord(uri) {
-    let dependencyRecord = this.#records.get(uri);
-
-    if (!dependencyRecord) {
-      dependencyRecord = {
-        uri,
-        dependencies: new Set(),
-        definitions: new Set([uri])
-      };
-      this.#records.set(uri, dependencyRecord);
-    }
-
-    return dependencyRecord;
+  #createRecord(uri) {
+    const record = {
+      uri,
+      dependencies: new Set(),
+      definitions: new Set([uri])
+    };
+    this.#records.set(uri, record);
+    return record;
   }
 
   /**
