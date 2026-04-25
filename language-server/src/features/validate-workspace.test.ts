@@ -198,7 +198,7 @@ describe("Incremental Workspace Validation", () => {
     expect(schemaUris.length).to.equal(3);
   });
 
-  test.todo("resolution of missing schemas should trigger revalidation when the schema becomes available", async () => {
+  test("resolution of missing schemas should trigger revalidation when the schema becomes available", async () => {
     const aSchema = `{ 
       "$id": "https://test.com/schemas/a",
       "$schema": "https://json-schema.org/draft/2020-12/schema"
@@ -262,7 +262,7 @@ describe("Incremental Workspace Validation", () => {
     expect(schemaUris.length).to.equal(2);
   });
 
-  test.todo("multiple schemas with the same $id should revalidate their dependents when either is edited", async () => {
+  test("multiple schemas with the same $id should revalidate their dependents when either is edited", async () => {
     const aSchema = `{ 
       "$id": "https://test.com/schemas/shared",
       "$schema": "https://json-schema.org/draft/2020-12/schema"
