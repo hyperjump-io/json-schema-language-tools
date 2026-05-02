@@ -48,16 +48,26 @@ export const buildServer = (connection) => {
 
   const vocabularyLoader = new VocabularyLoader(connection);
 
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  server.onInitialized(async () => {
-    const { customVocabularies } = await configuration.get();
-    await vocabularyLoader.load(customVocabularies);
+  server.onInitialize((params) => {
+    /** @type {string[]} */
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const trusted = params.initializationOptions?.trustedVocabularies ?? [];
+    vocabularyLoader.addTrusted(trusted);
+    return { capabilities: {} };
   });
 
+  // Load vocabularies during initialization so they are available before
+  // any schema validation runs.  vocabularyLoader.ready resolves once
+  // markReady() is called, gating ValidateSchemaFeature and
+  // ValidateWorkspaceFeature.
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  configuration.onDidChangeConfiguration(async () => {
-    const { customVocabularies } = await configuration.get();
-    await vocabularyLoader.load(customVocabularies);
+  server.onInitialized(async () => {
+    try {
+      const { customVocabularies } = await configuration.get();
+      await vocabularyLoader.load(customVocabularies);
+    } finally {
+      vocabularyLoader.markReady();
+    }
   });
 
   new SemanticTokensFeature(server, schemas, configuration);
@@ -74,8 +84,8 @@ export const buildServer = (connection) => {
   ]);
 
   // TODO: It's awkward that validateSchema needs a variable
-  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
-  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
+  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics, vocabularyLoader);
+  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, vocabularyLoader);
 
   new CompletionFeature(server, schemas, [
     new SchemaCompletionProvider(),

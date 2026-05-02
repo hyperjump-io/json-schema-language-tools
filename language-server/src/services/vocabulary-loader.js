@@ -1,6 +1,22 @@
+import * as hjsExperimental from "@hyperjump/json-schema/experimental";
+import * as hjsDraft202012 from "@hyperjump/json-schema/draft-2020-12";
+import * as hjsBrowser from "@hyperjump/browser";
+
 /**
  * @import { Connection } from "vscode-languageserver"
  */
+
+// Expose the server bundle's own copies of @hyperjump packages on globalThis
+// so that the HTTPS loader can serve synthetic bridge modules that re-export
+// them.  This ensures remotely-loaded vocab packages share the same internal
+// state (e.g. _dialects, _keywords) as the bundled server — avoiding the
+// CJS/ESM dual-instance problem where esbuild's inlined CJS copy diverges
+// from the ESM copy Node loads from node_modules.
+globalThis.__hjsBridge = {
+  "@hyperjump/json-schema/experimental": hjsExperimental,
+  "@hyperjump/json-schema/draft-2020-12": hjsDraft202012,
+  "@hyperjump/browser": hjsBrowser
+};
 
 export class VocabularyLoader {
   #connection;
@@ -14,12 +30,29 @@ export class VocabularyLoader {
   /** @type {Map<string, Promise<void>>} */
   #loading;
 
-  /** @param {Connection} connection */
-  constructor(connection) {
+  /** @type {Promise<void>} */
+  ready;
+
+  /** @type {() => void} */
+  #readyResolve;
+
+  /**
+   * @param {Connection} connection
+   * @param {string[]} [initialTrusted]
+   */
+  constructor(connection, initialTrusted = []) {
     this.#connection = connection;
-    this.#trusted = new Set();
+    this.#trusted = new Set(initialTrusted);
     this.#loaded = new Set();
     this.#loading = new Map();
+
+    /** @type {() => void} */
+    let resolve;
+    this.ready = new Promise((r) => {
+      resolve = r;
+    });
+    // @ts-expect-error – resolve is assigned synchronously above
+    this.#readyResolve = resolve;
 
     // Listen for trust confirmations from the extension
     this.#connection.onNotification(
@@ -28,6 +61,21 @@ export class VocabularyLoader {
         this.#trusted.add(identifier);
       }
     );
+  }
+
+  /** @type {(identifiers: string[]) => void} */
+  addTrusted(identifiers) {
+    for (const identifier of identifiers) {
+      this.#trusted.add(identifier);
+    }
+  }
+
+  /**
+   * Signal that initial vocabulary loading is complete.
+   * Any code awaiting `this.ready` will proceed.
+   */
+  markReady() {
+    this.#readyResolve();
   }
 
   /** @type {(identifiers: string[]) => Promise<void>} */
@@ -87,14 +135,12 @@ export class VocabularyLoader {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const mod = await import(`https://esm.sh/${identifier}`);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (typeof mod.default === "function") {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        await mod.default();
-      }
-      // Only mark loaded after successful registration.
+      // Import the vocab package from esm.sh. Registration happens as a side
+      // effect of the import — the package calls defineVocabulary/loadDialect
+      // internally. We do NOT call mod.default() because the example package
+      // (and the expected contract) is side-effect-based, not function-call-based.
+      await /* @vite-ignore */ import(`https://esm.sh/${identifier}`);
+      this.#connection.console.log(`Vocabulary "${identifier}" loaded successfully.`);
       this.#loaded.add(identifier);
     } catch (error) {
       this.#connection.console.error(

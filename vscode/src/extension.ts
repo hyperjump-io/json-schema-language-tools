@@ -8,17 +8,32 @@ const TRUSTED_VOCABS_KEY = "trustedVocabularies";
 
 const activate = async (context: ExtensionContext) => {
   const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
+  const loaderModule = context.asAbsolutePath(path.join("out", "https-loader.mjs"));
+
   const serverOptions = {
-    run: { module: serverModule, transport: TransportKind.ipc },
+    run: {
+      module: serverModule,
+      transport: TransportKind.ipc,
+      options: {
+        execArgv: ["--import", loaderModule]
+      }
+    },
     debug: {
       module: serverModule,
       transport: TransportKind.ipc,
-      options: { execArgv: ["--nolazy", "--inspect=6009"] }
+      options: {
+        execArgv: ["--nolazy", "--inspect=6009", "--import", loaderModule]
+      }
     }
   };
 
+  const trusted = context.globalState.get<string[]>(TRUSTED_VOCABS_KEY, []);
+
   const clientOptions = {
-    documentSelector: [{ scheme: "file", language: "json" }]
+    documentSelector: [{ scheme: "file", language: "json" }],
+    initializationOptions: {
+      trustedVocabularies: trusted
+    }
   };
 
   client = new LanguageClient(
@@ -30,13 +45,6 @@ const activate = async (context: ExtensionContext) => {
 
   await client.start();
 
-  // Restore trusted vocabs from globalState into server on startup
-  const trusted = context.globalState.get<string[]>(TRUSTED_VOCABS_KEY, []);
-  for (const identifier of trusted) {
-    await client.sendNotification("custom/addTrustedVocab", { identifier });
-  }
-
-  // Persist newly trusted vocabs into globalState
   client.onNotification("custom/persistTrustedVocab", ({ identifier }: { identifier: string }) => {
     void (async () => {
       const current = context.globalState.get<string[]>(TRUSTED_VOCABS_KEY, []);

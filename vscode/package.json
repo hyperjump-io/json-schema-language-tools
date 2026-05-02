@@ -6,8 +6,8 @@
   "scripts": {
     "lint": "eslint src",
     "type-check": "tsc --noEmit",
-    "vscode:prepublish": "npm run build-client -- --minify && npm run build-server -- --minify",
-    "build": "npm run build-client -- --sourcemap && npm run build-server -- --sourcemap",
+    "vscode:prepublish": "npm run build-client -- --minify && npm run build-server -- --minify && cp ../language-server/src/https-loader.js out/https-loader.mjs",
+    "build": "npm run build-client -- --sourcemap && npm run build-server -- --sourcemap && cp ../language-server/src/https-loader.js out/https-loader.mjs",
     "build-client": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "build-server": "esbuild ../language-server/src/server.js --bundle --external:fsevents --main-fields=module,main --outfile=out/server.js --external:vscode --format=cjs --platform=node",
     "package": "vsce package --out=dist",

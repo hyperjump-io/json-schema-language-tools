@@ -7,6 +7,7 @@ import { hasDialect } from "@hyperjump/json-schema/experimental";
  * @import { Schemas } from "../services/schemas.js";
  * @import { Configuration } from "../services/configuration.js";
  * @import { ValidateSchemaFeature } from "./validate-schema.js";
+ * @import { VocabularyLoader } from "../services/vocabulary-loader.js";
  */
 
 
@@ -15,18 +16,21 @@ export class ValidateWorkspaceFeature {
   #schemas;
   #configuration;
   #validateSchema;
+  #vocabularyLoader;
 
   /**
    * @param {Server} server
    * @param {Schemas} schemas
    * @param {Configuration} configuration
    * @param {ValidateSchemaFeature} validateSchema
+   * @param {VocabularyLoader} vocabularyLoader
    */
-  constructor(server, schemas, configuration, validateSchema) {
+  constructor(server, schemas, configuration, validateSchema, vocabularyLoader) {
     this.#server = server;
     this.#schemas = schemas;
     this.#configuration = configuration;
     this.#validateSchema = validateSchema;
+    this.#vocabularyLoader = vocabularyLoader;
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeWatchedFiles(async (params) => {
@@ -41,6 +45,12 @@ export class ValidateWorkspaceFeature {
 
   /** @type (params: DidChangeWatchedFilesParams) => Promise<void> */
   async workspaceChanged({ changes }) {
+    // Wait for initial vocabulary loading before validating
+    await this.#vocabularyLoader.ready;
+
+    const { customVocabularies } = await this.#configuration.get();
+    await this.#vocabularyLoader.load(customVocabularies);
+
     this.#server.console.log("Validating Workspace");
 
     const reporter = await this.#server.window.createWorkDoneProgress();
