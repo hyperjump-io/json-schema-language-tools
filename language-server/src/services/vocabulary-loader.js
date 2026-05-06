@@ -1,22 +1,16 @@
-import * as hjsExperimental from "@hyperjump/json-schema/experimental";
-import * as hjsDraft202012 from "@hyperjump/json-schema/draft-2020-12";
-import * as hjsBrowser from "@hyperjump/browser";
-
 /**
  * @import { Connection } from "vscode-languageserver"
  */
 
-// Expose the server bundle's own copies of @hyperjump packages on globalThis
-// so that the HTTPS loader can serve synthetic bridge modules that re-export
-// them.  This ensures remotely-loaded vocab packages share the same internal
-// state (e.g. _dialects, _keywords) as the bundled server — avoiding the
-// CJS/ESM dual-instance problem where esbuild's inlined CJS copy diverges
-// from the ESM copy Node loads from node_modules.
-globalThis.__hjsBridge = {
-  "@hyperjump/json-schema/experimental": hjsExperimental,
-  "@hyperjump/json-schema/draft-2020-12": hjsDraft202012,
-  "@hyperjump/browser": hjsBrowser
-};
+// Packages that must be resolved from the local server bundle rather than
+// fetched fresh from esm.sh.  Passed as the `?external=` query param so
+// esm.sh leaves their imports as bare specifiers — the https-loader then
+// redirects those bare specifiers to the local node_modules copy, giving the
+// remote vocab package the exact same module instance as the bundled server.
+const ESM_EXTERNALS = [
+  "@hyperjump/json-schema",
+  "@hyperjump/browser"
+].join(",");
 
 export class VocabularyLoader {
   #connection;
@@ -135,11 +129,18 @@ export class VocabularyLoader {
     }
 
     try {
-      // Import the vocab package from esm.sh. Registration happens as a side
-      // effect of the import — the package calls defineVocabulary/loadDialect
-      // internally. We do NOT call mod.default() because the example package
-      // (and the expected contract) is side-effect-based, not function-call-based.
-      await /* @vite-ignore */ import(`https://esm.sh/${identifier}`);
+      // Import the vocab package from esm.sh.
+      //
+      // The `?external=` param tells esm.sh to leave @hyperjump/* imports as
+      // bare specifiers instead of rewriting them to esm.sh CDN URLs.  The
+      // https-loader's resolve hook then intercepts those bare specifiers and
+      // points them at the local node_modules copy, so defineVocabulary /
+      // loadDialect calls land on the same instance the server already uses.
+      //
+      // Registration happens as a side effect of the import — the package
+      // calls defineVocabulary/loadDialect internally on import, so we do
+      // not need to call mod.default().
+      await /* @vite-ignore */ import(`https://esm.sh/${identifier}?external=${ESM_EXTERNALS}`);
       this.#connection.console.log(`Vocabulary "${identifier}" loaded successfully.`);
       this.#loaded.add(identifier);
     } catch (error) {
