@@ -9,7 +9,7 @@
     "vscode:prepublish": "npm run build-client -- --minify && npm run build-server -- --minify && cp ../language-server/src/https-loader.js out/https-loader.mjs",
     "build": "npm run build-client -- --sourcemap && npm run build-server -- --sourcemap && cp ../language-server/src/https-loader.js out/https-loader.mjs",
     "build-client": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
-    "build-server": "esbuild ../language-server/src/server.js --bundle --external:fsevents --main-fields=module,main --outfile=out/server.js --external:vscode --format=cjs --platform=node",
+    "build-server": "esbuild ../language-server/src/server.js --bundle --external:fsevents --external:@hyperjump/browser --external:@hyperjump/json-schema --external:@hyperjump/json-schema/* --main-fields=module,main --outfile=out/server.mjs --format=esm --platform=node --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
     "package": "vsce package --out=dist",
     "publish": "vsce publish"
   },
@@ -22,6 +22,8 @@
     "esbuild": "*"
   },
   "dependencies": {
+    "@hyperjump/browser": "^1.3.1",
+    "@hyperjump/json-schema": "github:hyperjump-io/json-schema#lsp",
     "vscode-languageclient": "^9.0.0"
   },
   "engines": {
@@ -31,6 +33,9 @@
     "onLanguage:json"
   ],
   "contributes": {
+    "configurationDefaults": {
+      "json.validate.enable": false
+    },
     "configuration": {
       "title": "Configuration for JSON Schema Language Server",
       "properties": {
@@ -41,11 +46,16 @@
         "jsonSchemaLanguageServer.schemaFilePatterns": {
           "type": "array",
           "description": "The glob pattern for identifying JSON Schema files.",
-          "default": ["**/*.schema.json", "**/schema.json"]
+          "default": [
+            "**/*.schema.json",
+            "**/schema.json"
+          ]
         },
         "jsonSchemaLanguageServer.customVocabularies": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "A list of npm package identifiers (e.g. 'my-vocab@1.0.0') to load as custom vocabularies via esm.sh",
           "default": []
         }

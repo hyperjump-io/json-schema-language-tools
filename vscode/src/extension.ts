@@ -7,7 +7,7 @@ let client: LanguageClient | undefined;
 const TRUSTED_VOCABS_KEY = "trustedVocabularies";
 
 const activate = async (context: ExtensionContext) => {
-  const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
+  const serverModule = context.asAbsolutePath(path.join("out", "server.mjs"));
   const loaderModule = context.asAbsolutePath(path.join("out", "https-loader.mjs"));
 
   const serverOptions = {

@@ -25,7 +25,7 @@ import { SchemaCompletionProvider } from "./features/completion/schema-completio
 import { ExtractSubSchemaToDefs } from "./features/codeAction/extractSubschema.js";
 
 // Hyperjump
-import { removeMediaTypePlugin } from "@hyperjump/browser";
+import { removeUriSchemePlugin } from "@hyperjump/browser";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
@@ -37,8 +37,8 @@ import "@hyperjump/json-schema/draft-04";
  */
 
 
-removeMediaTypePlugin("http");
-removeMediaTypePlugin("https");
+removeUriSchemePlugin("http");
+removeUriSchemePlugin("https");
 
 /** @type (connection: Connection) => Server */
 export const buildServer = (connection) => {
@@ -84,7 +84,7 @@ export const buildServer = (connection) => {
   ]);
 
   // TODO: It's awkward that validateSchema needs a variable
-  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics, vocabularyLoader);
+  const validateSchema = new ValidateSchemaFeature(server, schemas, configuration, diagnostics, vocabularyLoader);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, vocabularyLoader);
 
   new CompletionFeature(server, schemas, [

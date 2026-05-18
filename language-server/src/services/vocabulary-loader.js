@@ -1,3 +1,6 @@
+import { acceptableMediaTypes, addUriSchemePlugin } from "@hyperjump/browser";
+import { getDialectIds } from "@hyperjump/json-schema/experimental";
+
 /**
  * @import { Connection } from "vscode-languageserver"
  */
@@ -9,8 +12,30 @@
 // remote vocab package the exact same module instance as the bundled server.
 const ESM_EXTERNALS = [
   "@hyperjump/json-schema",
+  "@hyperjump/json-schema/experimental",
+  "@hyperjump/json-schema/annotations",
+  "@hyperjump/json-schema/annotations/experimental",
   "@hyperjump/browser"
 ].join(",");
+
+const successStatus = new Set([200, 203]);
+
+/** @type {import("@hyperjump/browser").UriSchemePlugin} */
+const httpSchemePlugin = {
+  retrieve: async (uri) => {
+    const response = await fetch(uri, { headers: { Accept: acceptableMediaTypes() } });
+
+    if (response.status >= 400) {
+      throw new Error(`${response.status} ${response.statusText} -- Failed to retrieve '${uri}'`);
+    }
+
+    if (!successStatus.has(response.status)) {
+      throw new Error(`${response.status} ${response.statusText} -- Unsupported HTTP response status code`);
+    }
+
+    return response;
+  }
+};
 
 export class VocabularyLoader {
   #connection;
@@ -74,9 +99,11 @@ export class VocabularyLoader {
 
   /** @type {(identifiers: string[]) => Promise<void>} */
   async load(identifiers) {
+    this.#connection.console.log(`Configured custom vocabularies: ${JSON.stringify(identifiers)}`);
     for (const identifier of identifiers) {
       await this.#loadOne(identifier);
     }
+    this.#connection.console.log(`Registered dialects: ${JSON.stringify(getDialectIds())}`);
   }
 
   /** @type {(identifier: string) => Promise<void>} */
@@ -129,18 +156,16 @@ export class VocabularyLoader {
     }
 
     try {
-      // Import the vocab package from esm.sh.
-      //
-      // The `?external=` param tells esm.sh to leave @hyperjump/* imports as
-      // bare specifiers instead of rewriting them to esm.sh CDN URLs.  The
-      // https-loader's resolve hook then intercepts those bare specifiers and
-      // points them at the local node_modules copy, so defineVocabulary /
-      // loadDialect calls land on the same instance the server already uses.
-      //
-      // Registration happens as a side effect of the import — the package
-      // calls defineVocabulary/loadDialect internally on import, so we do
-      // not need to call mod.default().
-      await /* @vite-ignore */ import(`https://esm.sh/${identifier}?external=${ESM_EXTERNALS}`);
+      addUriSchemePlugin("http", httpSchemePlugin);
+      addUriSchemePlugin("https", httpSchemePlugin);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const mod = await import(`https://esm.sh/${identifier}?external=${ESM_EXTERNALS}`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (typeof mod.default === "function") {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        await mod.default();
+      }
       this.#connection.console.log(`Vocabulary "${identifier}" loaded successfully.`);
       this.#loaded.add(identifier);
     } catch (error) {
