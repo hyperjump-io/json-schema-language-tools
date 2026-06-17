@@ -39,6 +39,9 @@ export class ValidateWorkspaceFeature {
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#configuration.onDidChangeConfiguration(async () => {
+      await this.#vocabularyLoader.ready;
+      const { customVocabularies } = await this.#configuration.get();
+      await this.#vocabularyLoader.load(customVocabularies);
       await this.workspaceChanged({ changes: [] });
     });
   }
@@ -47,9 +50,6 @@ export class ValidateWorkspaceFeature {
   async workspaceChanged({ changes }) {
     // Wait for initial vocabulary loading before validating
     await this.#vocabularyLoader.ready;
-
-    const { customVocabularies } = await this.#configuration.get();
-    await this.#vocabularyLoader.load(customVocabularies);
 
     this.#server.console.log("Validating Workspace");
 

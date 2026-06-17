@@ -18,21 +18,18 @@ import { interpret, ValidationError } from "@hyperjump/json-schema/annotations/e
 export class ValidateSchemaFeature {
   #server;
   #schemas;
-  #configuration;
   #diagnostics;
   #vocabularyLoader;
 
   /**
    * @param {Server} server
    * @param {Schemas} schemas
-   * @param {Configuration} configuration
    * @param {DiagnosticsFeature} diagnostics
    * @param {VocabularyLoader} vocabularyLoader
    */
-  constructor(server, schemas, configuration, diagnostics, vocabularyLoader) {
+  constructor(server, schemas, diagnostics, vocabularyLoader) {
     this.#server = server;
     this.#schemas = schemas;
-    this.#configuration = configuration;
     this.#diagnostics = diagnostics;
     this.#vocabularyLoader = vocabularyLoader;
 
@@ -48,8 +45,6 @@ export class ValidateSchemaFeature {
     // This prevents "Unknown dialect" errors when documents are opened
     // during startup before onInitialized has finished loading vocabs.
     await this.#vocabularyLoader.ready;
-    const { customVocabularies } = await this.#configuration.get();
-    await this.#vocabularyLoader.load(customVocabularies);
 
     this.#server.console.log(`Validate Schema: ${schemaDocument.textDocument.uri}`);
 

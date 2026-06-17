@@ -46,29 +46,7 @@ export const buildServer = (connection) => {
   const configuration = new Configuration(server);
   const schemas = new Schemas(server, configuration);
 
-  const vocabularyLoader = new VocabularyLoader(connection);
-
-  server.onInitialize((params) => {
-    /** @type {string[]} */
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const trusted = params.initializationOptions?.trustedVocabularies ?? [];
-    vocabularyLoader.addTrusted(trusted);
-    return { capabilities: {} };
-  });
-
-  // Load vocabularies during initialization so they are available before
-  // any schema validation runs.  vocabularyLoader.ready resolves once
-  // markReady() is called, gating ValidateSchemaFeature and
-  // ValidateWorkspaceFeature.
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  server.onInitialized(async () => {
-    try {
-      const { customVocabularies } = await configuration.get();
-      await vocabularyLoader.load(customVocabularies);
-    } finally {
-      vocabularyLoader.markReady();
-    }
-  });
+  const vocabularyLoader = new VocabularyLoader(connection, configuration, server);
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);
@@ -84,7 +62,7 @@ export const buildServer = (connection) => {
   ]);
 
   // TODO: It's awkward that validateSchema needs a variable
-  const validateSchema = new ValidateSchemaFeature(server, schemas, configuration, diagnostics, vocabularyLoader);
+  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics, vocabularyLoader);
   new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, vocabularyLoader);
 
   new CompletionFeature(server, schemas, [
