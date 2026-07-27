@@ -2,6 +2,7 @@
 import { Server } from "./services/server.js";
 import { Configuration } from "./services/configuration.js";
 import { Schemas } from "./services/schemas.js";
+import { Dependencies } from "./services/dependencies.js";
 
 // Features
 import { CompletionFeature } from "./features/completion/completion.js";
@@ -61,7 +62,8 @@ export const buildServer = (connection) => {
 
   // TODO: It's awkward that validateSchema needs a variable
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
-  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
+  const dependencies = new Dependencies(server, schemas);
+  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, dependencies);
 
   new CompletionFeature(server, schemas, [
     new SchemaCompletionProvider(),

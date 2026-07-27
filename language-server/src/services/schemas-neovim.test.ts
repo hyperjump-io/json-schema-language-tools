@@ -5,7 +5,6 @@ import { PublishDiagnosticsNotification } from "vscode-languageserver";
 
 describe("Feature - workspace (neovim)", () => {
   let client: TestClient;
-  let documentUriA: string;
   let documentUriB: string;
 
   beforeAll(async () => {
@@ -20,7 +19,7 @@ describe("Feature - workspace (neovim)", () => {
       }
     });
 
-    documentUriA = await client.writeDocument("./subjectA.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
+    await client.writeDocument("./subjectA.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
     documentUriB = await client.writeDocument("./subjectB.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
   });
 
@@ -37,7 +36,7 @@ describe("Feature - workspace (neovim)", () => {
     });
   });
 
-  test("a change to a watched file should validate the workspace", { retry: 3 }, async () => {
+  test("a change to a watched file should validate the file", { retry: 3 }, async () => {
     const schemaUris: string[] = [];
 
     client.onNotification(PublishDiagnosticsNotification.type, (params) => {
@@ -46,7 +45,7 @@ describe("Feature - workspace (neovim)", () => {
 
     await client.writeDocument("./subjectB.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/schema" }`);
 
-    expect(schemaUris).to.eql([documentUriA, documentUriB]);
+    expect(schemaUris).to.eql([documentUriB]);
   });
 
   test.todo("changing the workspace folders should validate the workspace", () => {

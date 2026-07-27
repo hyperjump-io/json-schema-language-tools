@@ -45,7 +45,7 @@ describe("JSON Schema Language Server", () => {
     expect(await diagnostics).to.equal(documentUriA);
   });
 
-  test("a change to a watched file should validate the workspace", async () => {
+  test("a change to a watched file should validate the file", async () => {
     const schemaUris: string[] = [];
 
     client.onNotification(PublishDiagnosticsNotification.type, (params) => {
@@ -54,7 +54,7 @@ describe("JSON Schema Language Server", () => {
 
     await client.writeDocument("./subjectB.schema.json", `{ "$schema": "https://json-schema.org/draft/2020-12/cshema" }`);
 
-    expect(schemaUris).to.eql([documentUriA, documentUriB]);
+    expect(schemaUris).to.eql([documentUriB]);
   });
 
   test.todo("changing the workspace folders should validate the workspace", () => {
