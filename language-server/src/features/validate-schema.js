@@ -7,7 +7,9 @@ import { interpret, ValidationError } from "@hyperjump/json-schema/annotations/e
 /**
  * @import { Server } from "../services/server.js";
  * @import { Schemas } from "../services/schemas.js"
+ * @import { Configuration } from "../services/configuration.js"
  * @import { DiagnosticsFeature } from "./diagnostics/diagnostics.js"
+ * @import { VocabularyLoader } from "../services/vocabulary-loader.js"
  * @import { SchemaNode as SchemaNodeType } from "../model/schema-node.js"
  * @import { SchemaDocument as SchemaDocumentType } from "../model/schema-document.js"
  */
@@ -17,16 +19,19 @@ export class ValidateSchemaFeature {
   #server;
   #schemas;
   #diagnostics;
+  #vocabularyLoader;
 
   /**
    * @param {Server} server
    * @param {Schemas} schemas
    * @param {DiagnosticsFeature} diagnostics
+   * @param {VocabularyLoader} vocabularyLoader
    */
-  constructor(server, schemas, diagnostics) {
+  constructor(server, schemas, diagnostics, vocabularyLoader) {
     this.#server = server;
     this.#schemas = schemas;
     this.#diagnostics = diagnostics;
+    this.#vocabularyLoader = vocabularyLoader;
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeContent(async ({ document }) => {
@@ -36,6 +41,11 @@ export class ValidateSchemaFeature {
 
   /** @type (schemaDocument: SchemaDocumentType) => Promise<void> */
   async validateSchema(schemaDocument) {
+    // Wait for vocabulary loading to complete before validating.
+    // This prevents "Unknown dialect" errors when documents are opened
+    // during startup before onInitialized has finished loading vocabs.
+    await this.#vocabularyLoader.ready;
+
     this.#server.console.log(`Validate Schema: ${schemaDocument.textDocument.uri}`);
 
     for (const schemaResource of schemaDocument.schemaResources) {

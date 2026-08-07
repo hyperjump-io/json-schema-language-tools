@@ -2,7 +2,7 @@
 import { Server } from "./services/server.js";
 import { Configuration } from "./services/configuration.js";
 import { Schemas } from "./services/schemas.js";
-
+import { VocabularyLoader } from "./services/vocabulary-loader.js";
 // Features
 import { CompletionFeature } from "./features/completion/completion.js";
 import { DiagnosticsFeature } from "./features/diagnostics/diagnostics.js";
@@ -25,7 +25,7 @@ import { SchemaCompletionProvider } from "./features/completion/schema-completio
 import { ExtractSubSchemaToDefs } from "./features/codeAction/extractSubschema.js";
 
 // Hyperjump
-import { removeMediaTypePlugin } from "@hyperjump/browser";
+import { removeUriSchemePlugin } from "@hyperjump/browser";
 import "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/draft-2019-09";
 import "@hyperjump/json-schema/draft-07";
@@ -37,14 +37,16 @@ import "@hyperjump/json-schema/draft-04";
  */
 
 
-removeMediaTypePlugin("http");
-removeMediaTypePlugin("https");
+removeUriSchemePlugin("http");
+removeUriSchemePlugin("https");
 
 /** @type (connection: Connection) => Server */
 export const buildServer = (connection) => {
   const server = new Server(connection);
   const configuration = new Configuration(server);
   const schemas = new Schemas(server, configuration);
+
+  const vocabularyLoader = new VocabularyLoader(connection, configuration, server);
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);
@@ -60,8 +62,8 @@ export const buildServer = (connection) => {
   ]);
 
   // TODO: It's awkward that validateSchema needs a variable
-  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
-  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
+  const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics, vocabularyLoader);
+  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, vocabularyLoader);
 
   new CompletionFeature(server, schemas, [
     new SchemaCompletionProvider(),
