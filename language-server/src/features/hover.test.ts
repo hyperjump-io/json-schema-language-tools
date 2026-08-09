@@ -373,7 +373,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["$id", "\"\""], // TODO: Add missing description
+      ["$id", "\"\""],
       ["$ref", "\"\""],
       ["$comment", "\"\""],
       ["title", "\"\""],
@@ -403,7 +403,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"], // TODO: Add missing description
+      ["dependencies", "{}"],
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -478,7 +478,7 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["$id", "\"\""], // TODO: Add missing description
+      ["$id", "\"\""],
       ["$ref", "\"\""],
       ["title", "\"\""],
       ["description", "\"\""],
@@ -505,7 +505,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"], // TODO: Add missing description
+      ["dependencies", "{}"],
       ["propertyNames", "{}"],
       ["const", "1"],
       ["enum", "[1]"],
@@ -578,15 +578,15 @@ describe("Feature - Hover", () => {
     });
 
     test.each([
-      // ["id", "\"\""], // TODO: Add missing description
+      ["id", "\"\""],
       ["title", "\"\""],
       ["description", "\"\""],
       ["default", "\"\""],
       ["multipleOf", "1"],
-      // ["maximum", "1"],
-      // ["exclusiveMaximum", "true, \"maximum\": 1"], // TODO: Add missing description
-      // ["minimum", "1"],
-      // ["exclusiveMinimum", "true, \"minimum\": 1"], // TODO: Add missing description
+      ["maximum", "1"],
+      ["exclusiveMaximum", "true, \"maximum\": 1"],
+      ["minimum", "1"],
+      ["exclusiveMinimum", "true, \"minimum\": 1"],
       ["maxLength", "1"],
       ["minLength", "1"],
       ["pattern", "\"\""],
@@ -602,7 +602,7 @@ describe("Feature - Hover", () => {
       ["definitions", "{}"],
       ["properties", "{}"],
       ["patternProperties", "{}"],
-      // ["dependencies", "{}"], // TODO: Add missing description
+      ["dependencies", "{}"],
       ["enum", "[1]"],
       ["type", "\"object\""],
       ["format", "\"\""],
