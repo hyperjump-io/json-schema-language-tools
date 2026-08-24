@@ -1,9 +1,5 @@
-node_modules/
-src/
-dist/
-scratch/
-*.swp
-*.swo
-.vimrc
+out/**/*.map
+node_modules/**
+src/**
+tsconfig.json
 .gitignore
-TODO
