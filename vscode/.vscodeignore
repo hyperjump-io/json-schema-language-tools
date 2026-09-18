@@ -1,5 +1,2 @@
 out/**/*.map
-node_modules/**
-src/**
 tsconfig.json
-.gitignore
