@@ -1,9 +1,2 @@
-node_modules/
-src/
-dist/
-scratch/
-*.swp
-*.swo
-.vimrc
-.gitignore
-TODO
+out/**/*.map
+tsconfig.json
