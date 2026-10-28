@@ -6,6 +6,7 @@ import { hasDialect } from "@hyperjump/json-schema/experimental";
  * @import { Server } from "../services/server.js"
  * @import { Schemas } from "../services/schemas.js";
  * @import { Configuration } from "../services/configuration.js";
+ * @import { CustomVocabularies } from "../services/custom-vocabularies.js";
  * @import { ValidateSchemaFeature } from "./validate-schema.js";
  */
 
@@ -15,18 +16,21 @@ export class ValidateWorkspaceFeature {
   #schemas;
   #configuration;
   #validateSchema;
+  #customVocabularies;
 
   /**
    * @param {Server} server
    * @param {Schemas} schemas
    * @param {Configuration} configuration
    * @param {ValidateSchemaFeature} validateSchema
+   * @param {CustomVocabularies} customVocabularies
    */
-  constructor(server, schemas, configuration, validateSchema) {
+  constructor(server, schemas, configuration, validateSchema, customVocabularies) {
     this.#server = server;
     this.#schemas = schemas;
     this.#configuration = configuration;
     this.#validateSchema = validateSchema;
+    this.#customVocabularies = customVocabularies;
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#schemas.onDidChangeWatchedFiles(async (params) => {
@@ -35,6 +39,11 @@ export class ValidateWorkspaceFeature {
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.#configuration.onDidChangeConfiguration(async () => {
+      await this.workspaceChanged({ changes: [] });
+    });
+
+    // Schemas that use a custom vocabulary are invalid until it has loaded
+    this.#customVocabularies.onDidLoad(async () => {
       await this.workspaceChanged({ changes: [] });
     });
   }

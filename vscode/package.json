@@ -42,6 +42,15 @@
           "type": "array",
           "description": "The glob pattern for identifying JSON Schema files.",
           "default": ["**/*.schema.json", "**/schema.json"]
+        },
+        "jsonSchemaLanguageServer.customVocabularies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(@[a-z0-9~][a-z0-9._~-]*/)?[a-z0-9~][a-z0-9._~-]*@\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$"
+          },
+          "default": [],
+          "markdownDescription": "npm packages, pinned to an exact version (for example `my-vocabulary@1.0.0`), that add support for custom keywords, vocabularies, and dialects. Packages are downloaded from esm.sh and run inside the language server. **You are asked to confirm before a package is loaded for the first time.** Only add packages you trust."
         }
       }
     }

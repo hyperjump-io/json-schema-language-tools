@@ -2,6 +2,8 @@
 import { Server } from "./services/server.js";
 import { Configuration } from "./services/configuration.js";
 import { Schemas } from "./services/schemas.js";
+import { TrustedVocabularies } from "./services/trusted-vocabularies.js";
+import { CustomVocabularies } from "./services/custom-vocabularies.js";
 
 // Features
 import { CompletionFeature } from "./features/completion/completion.js";
@@ -45,6 +47,7 @@ export const buildServer = (connection) => {
   const server = new Server(connection);
   const configuration = new Configuration(server);
   const schemas = new Schemas(server, configuration);
+  const customVocabularies = new CustomVocabularies(server, configuration, new TrustedVocabularies(server));
 
   new SemanticTokensFeature(server, schemas, configuration);
   new GotoDefinitionFeature(server, schemas);
@@ -61,7 +64,7 @@ export const buildServer = (connection) => {
 
   // TODO: It's awkward that validateSchema needs a variable
   const validateSchema = new ValidateSchemaFeature(server, schemas, diagnostics);
-  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema);
+  new ValidateWorkspaceFeature(server, schemas, configuration, validateSchema, customVocabularies);
 
   new CompletionFeature(server, schemas, [
     new SchemaCompletionProvider(),
