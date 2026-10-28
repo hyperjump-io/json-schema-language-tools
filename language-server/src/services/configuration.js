@@ -12,6 +12,7 @@ import { pick } from "../util/util.js";
  * @typedef {{
  *   defaultDialect?: string;
  *   schemaFilePatterns: string[];
+ *   customVocabularies?: string[];
  * }} LanguageServerSettings
  */
 
